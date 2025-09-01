@@ -282,17 +282,23 @@ class BulkPhotoProcessor:
                 self.log_message(f"Progress callback error: {e}", "WARNING")
     
     def log_message(self, message: str, level: str = "INFO"):
-        """Thread-safe logging"""
+        """Thread-safe logging with Streamlit compatibility"""
         timestamp = f"{(time.time() - self.start_time):.2f}s"
+        
+        # Always print to console
         print(f"[{timestamp}] {level}: {message}")
         
-        # Notify GUI of log message
-        self.notify_progress({
-            'type': 'log',
-            'message': message,
-            'level': level,
-            'timestamp': timestamp
-        })
+        # Try to notify GUI, but silently fail in background threads
+        try:
+            self.notify_progress({
+                'type': 'log',
+                'message': message,
+                'level': level,
+                'timestamp': timestamp
+            })
+        except Exception:
+            # Silently continue - we're probably in a background thread
+            pass
     
     def update_stats(self, status_change: Dict):
         """Thread-safe stats update"""
