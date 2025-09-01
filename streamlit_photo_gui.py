@@ -12,13 +12,24 @@ import sqlite3
 from pathlib import Path
 from PIL import Image
 import pandas as pd
-from typing import Dict, List, Optional
+# from typing import Dict, List, Optional
+import typing
 import base64
 import time
 
 # Import your enhanced processor
-try:
+# try: 
+#     from enhanced_photo_fixer import BulkPhotoProcessor, ProcessingConfig, ActionType, ConfidenceLevel, ProcessingStatus 
+#     PROCESSOR_AVAILABLE = True
+# except ImportError:
+#     st.error("❌ Could not import enhanced_photo_fixer.py - make sure it's in the same directory")
+#     PROCESSOR_AVAILABLE = False
+
+if typing.TYPE_CHECKING:
     from enhanced_photo_fixer import BulkPhotoProcessor, ProcessingConfig, ActionType, ConfidenceLevel, ProcessingStatus
+
+try: 
+    from enhanced_photo_fixer import BulkPhotoProcessor, ProcessingConfig, ActionType, ConfidenceLevel, ProcessingStatus 
     PROCESSOR_AVAILABLE = True
 except ImportError:
     st.error("❌ Could not import enhanced_photo_fixer.py - make sure it's in the same directory")
@@ -240,7 +251,7 @@ def review_page():
                 'low_confidence': '📉 Low Confidence',
                 'completed': '✅ Completed',
                 'all': '📋 All Files'
-            }.get(x, x)
+            }.get(x, str(x))
         )
     
     with col2:
