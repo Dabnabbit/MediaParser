@@ -124,6 +124,7 @@ class DatabaseManager:
     def init_database(self):
         """Initialize database schema"""
         with self.get_connection() as conn:
+            # Create photo_metadata table
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS photo_metadata (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -151,6 +152,7 @@ class DatabaseManager:
                 )
             ''')
             
+            # Create processing_sessions table
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS processing_sessions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -164,17 +166,26 @@ class DatabaseManager:
                 )
             ''')
             
-            conn.execute('''
-                CREATE INDEX IF NOT EXISTS idx_status ON photo_metadata(status);
-                CREATE INDEX IF NOT EXISTS idx_action ON photo_metadata(action);
-                CREATE INDEX IF NOT EXISTS idx_hash ON photo_metadata(perceptual_hash);
-            ''')
+            # Create indexes separately
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_status ON photo_metadata(status)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_action ON photo_metadata(action)')
+            conn.execute('CREATE INDEX IF NOT EXISTS idx_hash ON photo_metadata(perceptual_hash)')
             
             conn.commit()
     
     def save_metadata(self, metadata: PhotoMetadata):
         """Save or update photo metadata"""
         with self.get_connection() as conn:
+            # Convert metadata to dict and handle enum serialization
+            metadata_dict = asdict(metadata)
+            
+            # Convert datetime objects to ISO strings
+            for key, value in metadata_dict.items():
+                if isinstance(value, datetime.datetime):
+                    metadata_dict[key] = value.isoformat()
+                elif hasattr(value, 'value'):  # Handle enum objects
+                    metadata_dict[key] = value.value
+            
             conn.execute('''
                 INSERT OR REPLACE INTO photo_metadata 
                 (file_path, file_name, file_extension, file_size, directory_tags, 
@@ -183,16 +194,25 @@ class DatabaseManager:
                  megapixels, processed_time, user_verified, metadata_json, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ''', (
-                metadata.file_path, metadata.file_name, metadata.file_extension,
-                metadata.file_size, json.dumps(metadata.directory_tags),
+                metadata.file_path, 
+                metadata.file_name, 
+                metadata.file_extension,
+                metadata.file_size, 
+                json.dumps(metadata.directory_tags),
                 json.dumps(metadata.filename_tags), 
                 metadata.filename_datetime.isoformat() if metadata.filename_datetime else None,
                 metadata.final_datetime.isoformat() if metadata.final_datetime else None,
-                metadata.confidence.value, metadata.action.value, metadata.status.value,
-                metadata.error_message, metadata.duplicate_group, metadata.perceptual_hash,
-                metadata.file_hash, metadata.megapixels,
+                metadata.confidence.value,  # Convert enum to string
+                metadata.action.value,      # Convert enum to string
+                metadata.status.value,      # Convert enum to string
+                metadata.error_message, 
+                metadata.duplicate_group, 
+                metadata.perceptual_hash,
+                metadata.file_hash, 
+                metadata.megapixels,
                 metadata.processed_time.isoformat() if metadata.processed_time else None,
-                metadata.user_verified, json.dumps(asdict(metadata))
+                metadata.user_verified, 
+                json.dumps(metadata_dict, default=str)  # Handle any remaining serialization issues
             ))
             conn.commit()
     
@@ -351,6 +371,12 @@ class BulkPhotoProcessor:
                         metadata.status = ProcessingStatus.COMPLETED
                         metadata.processed_time = datetime.datetime.now()
                         
+                        # ** NEW: Actually organize the file **
+                        success = self.organize_file(metadata, et)
+                        if not success:
+                            metadata.status = ProcessingStatus.ERROR
+                            metadata.error_message = "Failed to organize file"
+                        
                         # Save to database if enabled
                         if self.db:
                             self.db.save_metadata(metadata)
@@ -358,15 +384,24 @@ class BulkPhotoProcessor:
                         results.append(metadata)
                         
                         # Update stats
+                        final_status = 'completed' if metadata.action == ActionType.PROCESS else 'user_action_needed'
+                        if metadata.status == ProcessingStatus.ERROR:
+                            final_status = 'errors'
+                            
                         self.update_stats({
                             'old_status': 'processing',
-                            'new_status': 'completed' if metadata.action == ActionType.PROCESS else 'user_action_needed'
+                            'new_status': final_status
                         })
                         
                         # Notify individual file completion
                         self.notify_progress({
                             'type': 'file_completed',
-                            'metadata': asdict(metadata)
+                            'metadata': {
+                                'file_name': metadata.file_name,
+                                'confidence': metadata.confidence.value,
+                                'action': metadata.action.value,
+                                'final_datetime': metadata.final_datetime.isoformat() if metadata.final_datetime else None
+                            }
                         })
                         
                     except Exception as e:
@@ -512,7 +547,110 @@ class BulkPhotoProcessor:
         except Exception as e:
             self.log_message(f"Hash generation failed for {metadata.file_name}: {e}", "WARNING")
     
+    def organize_file(self, metadata: PhotoMetadata, et: exiftool.ExifToolHelper) -> bool:
+        """Actually organize/copy the file with proper naming and metadata updates"""
+        try:
+            # Setup output paths
+            output_path_base = os.path.join(self.config.documents_dir, self.config.output_dir)
+            
+            # Create base output directory if it doesn't exist
+            if not os.path.exists(output_path_base):
+                os.makedirs(output_path_base)
+            
+            # Determine output file extension (correct if metadata mismatch)
+            output_extension = metadata.file_extension
+            
+            # Generate output filename based on datetime
+            if metadata.final_datetime:
+                # Format: YYYYMMDD_HHMMSS.ext
+                datetime_str = metadata.final_datetime.strftime("%Y%m%d_%H%M%S")
+                output_filename = f"{datetime_str}.{output_extension}"
+            else:
+                # Fallback to original filename
+                output_filename = metadata.file_name
+            
+            # Determine output directory
+            output_path = output_path_base
+            
+            if metadata.action == ActionType.CHECK:
+                # Low confidence files go to CHECK folder
+                output_path = os.path.join(output_path_base, 'CHECK')
+            elif metadata.action == ActionType.DUPLICATE:
+                # Duplicate files go to DUPLICATES folder
+                output_path = os.path.join(output_path_base, 'DUPLICATES')
+            elif self.config.output_dir_years and metadata.final_datetime:
+                # Organize by year
+                output_path = os.path.join(output_path_base, str(metadata.final_datetime.year))
+            
+            # Create output directory if needed
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+            
+            # Full output file path
+            output_file_path = os.path.join(output_path, output_filename)
+            
+            # Handle filename conflicts by incrementing seconds
+            original_datetime = metadata.final_datetime
+            while os.path.exists(output_file_path):
+                self.log_message(f"Filename conflict: {output_filename}, incrementing...", "WARNING")
+                
+                if metadata.final_datetime:
+                    # Increment by 1 second
+                    metadata.final_datetime = metadata.final_datetime + datetime.timedelta(seconds=1)
+                    datetime_str = metadata.final_datetime.strftime("%Y%m%d_%H%M%S")
+                    output_filename = f"{datetime_str}.{output_extension}"
+                else:
+                    # Add counter to filename
+                    base_name, ext = os.path.splitext(output_filename)
+                    counter = 1
+                    output_filename = f"{base_name}_{counter:02d}{ext}"
+                    counter += 1
+                
+                output_file_path = os.path.join(output_path, output_filename)
+            
+            # Copy the file
+            shutil.copy2(metadata.file_path, output_file_path)
+            self.log_message(f"Copied: {metadata.file_name} -> {output_filename}", "OKGREEN")
+            
+            # Update metadata in the copied file (if high confidence and not CHECK)
+            if (metadata.confidence in [ConfidenceLevel.HIGH, ConfidenceLevel.MEDIUM] and 
+                metadata.action != ActionType.CHECK and 
+                metadata.final_datetime):
+                
+                try:
+                    # Prepare metadata updates
+                    datetime_meta_format = metadata.final_datetime.strftime("%Y:%m:%d %H:%M:%S")
+                    
+                    metadata_updates = {
+                        'DateTimeOriginal': datetime_meta_format,
+                        'FileCreateDate': datetime_meta_format,
+                        'ModifyDate': datetime_meta_format
+                    }
+                    
+                    # Add tags if available
+                    all_tags = metadata.directory_tags + metadata.filename_tags
+                    if all_tags:
+                        tags_string = ';'.join(all_tags)
+                        metadata_updates['XPKeywords'] = tags_string
+                        metadata_updates['Subject'] = tags_string  # XMP subject tags as string
+                    
+                    # Update file metadata
+                    et.set_tags(output_file_path, tags=metadata_updates, params=['-overwrite_original'])
+                    self.log_message(f"Updated metadata for: {output_filename}", "OKGREEN")
+                    
+                except Exception as e:
+                    self.log_message(f"Metadata update failed for {output_filename}: {e}", "WARNING")
+                    # Don't fail the whole operation for metadata update issues
+            
+            return True
+            
+        except Exception as e:
+            self.log_message(f"File organization failed for {metadata.file_name}: {e}", "ERROR")
+            metadata.error_message = f"Organization failed: {str(e)}"
+            return False
+    
     def determine_confidence(self, metadata: PhotoMetadata):
+        """Determine final datetime and confidence level"""
         """Determine final datetime and confidence level"""
         all_datetimes = []
         
@@ -695,6 +833,44 @@ class BulkPhotoProcessor:
                 'total_groups_with_duplicates': len(duplicate_groups)
             }
     
+    def get_duplicate_groups_for_resolution(self) -> List[Dict]:
+        """Get duplicate groups formatted for GUI resolution"""
+        if not self.duplicate_detector:
+            return []
+        
+        return self.duplicate_detector.get_duplicate_resolution_data()
+    
+    def apply_duplicate_resolution(self, group_id: str, keep_file_path: str, delete_file_paths: List[str]) -> bool:
+        """Apply user's duplicate resolution decision"""
+        try:
+            if not self.db:
+                return False
+            
+            with self.db.get_connection() as conn:
+                # Mark the kept file as user-verified and approved
+                conn.execute('''
+                    UPDATE photo_metadata 
+                    SET action = ?, user_verified = ?, duplicate_group = NULL, updated_at = CURRENT_TIMESTAMP
+                    WHERE file_path = ?
+                ''', (ActionType.PROCESS.value, True, keep_file_path))
+                
+                # Mark deleted files as user-deleted
+                for delete_path in delete_file_paths:
+                    conn.execute('''
+                        UPDATE photo_metadata 
+                        SET action = ?, user_verified = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE file_path = ?
+                    ''', (ActionType.ERROR.value, True, ProcessingStatus.USER_ACTION_NEEDED.value, delete_path))
+                
+                conn.commit()
+                
+            self.log_message(f"Duplicate resolution applied for group {group_id}: kept {keep_file_path}", "OKGREEN")
+            return True
+            
+        except Exception as e:
+            self.log_message(f"Failed to apply duplicate resolution: {e}", "ERROR")
+            return False
+    
     def get_files_for_gui_review(self, filter_type: str, page: int = 0, page_size: int = 20) -> Dict:
         """Get paginated files for GUI review with thumbnails and metadata"""
         if not self.db:
@@ -811,12 +987,12 @@ class BulkPhotoProcessor:
         return False
 
 class DuplicateDetector:
-    """Handles perceptual duplicate detection"""
+    """Handles perceptual duplicate detection with user resolution support"""
     
     def __init__(self, similarity_threshold: int = 5):
         self.threshold = similarity_threshold
-        self.hash_groups: Dict[str, List[PhotoMetadata]] = {}
-        self.processed_hashes: List[str] = []
+        self.duplicate_groups: Dict[str, List[PhotoMetadata]] = {}
+        self.processed_hashes: List[Tuple[str, str]] = []  # (hash, group_id)
     
     def add_file(self, metadata: PhotoMetadata) -> Optional[str]:
         """Add file to duplicate detection, return group ID if duplicate found"""
@@ -824,27 +1000,137 @@ class DuplicateDetector:
             return None
         
         # Find similar hashes
-        for existing_hash in self.processed_hashes:
+        for existing_hash, existing_group_id in self.processed_hashes:
             try:
                 hash_diff = (imagehash.hex_to_hash(metadata.perceptual_hash) - 
                            imagehash.hex_to_hash(existing_hash))
                 
                 if hash_diff <= self.threshold:
-                    # Found similar image
-                    group_id = f"dup_{existing_hash[:8]}"
+                    # Found similar image - add to existing group
+                    if existing_group_id not in self.duplicate_groups:
+                        self.duplicate_groups[existing_group_id] = []
                     
-                    if group_id not in self.hash_groups:
-                        self.hash_groups[group_id] = []
-                    
-                    self.hash_groups[group_id].append(metadata)
-                    return group_id
+                    self.duplicate_groups[existing_group_id].append(metadata)
+                    return existing_group_id
                     
             except Exception:
                 continue
         
-        # No duplicates found, add to processed
-        self.processed_hashes.append(metadata.perceptual_hash)
+        # No duplicates found - this could be start of new group
+        group_id = f"group_{metadata.perceptual_hash[:8]}"
+        self.processed_hashes.append((metadata.perceptual_hash, group_id))
+        
+        # Don't create group until we find a duplicate
         return None
+    
+    def finalize_groups(self) -> Dict[str, List[PhotoMetadata]]:
+        """Finalize duplicate groups and add quality rankings"""
+        
+        # Only keep groups with 2+ files
+        final_groups = {}
+        
+        for group_id, files in self.duplicate_groups.items():
+            if len(files) >= 2:
+                # Sort files by quality metrics for user choice
+                sorted_files = self.rank_duplicates_by_quality(files)
+                final_groups[group_id] = sorted_files
+        
+        return final_groups
+    
+    def rank_duplicates_by_quality(self, files: List[PhotoMetadata]) -> List[PhotoMetadata]:
+        """Rank duplicate files by quality for user selection"""
+        
+        def quality_score(metadata: PhotoMetadata) -> tuple:
+            """Return tuple for sorting - higher values = better quality"""
+            
+            # File size (larger usually better)
+            size_score = metadata.file_size
+            
+            # Megapixels (higher resolution better)
+            mp_score = metadata.megapixels
+            
+            # Confidence level (high confidence better)
+            confidence_score = {
+                ConfidenceLevel.HIGH: 3,
+                ConfidenceLevel.MEDIUM: 2,
+                ConfidenceLevel.LOW: 1,
+                ConfidenceLevel.ERROR: 0
+            }.get(metadata.confidence, 0)
+            
+            # File extension preference (original > copy indicators)
+            ext_score = 0
+            if 'copy' not in metadata.file_name.lower():
+                ext_score += 10
+            if 'original' in metadata.file_name.lower():
+                ext_score += 5
+            
+            # EXIF data richness (more EXIF data = better)
+            exif_score = len(metadata.exif_datetimes)
+            
+            return (confidence_score, mp_score, size_score, ext_score, exif_score)
+        
+        # Sort by quality score (best first)
+        return sorted(files, key=quality_score, reverse=True)
+    
+    def get_duplicate_resolution_data(self) -> List[Dict]:
+        """Get structured data for GUI duplicate resolution"""
+        resolution_data = []
+        
+        for group_id, files in self.finalize_groups().items():
+            group_info = {
+                'group_id': group_id,
+                'total_files': len(files),
+                'recommended_keep': files[0] if files else None,  # Highest quality
+                'files': []
+            }
+            
+            for i, file_metadata in enumerate(files):
+                file_info = {
+                    'file_path': file_metadata.file_path,
+                    'file_name': file_metadata.file_name,
+                    'file_size': file_metadata.file_size,
+                    'megapixels': file_metadata.megapixels,
+                    'confidence': file_metadata.confidence.value,
+                    'final_datetime': file_metadata.final_datetime.isoformat() if file_metadata.final_datetime else None,
+                    'is_recommended': i == 0,  # First file is recommended (highest quality)
+                    'quality_notes': self.get_quality_notes(file_metadata, files)
+                }
+                group_info['files'].append(file_info)
+            
+            resolution_data.append(group_info)
+        
+        return resolution_data
+    
+    def get_quality_notes(self, metadata: PhotoMetadata, all_files: List[PhotoMetadata]) -> List[str]:
+        """Generate quality assessment notes for GUI display"""
+        notes = []
+        
+        # Size comparison
+        max_size = max(f.file_size for f in all_files)
+        if metadata.file_size == max_size:
+            notes.append("Largest file")
+        
+        # Megapixels comparison  
+        max_mp = max(f.megapixels for f in all_files)
+        if metadata.megapixels == max_mp and max_mp > 0:
+            notes.append("Highest resolution")
+        
+        # Confidence level
+        if metadata.confidence == ConfidenceLevel.HIGH:
+            notes.append("High confidence metadata")
+        elif metadata.confidence == ConfidenceLevel.LOW:
+            notes.append("Low confidence metadata")
+        
+        # Filename indicators
+        name_lower = metadata.file_name.lower()
+        if 'copy' in name_lower:
+            notes.append("Appears to be a copy")
+        if 'original' in name_lower:
+            notes.append("Marked as original")
+        if 'edit' in name_lower or 'modified' in name_lower:
+            notes.append("May be edited version")
+        
+        return notes
 
 def main():
     """Main function for bulk processing"""
