@@ -7,12 +7,11 @@ import json
 import hashlib
 import threading
 import queue
-import multiprocessing
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, NamedTuple, Callable, Any
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Tuple, Optional, Callable, Any
+from dataclasses import dataclass, asdict, field
 from enum import Enum
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import sqlite3
 from contextlib import contextmanager
 
@@ -48,14 +47,14 @@ class PhotoMetadata:
     file_name: str
     file_extension: str
     file_size: int
-    directory_tags: List[str]
-    filename_tags: List[str]
-    filename_datetime: Optional[datetime.datetime]
-    exif_datetimes: List[datetime.datetime]
-    other_datetimes: List[datetime.datetime]
-    final_datetime: Optional[datetime.datetime]
-    confidence: ConfidenceLevel
-    action: ActionType
+    directory_tags: List[str] = field(default_factory=list)
+    filename_tags: List[str] = field(default_factory=list)
+    filename_datetime: Optional[datetime.datetime] = None
+    exif_datetimes: List[datetime.datetime] = field(default_factory=list)
+    other_datetimes: List[datetime.datetime] = field(default_factory=list)
+    final_datetime: Optional[datetime.datetime] = None
+    confidence: ConfidenceLevel = ConfidenceLevel.LOW
+    action: ActionType = ActionType.PENDING
     status: ProcessingStatus = ProcessingStatus.QUEUED
     error_message: Optional[str] = None
     duplicate_group: Optional[str] = None
@@ -95,7 +94,7 @@ class ProcessingConfig:
     meta_datetime_tags: Tuple[str, ...] = ('File:FileModifyDate', 'File:FileCreateDate', 'EXIF:DateTimeOriginal', 'EXIF:ModifyDate')
     meta_ignored_tags: Tuple[str, ...] = ('SourceFile', 'File:FileName', 'File:FileAccessDate', 'ICC_Profile:ProfileDateTime', 'IPTC:SpecialInstructions', 'Photoshop:*')
     meta_ensured_tags: Tuple[str, ...] = ('DateTimeOriginal', 'FileCreateDate')
-    meta_comment_tags: List[str] = None
+    meta_comment_tags: Optional[List[str]] = None
     
     # Duplicate detection
     duplicate_similarity_threshold: int = 5
@@ -197,11 +196,11 @@ class DatabaseManager:
             ))
             conn.commit()
     
-    def get_files_by_status(self, status: ProcessingStatus, limit: int = None) -> List[Dict]:
+    def get_files_by_status(self, status: ProcessingStatus, limit: Optional[int] = None) -> List[Dict]:
         """Get files by processing status"""
         with self.get_connection() as conn:
             query = "SELECT * FROM photo_metadata WHERE status = ?"
-            params = [status.value]
+            params: List[Any] = [status.value]
             if limit:
                 query += " LIMIT ?"
                 params.append(limit)
@@ -642,7 +641,7 @@ class BulkPhotoProcessor:
         self.processing_active = False
         self.log_message("Processing stop requested")
     
-    def get_files_for_review(self, action_type: ActionType, limit: int = 50) -> List[Dict]:
+    def get_files_for_review(self, action_type: ActionType, limit: Optional[int] = 50) -> List[Dict]:
         """Get files that need user review"""
         if self.db:
             # Get from database
