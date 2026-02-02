@@ -18,12 +18,12 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Timestamp Processing
 
-- [ ] **TIME-01**: System calculates confidence score for timestamp detection based on source agreement
+- [x] **TIME-01**: System calculates confidence score for timestamp detection based on source agreement
 - [ ] **TIME-02**: Low-confidence timestamps are queued for user review
 - [ ] **TIME-03**: User can resolve timestamp conflicts via review UI
 - [ ] **TIME-04**: User can manually enter timestamp for files with no determinable date
 - [ ] **TIME-05**: User can see breakdown of timestamp sources (EXIF, filename, file date, etc.)
-- [ ] **TIME-06**: System preserves existing timestamp detection logic from CLI
+- [x] **TIME-06**: System preserves existing timestamp detection logic from CLI
 
 ### Duplicate Detection
 
@@ -43,7 +43,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Processing & Output
 
-- [ ] **PROC-01**: System processes files using multi-threading for performance
+- [x] **PROC-01**: System processes files using multi-threading for performance
 - [ ] **PROC-02**: Output files are organized in folders by year
 - [ ] **PROC-03**: Output filenames follow YYYYMMDD_HHMMSS.ext format
 - [ ] **PROC-04**: User can choose to keep or delete source files after processing
@@ -117,9 +117,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-03 | Phase 1 | Complete |
 | INFRA-04 | Phase 1 | Complete |
 | INFRA-05 | Phase 1 | Complete |
-| TIME-01 | Phase 2 | Pending |
-| TIME-06 | Phase 2 | Pending |
-| PROC-01 | Phase 2 | Pending |
+| TIME-01 | Phase 2 | Complete |
+| TIME-06 | Phase 2 | Complete |
+| PROC-01 | Phase 2 | Complete |
 | WEB-02 | Phase 3 | Pending |
 | WEB-03 | Phase 3 | Pending |
 | WEB-04 | Phase 3 | Pending |

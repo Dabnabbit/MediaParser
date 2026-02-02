@@ -38,7 +38,7 @@ Plans:
 
 ---
 
-### Phase 2: Background Workers + Core Processing
+### Phase 2: Background Workers + Core Processing ✓
 
 **Goal:** Background workers process imported files, extract metadata, calculate confidence scores, and compute perceptual hashes without blocking web UI.
 
@@ -46,21 +46,21 @@ Plans:
 
 **Requirements:** TIME-01, TIME-06, PROC-01
 
-**Plans:** 4 plans
+**Status:** Complete (2026-02-02)
 
 Plans:
-- [ ] 02-01-PLAN.md — Hashing and confidence scoring library modules
-- [ ] 02-02-PLAN.md — Single file processing pipeline (thread-safe)
-- [ ] 02-03-PLAN.md — Multi-threaded import job with progress and error handling
-- [ ] 02-04-PLAN.md — Unit and integration tests for processing
+- [x] 02-01-PLAN.md — Hashing and confidence scoring library modules
+- [x] 02-02-PLAN.md — Single file processing pipeline (thread-safe)
+- [x] 02-03-PLAN.md — Multi-threaded import job with progress and error handling
+- [x] 02-04-PLAN.md — Unit and integration tests for processing
 
-**Success Criteria:**
-1. Worker dequeues import job and processes all files in batch
-2. File records written to database with EXIF metadata, detected timestamps, and confidence scores
-3. Confidence scores categorize timestamps as HIGH (source agreement), MEDIUM (single source), or LOW (conflicts)
-4. Perceptual hashes calculated for images and stored in database
-5. Job status updates with progress percentage (files processed / total files)
-6. Processing uses multi-threading to handle tens of thousands of files efficiently
+**Success Criteria:** All 6 verified ✓
+1. ✓ Worker dequeues import job and processes all files in batch
+2. ✓ File records written to database with EXIF metadata, detected timestamps, and confidence scores
+3. ✓ Confidence scores categorize timestamps as HIGH (source agreement), MEDIUM (single source), or LOW (conflicts)
+4. ✓ Perceptual hashes calculated for images and stored in database
+5. ✓ Job status updates with progress percentage (files processed / total files)
+6. ✓ Processing uses multi-threading to handle tens of thousands of files efficiently
 
 ---
 
@@ -164,14 +164,14 @@ Plans:
 | Phase | Status | Requirements | Completion |
 |-------|--------|--------------|------------|
 | 1 - Foundation Architecture | ✓ Complete | 4 | 100% |
-| 2 - Background Workers + Core Processing | Planned | 3 | 0% |
+| 2 - Background Workers + Core Processing | ✓ Complete | 3 | 100% |
 | 3 - Web UI - Upload + Status | Pending | 5 | 0% |
 | 4 - Review Queues - Timestamps | Pending | 5 | 0% |
 | 5 - Duplicate Detection - Exact | Pending | 4 | 0% |
 | 6 - Duplicate Detection - Perceptual | Pending | 2 | 0% |
 | 7 - Output Generation + Tagging | Pending | 8 | 0% |
 
-**Overall:** 1/7 phases complete (14%)
+**Overall:** 2/7 phases complete (29%)
 
 ---
 
