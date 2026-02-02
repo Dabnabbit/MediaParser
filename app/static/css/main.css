@@ -218,6 +218,106 @@ body {
 }
 
 /* ========================================
+   Settings Section
+   ======================================== */
+.settings-section {
+    padding: 0;
+    margin-bottom: var(--spacing-lg);
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.settings-header:hover {
+    background-color: var(--color-bg-alt);
+}
+
+.settings-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin: 0;
+}
+
+.settings-icon {
+    color: var(--color-text-muted);
+}
+
+.settings-title-text {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.settings-toggle {
+    background: none;
+    border: none;
+    padding: var(--spacing-sm);
+    cursor: pointer;
+    color: var(--color-text-muted);
+    transition: transform 0.3s ease;
+}
+
+.settings-toggle[aria-expanded="true"] .settings-toggle-icon {
+    transform: rotate(180deg);
+    display: inline-block;
+}
+
+.settings-panel {
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+}
+
+.settings-form {
+    max-width: 600px;
+}
+
+.form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.form-help {
+    margin: var(--spacing-xs) 0 0;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+.settings-status {
+    font-size: 0.9rem;
+    color: var(--color-completed);
+}
+
+.settings-error {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    background-color: #fee2e2;
+    border: 1px solid #fecaca;
+    border-radius: var(--border-radius-sm);
+    color: var(--color-danger);
+    font-size: 0.9rem;
+}
+
+.settings-error .error-icon {
+    font-size: 1.1rem;
+}
+
+/* ========================================
    Forms
    ======================================== */
 .server-import {

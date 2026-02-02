@@ -3,6 +3,53 @@
 {% block title %}MediaParser - Home{% endblock %}
 
 {% block content %}
+<!-- Settings Section (collapsible) -->
+<section id="settings-section" class="section settings-section" data-section="settings">
+    <div class="settings-header" id="settings-header">
+        <div class="settings-title">
+            <svg class="settings-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 1v6m0 6v6m0-18l-2 2m2-2l2 2m-2 16l-2-2m2 2l2-2m9-9h-6m-6 0H1m18 0l-2-2m2 2l-2 2M1 12l2-2m-2 2l2 2"></path>
+            </svg>
+            <h2 class="settings-title-text">Settings</h2>
+        </div>
+        <button type="button" class="settings-toggle" id="settings-toggle" aria-expanded="false">
+            <span class="settings-toggle-icon">▼</span>
+        </button>
+    </div>
+
+    <div class="settings-panel" id="settings-panel" style="display: none;">
+        <div class="settings-form">
+            <!-- Output Directory Setting -->
+            <div class="form-group">
+                <label for="output-directory" class="form-label">Output Directory</label>
+                <div class="input-group">
+                    <input type="text" id="output-directory" class="form-input" placeholder="/path/to/output">
+                    <button type="button" class="btn btn-secondary btn-sm" id="reset-output-dir-btn" title="Reset to default">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                    </button>
+                </div>
+                <p class="form-help">Where processed files will be written</p>
+            </div>
+
+            <!-- Save Button -->
+            <div class="form-actions">
+                <button type="button" class="btn btn-primary" id="save-settings-btn">Save Settings</button>
+                <span class="settings-status" id="settings-status"></span>
+            </div>
+
+            <!-- Error Display -->
+            <div class="settings-error" id="settings-error" style="display: none;">
+                <span class="error-icon">⚠</span>
+                <span id="settings-error-text"></span>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Upload Section (always visible) -->
 <section id="upload-section" class="section" data-section="upload">
     <h2 class="section-title">Upload Files</h2>
