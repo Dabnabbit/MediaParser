@@ -1,0 +1,19 @@
+# Flask web framework
+flask>=3.1.0
+flask-sqlalchemy>=3.1.0
+sqlalchemy>=2.0.0
+
+# Background job queue
+huey>=2.6.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Timezone support
+tzdata
+
+# EXIF metadata handling (used by existing PhotoTimeFixer.py)
+pyexiftool
+
+# Image processing (used by existing PhotoTimeFixer.py)
+pillow
