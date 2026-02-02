@@ -51,10 +51,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INFRA-02**: Background job queue for long-running processing (not blocking web UI)
-- [ ] **INFRA-03**: Database stores file metadata, hashes, and user decisions
-- [ ] **INFRA-04**: Fix hardcoded timezone issue in existing code
-- [ ] **INFRA-05**: Remove hardcoded Windows paths, make configurable
+- [x] **INFRA-02**: Background job queue for long-running processing (not blocking web UI)
+- [x] **INFRA-03**: Database stores file metadata, hashes, and user decisions
+- [x] **INFRA-04**: Fix hardcoded timezone issue in existing code
+- [x] **INFRA-05**: Remove hardcoded Windows paths, make configurable
 
 ## v2 Requirements
 
@@ -113,10 +113,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| INFRA-05 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Complete |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
+| INFRA-05 | Phase 1 | Complete |
 | TIME-01 | Phase 2 | Pending |
 | TIME-06 | Phase 2 | Pending |
 | PROC-01 | Phase 2 | Pending |
