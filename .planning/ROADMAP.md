@@ -46,6 +46,14 @@ Plans:
 
 **Requirements:** TIME-01, TIME-06, PROC-01
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Hashing and confidence scoring library modules
+- [ ] 02-02-PLAN.md — Single file processing pipeline (thread-safe)
+- [ ] 02-03-PLAN.md — Multi-threaded import job with progress and error handling
+- [ ] 02-04-PLAN.md — Unit and integration tests for processing
+
 **Success Criteria:**
 1. Worker dequeues import job and processes all files in batch
 2. File records written to database with EXIF metadata, detected timestamps, and confidence scores
@@ -156,7 +164,7 @@ Plans:
 | Phase | Status | Requirements | Completion |
 |-------|--------|--------------|------------|
 | 1 - Foundation Architecture | ✓ Complete | 4 | 100% |
-| 2 - Background Workers + Core Processing | Pending | 3 | 0% |
+| 2 - Background Workers + Core Processing | Planned | 3 | 0% |
 | 3 - Web UI - Upload + Status | Pending | 5 | 0% |
 | 4 - Review Queues - Timestamps | Pending | 5 | 0% |
 | 5 - Duplicate Detection - Exact | Pending | 4 | 0% |
