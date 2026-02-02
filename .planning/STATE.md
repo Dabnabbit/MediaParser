@@ -6,15 +6,15 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 1 - Foundation Architecture (Pending)
+**Current Focus:** Phase 1 - Foundation Architecture (In Progress)
 
 ## Current Position
 
 **Phase:** 1 - Foundation Architecture
-**Plan:** 01-02 of 5 (Database Models - Complete)
+**Plan:** 01-04 of 5 (Huey Task Queue - Complete)
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 01-02-PLAN.md
-**Progress:** `[████████░░░░░░░░░░░░] 40%` (2/5 plans complete)
+**Last activity:** 2026-02-02 - Completed 01-04-PLAN.md
+**Progress:** `[████████████░░░░░░░░] 60%` (3/5 plans complete)
 
 **Active Requirements:**
 - INFRA-01: Application runs in Docker container
@@ -25,8 +25,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 2 plans in ~4 minutes (avg 2 min/plan)
-**Plan Success Rate:** 100% (2/2 completed successfully)
+**Velocity:** 3 plans in ~6.5 minutes (avg 2.2 min/plan)
+**Plan Success Rate:** 100% (3/3 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 
 ## Accumulated Context
@@ -47,14 +47,17 @@
 | ConfidenceLevel enum for timestamps | 2026-02-02 | Enables review queue filtering by detection quality | 01-02: User workflow |
 | Timezone-aware datetimes everywhere | 2026-02-02 | Prevents naive/aware comparison errors, DST bugs | 01-02: Timestamp handling |
 | Many-to-many Job<->File relationship | 2026-02-02 | Supports batch operations and job history | 01-02: Job tracking |
+| SQLite backend for Huey queue | 2026-02-02 | Separate queue db from app db, thread-based workers | 01-04: Task queue setup |
+| get_app() pattern for worker tasks | 2026-02-02 | Avoids circular imports, deferred app creation | 01-04: Flask context in workers |
+| Re-raise exceptions after marking FAILED | 2026-02-02 | Enables Huey retry logic with proper job status | 01-04: Error handling |
 
 ### Active TODOs
 
 **Phase 1 - Foundation Architecture (in progress):**
 - [x] 01-01: Application scaffold with Flask factory and storage (COMPLETE)
 - [x] 01-02: Database models (files, jobs, duplicates, decisions) (COMPLETE)
-- [ ] 01-03: Background job queue setup (Huey)
-- [ ] 01-04: Refactor timestamp detection from PhotoTimeFixer.py
+- [x] 01-04: Background job queue setup (Huey) (COMPLETE)
+- [ ] 01-03: Refactor timestamp detection from PhotoTimeFixer.py
 - [ ] 01-05: Additional foundation components
 
 ### Known Blockers
@@ -85,23 +88,25 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 16:36 UTC
-**Stopped at:** Completed 01-02-PLAN.md
+**Last session:** 2026-02-02 16:43 UTC
+**Stopped at:** Completed 01-04-PLAN.md
 **Resume file:** None
 
 **For Next Session:**
-1. Execute 01-03-PLAN.md: Background job queue (Huey)
-2. Execute 01-04-PLAN.md: Refactor timestamp detection
-3. Execute 01-05-PLAN.md: Remaining foundation components
+1. Execute 01-03-PLAN.md: Refactor timestamp detection from PhotoTimeFixer.py
+2. Execute 01-05-PLAN.md: Remaining foundation components
 
 **Context to Preserve:**
-- Phase 1 Plans 01-02 established foundational patterns (pathlib, app factory, env config, database schema)
-- All future code should follow these patterns: pathlib for paths, env vars for config, Mapped[] for models
+- Phase 1 Plans 01-01, 01-02, 01-04 established foundational patterns (pathlib, app factory, env config, database schema, task queue)
+- All future code should follow these patterns: pathlib for paths, env vars for config, Mapped[] for models, get_app() for workers
 - Database URI: sqlite:///instance/mediaparser.db (SQLAlchemy configured, WAL mode enabled)
 - Storage dirs: storage/{uploads,processing,output}/ (auto-created on app start)
 - Timezone: Configurable via TIMEZONE env var (default America/New_York)
 - Models: File, Job, Duplicate, UserDecision with type-safe SQLAlchemy 2.x patterns
 - Enums: JobStatus (PENDING/RUNNING/COMPLETED/FAILED), ConfidenceLevel (HIGH/MEDIUM/LOW/NONE)
+- Task queue: Huey with SQLite backend (instance/huey_queue.db), thread-based workers
+- Task pattern: get_app() + with app.app_context() for database access in workers
+- Helper functions: enqueue_import_job(job_id) for web routes, health_check() for worker verification
 
 ---
 
