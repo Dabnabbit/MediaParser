@@ -1,2 +1,31 @@
+# Test data directories
 /TestImages
+
+# Database files
 *.db
+instance/*.db
+
+# Local configuration overrides
+instance/config.py
+
+# Environment variables (but keep .env.example)
+.env
+
+# Storage directories (keep structure, ignore contents)
+storage/uploads/*
+storage/processing/*
+storage/output/*
+
+# Keep .gitkeep files to preserve directory structure
+!**/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
