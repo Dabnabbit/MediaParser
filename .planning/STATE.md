@@ -11,10 +11,10 @@
 ## Current Position
 
 **Phase:** 3 of 7 - Web UI: Upload + Status
-**Plan:** None (awaiting plan-phase)
-**Status:** Pending
-**Last activity:** 2026-02-02 - Phase 2 completed and verified
-**Progress:** `[██████░░░░░░░░░░░░░░] 29%` (2/7 phases complete)
+**Plan:** 01 of ~7 (estimated)
+**Status:** In progress
+**Last activity:** 2026-02-02 - Completed 03-01-PLAN.md (Web UI foundation)
+**Progress:** `[██████░░░░░░░░░░░░░░] 29%` (2/7 phases complete, 1/7 plans in Phase 3)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -29,10 +29,10 @@
 
 ## Performance Metrics
 
-**Velocity:** 9 plans in ~19 minutes (avg 2.1 min/plan) - Phase 1+2
-**Plan Success Rate:** 100% (9/9 completed successfully)
+**Velocity:** 10 plans in ~22 minutes (avg 2.2 min/plan) - Phase 1+2+3
+**Plan Success Rate:** 100% (10/10 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
-**Phases Complete:** 2/7 (Phase 1 and Phase 2 complete)
+**Phases Complete:** 2/7 (Phase 1 and Phase 2 complete, Phase 3 in progress)
 
 ## Accumulated Context
 
@@ -75,6 +75,11 @@
 | 10% error threshold with 10-file minimum sample | 2026-02-02 | User decision from CONTEXT.md prevents early halt on small sample sizes | 02-03: Error handling |
 | Check pause/cancel status every file | 2026-02-02 | Provides responsive job control for users | 02-03: Job control |
 | Use minimal JPEG fixture for tests | 2026-02-02 | 1x1 JPEG sufficient for imagehash testing, no large binary files in repo | 02-04: Test fixtures |
+| Single-pane vertical layout | 2026-02-02 | User wants continuous workflow without page jumps, upload always visible | 03-01: Web UI structure |
+| Accordion bucket pattern | 2026-02-02 | Only one confidence bucket expanded at a time for focused viewing | 03-01: Results display |
+| Three thumbnail size presets | 2026-02-02 | Different use cases (compact for bulk, large for duplicates) | 03-01: Thumbnail UI |
+| EXIF orientation correction first | 2026-02-02 | Mobile photos have rotation metadata, prevents rotated thumbnails | 03-01: Thumbnail generation |
+| CSS variables for theming | 2026-02-02 | Single source of truth for colors, consistent palette across UI | 03-01: Styling approach |
 
 ### Active TODOs
 
@@ -90,6 +95,9 @@
 - [x] 02-02: Single file processing pipeline (COMPLETE)
 - [x] 02-03: Multi-threaded file processing task (COMPLETE)
 - [x] 02-04: Phase 2 processing tests (COMPLETE)
+
+**Phase 3 - Web UI: Upload + Status (IN PROGRESS):**
+- [x] 03-01: HTML templates, CSS styles, thumbnail library (COMPLETE)
 
 ### Known Blockers
 
@@ -119,20 +127,21 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 18:13 UTC
-**Stopped at:** Completed 02-04-PLAN.md (Phase 2 processing tests) - **Phase 2 COMPLETE**
+**Last session:** 2026-02-02 19:26 UTC
+**Stopped at:** Completed 03-01-PLAN.md (Web UI foundation - templates, CSS, thumbnails)
 **Resume file:** None
 
 **For Next Session:**
-1. Begin Phase 3 - Web Interface: Core Job Management
-   - File upload interface
-   - Job creation and status endpoints
-   - Progress monitoring (real-time or polling)
-   - Job control (pause/cancel)
+1. Continue Phase 3 - Web Interface: Upload + Status
+   - Next: 03-02 Upload routes (file/folder/server path handling)
+   - Then: 03-03 Progress API (job status polling endpoint)
+   - Then: 03-04 Results display (confidence buckets, thumbnails)
+   - Later: Real-time updates, job control buttons
 
 **Context to Preserve:**
 - Phase 1 (COMPLETE): Established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue, integration tests)
 - Phase 2 (COMPLETE): Core algorithms and worker implementation (hashing, confidence scoring, processing pipeline, multi-threaded job processing)
+- Phase 3 (IN PROGRESS): Web UI foundation with single-pane layout, EXIF-aware thumbnails, responsive CSS
 - All future code should follow these patterns: pathlib for paths, env vars for config, Mapped[] for models, get_app() for workers
 - Database URI: sqlite:///instance/mediaparser.db (SQLAlchemy configured, WAL mode enabled)
 - Storage dirs: storage/{uploads,processing,output}/ (auto-created on app start)
@@ -145,6 +154,7 @@ None
   - app.lib.hashing (calculate_sha256, calculate_perceptual_hash)
   - app.lib.confidence (calculate_confidence, SOURCE_WEIGHTS)
   - app.lib.processing (process_single_file, detect_file_type_mismatch)
+  - app.lib.thumbnail (generate_thumbnail, get_thumbnail_path, SIZES)
 - Processing pipeline: process_single_file() orchestrates all libraries, returns dict (thread-safe)
 - Thread safety pattern: Worker functions return dicts, main thread commits to database (no shared SQLAlchemy sessions)
 - Timezone handling: All library functions accept default_tz parameter, return UTC-normalized datetimes
@@ -166,6 +176,14 @@ None
 - Type detection: python-magic checks magic bytes vs extension, logs warnings for mismatches
 - Configuration options: WORKER_THREADS, MIN_VALID_YEAR, BATCH_COMMIT_SIZE, ERROR_THRESHOLD in config.py
 - Database migration needed: New fields (timestamp_candidates, current_filename, error_count) require Alembic migration in Phase 3
+- UI patterns:
+  - Single-pane vertical layout: upload (top) → progress → results (expand below)
+  - Accordion buckets: only one confidence level expanded at a time
+  - Three thumbnail sizes: compact (100px), medium (150px), large (200px)
+  - Data attributes for JS targeting: data-section, data-bucket, data-grid
+  - Status badges: RUNNING=blue, COMPLETED=green, FAILED=red, PAUSED=yellow
+  - Confidence badges: HIGH=green, MEDIUM=yellow, LOW=red
+- Thumbnail generation: ImageOps.exif_transpose() for orientation, RGB conversion for JPEG compatibility, LANCZOS resampling
 
 ---
 
