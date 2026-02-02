@@ -29,8 +29,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 14 plans in ~33.5 minutes (avg 2.4 min/plan) - Phase 1+2+3
-**Plan Success Rate:** 100% (14/14 completed successfully)
+**Velocity:** 15 plans in ~36.5 minutes (avg 2.4 min/plan) - Phase 1+2+3
+**Plan Success Rate:** 100% (15/15 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 2/7 (Phase 1 and Phase 2 complete, Phase 3 in progress)
 
@@ -97,6 +97,10 @@
 | Shift-click multi-select | 2026-02-02 | Standard file manager pattern users expect for range selection | 03-05: Multi-select |
 | Three thumbnail size presets | 2026-02-02 | Compact/medium/large for different use cases (bulk vs detail) | 03-05: Thumbnail UI |
 | Recommended duplicate highlight | 2026-02-02 | Highest confidence file highlighted to guide user decision | 03-05: Duplicate review |
+| Setting model key-value pattern | 2026-02-02 | Generic key-value store allows adding new settings without schema migrations | 03-07: Settings persistence |
+| Auto-create output directories | 2026-02-02 | mkdir(parents=True) creates directory if needed, better UX than error message | 03-07: Directory validation |
+| Collapsible settings panel | 2026-02-02 | Settings hidden by default reduces visual noise in main workflow | 03-07: Settings UI |
+| Reset from config | 2026-02-02 | Reset button loads defaults from current_app.config, not hardcoded strings | 03-07: Settings defaults |
 
 ### Active TODOs
 
@@ -119,6 +123,8 @@
 - [x] 03-03: Progress API + Thumbnails (COMPLETE)
 - [x] 03-04: Upload and Progress JavaScript (COMPLETE)
 - [x] 03-05: Results Display with Buckets (COMPLETE)
+- [x] 03-06: Real-time Updates and Integration (COMPLETE)
+- [x] 03-07: Settings Configuration (COMPLETE)
 
 ### Known Blockers
 
@@ -148,15 +154,15 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 19:34 UTC
-**Stopped at:** Completed 03-03-PLAN.md (Progress API + Thumbnails)
+**Last session:** 2026-02-02 19:40 UTC
+**Stopped at:** Completed 03-07-PLAN.md (Settings Configuration)
 **Resume file:** None
 
 **For Next Session:**
-1. Continue Phase 3 - Web Interface: Upload + Status
-   - Next: 03-04 Results display (confidence buckets, thumbnail grid, file metadata)
-   - Then: 03-05 Real-time updates (progress polling, results refresh)
-   - Later: Job control buttons, duplicate comparison UI
+1. Phase 3 - Web UI: Upload + Status (COMPLETE - 7/7 plans done)
+   - All web UI plans completed: templates, routes, API, JavaScript, settings
+   - Ready for Phase 4: Timestamp Review & Override
+2. Consider end-to-end testing or integration verification for Phase 3
 
 **Context to Preserve:**
 - Phase 1 (COMPLETE): Established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue, integration tests)
@@ -228,6 +234,7 @@ None
   - app/static/js/upload.js: UploadHandler class for drag-drop, file picker, folder picker, server path import
   - app/static/js/progress.js: ProgressHandler class for 1.5s polling, job control, session resume
   - app/static/js/results.js: ResultsHandler class for confidence buckets, thumbnail grid, duplicates, multi-select
+  - app/static/js/settings.js: SettingsHandler class for collapsible panel, load/save/reset settings
   - window.* pattern: Global handlers for cross-script communication (uploadHandler, progressHandler, resultsHandler)
   - XMLHttpRequest for upload progress (fetch doesn't support upload progress events)
   - localStorage for session resume (preserves job ID across page reloads)
@@ -240,6 +247,14 @@ None
   - Duplicate groups: side-by-side comparison with recommended file highlighted
   - Placeholder: app/static/img/placeholder.svg for missing thumbnails
   - API integration: /api/jobs/:id/files?confidence={level}, /api/jobs/:id/duplicates
+- Settings API:
+  - GET /api/settings returns current settings and defaults (output_directory, timezone)
+  - POST /api/settings validates and persists settings with comprehensive error handling
+  - Setting model: key-value store for persistent configuration
+  - Output directory: validation (exists, is_dir, writable), auto-creation via mkdir(parents=True)
+  - Timezone: validation via ZoneInfo
+  - Collapsible UI panel: hidden by default to reduce visual clutter
+  - Reset button: loads defaults from current_app.config
 
 ## Session Continuity
 
