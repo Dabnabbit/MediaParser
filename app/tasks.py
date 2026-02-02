@@ -7,12 +7,14 @@ Each task that needs database access must create its own Flask application conte
 from datetime import datetime, timezone
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 import os
 import json
 import logging
 
 from huey_config import huey
 from app.lib.processing import process_single_file
+from app.lib.thumbnail import generate_thumbnail
 from app.models import Job, File, JobStatus, ConfidenceLevel
 
 logger = logging.getLogger(__name__)
@@ -55,12 +57,12 @@ def _commit_pending_updates(db, pending_updates: list):
     """
     Apply pending file updates to database.
 
-    Updates File records with processing results (hashes, metadata, timestamps).
+    Updates File records with processing results (hashes, metadata, timestamps, thumbnails).
     Uses flush() to write changes without committing transaction.
 
     Args:
         db: SQLAlchemy database instance
-        pending_updates: List of dicts with 'file_id' and 'result' keys
+        pending_updates: List of dicts with 'file_id', 'result', and 'thumbnail_path' keys
     """
     for update in pending_updates:
         file_obj = db.session.get(File, update['file_id'])
@@ -78,6 +80,10 @@ def _commit_pending_updates(db, pending_updates: list):
         file_obj.timestamp_source = result['timestamp_source']
         file_obj.confidence = ConfidenceLevel(result['confidence'])
         file_obj.timestamp_candidates = result['timestamp_candidates']
+
+        # Set thumbnail path if generated
+        if update.get('thumbnail_path'):
+            file_obj.thumbnail_path = update['thumbnail_path']
 
     db.session.flush()  # Flush but don't commit yet
 
@@ -147,6 +153,12 @@ def process_import_job(job_id: int) -> dict:
             max_workers = app.config.get('WORKER_THREADS') or os.cpu_count() or 1
             min_year = app.config.get('MIN_VALID_YEAR', 2000)
             default_tz = app.config.get('TIMEZONE', 'America/New_York')
+
+            # Get thumbnails directory
+            thumbnails_dir = app.config.get('THUMBNAILS_FOLDER')
+            if not thumbnails_dir:
+                thumbnails_dir = Path(app.config['UPLOAD_FOLDER']).parent / 'thumbnails'
+                thumbnails_dir.mkdir(parents=True, exist_ok=True)
 
             logger.info(f"Processing {len(files)} files with {max_workers} workers")
 
@@ -221,10 +233,27 @@ def process_import_job(job_id: int) -> dict:
                                 'errors': error_count
                             }
                     else:
+                        # Generate thumbnail for images
+                        thumbnail_path = None
+                        file_path = Path(file_obj.storage_path or file_obj.original_path)
+                        if file_path.suffix.lower() in {'.jpg', '.jpeg', '.png', '.gif', '.heic'}:
+                            thumb_path = generate_thumbnail(
+                                source_path=file_path,
+                                thumb_dir=thumbnails_dir,
+                                size='medium',
+                                file_id=file_obj.id
+                            )
+                            if thumb_path:
+                                # Store relative path from thumbnails parent (for web serving)
+                                thumbnail_path = str(thumb_path.relative_to(thumbnails_dir.parent))
+                            else:
+                                logger.warning(f"Thumbnail generation failed for {file_obj.original_filename}")
+
                         # Queue file update for batch commit
                         pending_updates.append({
                             'file_id': file_obj.id,
-                            'result': result
+                            'result': result,
+                            'thumbnail_path': thumbnail_path
                         })
 
                     # Batch commit for performance
