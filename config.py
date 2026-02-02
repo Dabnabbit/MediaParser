@@ -37,6 +37,12 @@ class Config:
     # Timezone configuration (replaces hardcoded -4 offset)
     TIMEZONE = os.environ.get('TIMEZONE', 'America/New_York')
 
+    # Phase 2: Processing Configuration
+    WORKER_THREADS = None  # None = auto-detect CPU count
+    MIN_VALID_YEAR = 2000  # Sanity floor for timestamps
+    BATCH_COMMIT_SIZE = 10  # Files per database commit
+    ERROR_THRESHOLD = 0.10  # Halt job if error rate exceeds this
+
     @classmethod
     def validate_timezone(cls):
         """Validate timezone configuration using zoneinfo."""
