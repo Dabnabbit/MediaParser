@@ -11,10 +11,10 @@
 ## Current Position
 
 **Phase:** 3 of 7 - Web UI: Upload + Status
-**Plan:** 02 of ~7 (estimated)
+**Plan:** 03 of ~7 (estimated)
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 03-02-PLAN.md (Upload and job management routes)
-**Progress:** `[███████░░░░░░░░░░░░░] 33%` (2/7 phases complete, 2/7 plans in Phase 3)
+**Last activity:** 2026-02-02 - Completed 03-03-PLAN.md (Progress API + Thumbnails)
+**Progress:** `[████████░░░░░░░░░░░░] 36%` (2/7 phases complete, 3/7 plans in Phase 3)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -29,8 +29,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 11 plans in ~25.5 minutes (avg 2.3 min/plan) - Phase 1+2+3
-**Plan Success Rate:** 100% (11/11 completed successfully)
+**Velocity:** 12 plans in ~29.5 minutes (avg 2.5 min/plan) - Phase 1+2+3
+**Plan Success Rate:** 100% (12/12 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 2/7 (Phase 1 and Phase 2 complete, Phase 3 in progress)
 
@@ -84,6 +84,11 @@
 | Extension whitelist validation | 2026-02-02 | Security - prevents upload of executables or scripts | 03-02: File upload |
 | State transition validation for job control | 2026-02-02 | Prevents invalid actions (can't pause completed job) | 03-02: Job control |
 | SHA256 hash grouping for duplicates | 2026-02-02 | Exact duplicate detection (perceptual deferred to Phase 6) | 03-02: Duplicate detection |
+| Generate thumbnails during processing | 2026-02-02 | ~50ms per thumbnail, immediate display when job completes vs on-demand loading states | 03-03: Thumbnail generation |
+| Progress endpoint includes ETA calculation | 2026-02-02 | Better UX than percentage alone, calculates based on per-file timing | 03-03: Progress API |
+| Completed jobs include summary data | 2026-02-02 | Confidence counts and duplicate count in progress response, no second API call | 03-03: Progress API |
+| Thumbnail failures don't fail processing | 2026-02-02 | Thumbnail is enhancement not critical, log warning and continue | 03-03: Error handling |
+| Store relative thumbnail paths | 2026-02-02 | thumbnails/123_thumb.jpg format works with Flask static serving | 03-03: Web serving |
 
 ### Active TODOs
 
@@ -103,6 +108,7 @@
 **Phase 3 - Web UI: Upload + Status (IN PROGRESS):**
 - [x] 03-01: HTML templates, CSS styles, thumbnail library (COMPLETE)
 - [x] 03-02: Upload and job management routes (COMPLETE)
+- [x] 03-03: Progress API + Thumbnails (COMPLETE)
 
 ### Known Blockers
 
@@ -132,15 +138,14 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 19:33 UTC
-**Stopped at:** Completed 03-02-PLAN.md (Upload and job management routes)
+**Last session:** 2026-02-02 19:34 UTC
+**Stopped at:** Completed 03-03-PLAN.md (Progress API + Thumbnails)
 **Resume file:** None
 
 **For Next Session:**
 1. Continue Phase 3 - Web Interface: Upload + Status
-   - Next: 03-03 Progress API (job status polling endpoint) - may already be complete
-   - Then: 03-04 Results display JavaScript (confidence buckets, thumbnails)
-   - Then: 03-05 Real-time updates (SSE or WebSocket)
+   - Next: 03-04 Results display (confidence buckets, thumbnail grid, file metadata)
+   - Then: 03-05 Real-time updates (progress polling, results refresh)
    - Later: Job control buttons, duplicate comparison UI
 
 **Context to Preserve:**
@@ -199,6 +204,16 @@ None
   - GET /api/jobs/:id/files with pagination and confidence filtering
   - GET /api/jobs/:id/duplicates for SHA256-based exact duplicate groups
 - Main route: GET / renders index.html with current job for session resume
+- Progress API:
+  - GET /api/progress/:id returns job status with ETA, current file, error count
+  - GET /api/current-job returns most recent incomplete job for session resume
+  - Completed jobs include summary (confidence counts, duplicate count, duration)
+  - Optimized for 1-2 second polling intervals
+- Thumbnail integration:
+  - Thumbnails generated during file processing (not on-demand)
+  - thumbnail_path field in File model stores relative paths
+  - Failures logged but don't block processing
+  - Served via Flask static: /thumbnails/{file_id}_thumb.jpg
 
 ---
 
