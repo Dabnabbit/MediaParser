@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MediaParser{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header class="app-header">
+        <div class="container">
+            <h1 class="app-title">MediaParser</h1>
+            <p class="app-subtitle">Organize your family media archive</p>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Core JavaScript modules -->
+    <script src="{{ url_for('static', filename='js/upload.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/progress.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/results.js') }}" defer></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

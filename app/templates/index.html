@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}MediaParser - Home{% endblock %}
+
+{% block content %}
+<!-- Upload Section (always visible) -->
+<section id="upload-section" class="section" data-section="upload">
+    <h2 class="section-title">Upload Files</h2>
+
+    <div class="upload-box" id="upload-box" data-upload-box>
+        <div class="upload-box-content">
+            <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p class="upload-text">Drop files here or click to browse</p>
+            <div class="upload-buttons">
+                <button type="button" class="btn btn-primary" id="select-files-btn">Select Files</button>
+                <button type="button" class="btn btn-primary" id="select-folder-btn">Select Folder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" id="file-input" multiple accept="image/*,video/*" style="display: none;">
+    <input type="file" id="folder-input" webkitdirectory directory multiple style="display: none;">
+
+    <!-- Server path import -->
+    <div class="server-import">
+        <label for="server-path" class="form-label">Or import from server path:</label>
+        <div class="input-group">
+            <input type="text" id="server-path" class="form-input" placeholder="/path/to/photos">
+            <button type="button" class="btn btn-secondary" id="import-path-btn">Import from Path</button>
+        </div>
+    </div>
+
+    <!-- Upload progress bar (hidden initially) -->
+    <div class="upload-progress" id="upload-progress" style="display: none;">
+        <div class="progress-bar-wrapper">
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="upload-progress-fill" style="width: 0%;"></div>
+            </div>
+            <span class="progress-text" id="upload-progress-text">0%</span>
+        </div>
+        <p class="progress-label">Uploading files...</p>
+    </div>
+</section>
+
+<!-- Progress Section (hidden until job starts) -->
+<section id="progress-section" class="section" data-section="progress" style="display: none;">
+    <h2 class="section-title">Processing Progress</h2>
+
+    <div class="job-status-container">
+        <div class="status-badge" id="job-status-badge" data-status="PENDING">
+            <span id="job-status-text">PENDING</span>
+        </div>
+
+        <div class="job-controls">
+            <button type="button" class="btn btn-secondary" id="pause-btn" data-action="pause">Pause</button>
+            <button type="button" class="btn btn-danger" id="cancel-btn" data-action="cancel">Cancel</button>
+        </div>
+    </div>
+
+    <div class="progress-bar-wrapper">
+        <div class="progress-bar progress-bar-large">
+            <div class="progress-bar-fill" id="job-progress-fill" style="width: 0%;"></div>
+        </div>
+        <span class="progress-text" id="job-progress-text">0%</span>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-label">Files Processed</div>
+            <div class="metric-value" id="files-processed">0 / 0</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Current File</div>
+            <div class="metric-value metric-value-small" id="current-filename">-</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Elapsed Time</div>
+            <div class="metric-value" id="elapsed-time">0:00</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Estimated Remaining</div>
+            <div class="metric-value" id="eta">-</div>
+        </div>
+    </div>
+
+    <div class="error-badge-container" id="error-badge-container" style="display: none;">
+        <div class="error-badge">
+            <span class="error-icon">⚠</span>
+            <span id="error-count">0</span> errors
+        </div>
+    </div>
+</section>
+
+<!-- Results Section (hidden until job completes) -->
+<section id="results-section" class="section" data-section="results" style="display: none;">
+    <h2 class="section-title">Results</h2>
+
+    <!-- Summary Card -->
+    <div class="summary-card">
+        <h3 class="summary-title">Job Complete</h3>
+        <div class="summary-stats">
+            <div class="summary-stat">
+                <span class="summary-stat-label">Total Files:</span>
+                <span class="summary-stat-value" id="summary-total">0</span>
+            </div>
+            <div class="summary-stat">
+                <span class="summary-stat-label">Successful:</span>
+                <span class="summary-stat-value summary-stat-success" id="summary-success">0</span>
+            </div>
+            <div class="summary-stat">
+                <span class="summary-stat-label">Errors:</span>
+                <span class="summary-stat-value summary-stat-error" id="summary-errors">0</span>
+            </div>
+            <div class="summary-stat">
+                <span class="summary-stat-label">Time Taken:</span>
+                <span class="summary-stat-value" id="summary-time">0:00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thumbnail size toggle -->
+    <div class="thumbnail-controls">
+        <label class="form-label">Thumbnail Size:</label>
+        <div class="btn-group" role="group" id="thumb-size-toggle">
+            <button type="button" class="btn btn-sm" data-size="compact">Compact</button>
+            <button type="button" class="btn btn-sm active" data-size="medium">Medium</button>
+            <button type="button" class="btn btn-sm" data-size="large">Large</button>
+        </div>
+    </div>
+
+    <!-- Confidence Buckets (accordion style) -->
+    <div class="buckets-container">
+        <h3 class="subsection-title">Files by Confidence</h3>
+
+        <!-- HIGH Confidence Bucket -->
+        <div class="bucket" data-bucket="high" data-expanded="false">
+            <div class="bucket-header" data-bucket-toggle="high">
+                <div class="bucket-title">
+                    <span class="confidence-badge confidence-high">HIGH</span>
+                    <span class="bucket-count" id="high-count">0 files</span>
+                </div>
+                <span class="bucket-toggle-icon">▼</span>
+            </div>
+            <div class="bucket-content" id="high-content">
+                <div class="thumbnail-grid thumb-medium" id="high-grid" data-grid="high">
+                    <!-- Thumbnails populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- MEDIUM Confidence Bucket -->
+        <div class="bucket" data-bucket="medium" data-expanded="false">
+            <div class="bucket-header" data-bucket-toggle="medium">
+                <div class="bucket-title">
+                    <span class="confidence-badge confidence-medium">MEDIUM</span>
+                    <span class="bucket-count" id="medium-count">0 files</span>
+                </div>
+                <span class="bucket-toggle-icon">▼</span>
+            </div>
+            <div class="bucket-content" id="medium-content">
+                <div class="thumbnail-grid thumb-medium" id="medium-grid" data-grid="medium">
+                    <!-- Thumbnails populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- LOW Confidence Bucket -->
+        <div class="bucket" data-bucket="low" data-expanded="false">
+            <div class="bucket-header" data-bucket-toggle="low">
+                <div class="bucket-title">
+                    <span class="confidence-badge confidence-low">LOW</span>
+                    <span class="bucket-count" id="low-count">0 files</span>
+                </div>
+                <span class="bucket-toggle-icon">▼</span>
+            </div>
+            <div class="bucket-content" id="low-content">
+                <div class="thumbnail-grid thumb-medium" id="low-grid" data-grid="low">
+                    <!-- Thumbnails populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duplicate Groups -->
+    <div class="duplicates-container" id="duplicates-container" style="display: none;">
+        <h3 class="subsection-title">Duplicate Groups</h3>
+        <div id="duplicates-list">
+            <!-- Duplicate groups populated by JS -->
+        </div>
+    </div>
+
+    <!-- Failed Files -->
+    <div class="failed-container" id="failed-container" style="display: none;">
+        <h3 class="subsection-title">Failed Files</h3>
+        <div class="failed-list" id="failed-list">
+            <!-- Failed files populated by JS -->
+        </div>
+    </div>
+</section>
+{% endblock %}
