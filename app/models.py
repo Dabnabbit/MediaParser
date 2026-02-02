@@ -85,6 +85,9 @@ class File(db.Model):
     # Output
     output_path: Mapped[Optional[str]] = mapped_column(String(500))  # Final output location
 
+    # Thumbnail
+    thumbnail_path: Mapped[Optional[str]] = mapped_column(String(500))  # Relative path to thumbnail
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
