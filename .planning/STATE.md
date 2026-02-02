@@ -11,9 +11,9 @@
 ## Current Position
 
 **Phase:** 1 - Foundation Architecture
-**Plan:** 01-04 of 5 (Huey Task Queue - Complete)
+**Plan:** 01-03 of 5 (Timestamp and Metadata Library - Complete)
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 01-04-PLAN.md
+**Last activity:** 2026-02-02 - Completed 01-03-PLAN.md
 **Progress:** `[████████████░░░░░░░░] 60%` (3/5 plans complete)
 
 **Active Requirements:**
@@ -47,6 +47,10 @@
 | ConfidenceLevel enum for timestamps | 2026-02-02 | Enables review queue filtering by detection quality | 01-02: User workflow |
 | Timezone-aware datetimes everywhere | 2026-02-02 | Prevents naive/aware comparison errors, DST bugs | 01-02: Timestamp handling |
 | Many-to-many Job<->File relationship | 2026-02-02 | Supports batch operations and job history | 01-02: Job tracking |
+| Use ZoneInfo over hardcoded offset | 2026-02-02 | Configurable timezone vs hardcoded -4, IANA database | 01-03: Timestamp library |
+| Normalize to UTC internally | 2026-02-02 | Consistent storage format, eliminates ambiguity | 01-03: Datetime handling |
+| Accept Path \| str | 2026-02-02 | Flexibility for callers using pathlib or strings | 01-03: Library functions |
+| EXIF:DateTimeOriginal priority | 2026-02-02 | Most reliable source for original capture time | 01-03: Metadata extraction |
 | SQLite backend for Huey queue | 2026-02-02 | Separate queue db from app db, thread-based workers | 01-04: Task queue setup |
 | get_app() pattern for worker tasks | 2026-02-02 | Avoids circular imports, deferred app creation | 01-04: Flask context in workers |
 | Re-raise exceptions after marking FAILED | 2026-02-02 | Enables Huey retry logic with proper job status | 01-04: Error handling |
@@ -56,8 +60,8 @@
 **Phase 1 - Foundation Architecture (in progress):**
 - [x] 01-01: Application scaffold with Flask factory and storage (COMPLETE)
 - [x] 01-02: Database models (files, jobs, duplicates, decisions) (COMPLETE)
+- [x] 01-03: Timestamp and metadata library extraction (COMPLETE)
 - [x] 01-04: Background job queue setup (Huey) (COMPLETE)
-- [ ] 01-03: Refactor timestamp detection from PhotoTimeFixer.py
 - [ ] 01-05: Additional foundation components
 
 ### Known Blockers
@@ -67,13 +71,13 @@ None
 ### Technical Debt
 
 **From Existing Codebase:**
-1. Hardcoded timezone offset (-4) in PhotoTimeFixer.py line 244 - causes incorrect timestamps for non-local timezone files
+1. ~~Hardcoded timezone offset (-4) in PhotoTimeFixer.py line 244~~ - ✓ RESOLVED in 01-03 (library uses configurable timezone)
 2. Hardcoded Windows paths in PhotoTimeFixer.py lines 13-14 - breaks on Linux/Docker
 3. Filename collision handling increments by 1 second - can fail with burst photos or high-volume imports
 4. No streaming/batching for large file sets - potential memory exhaustion with 50k+ files
-5. Monolithic script structure - cannot be imported as library functions
+5. ~~Monolithic script structure - cannot be imported as library functions~~ - ✓ RESOLVED in 01-03 (extracted to app/lib/)
 
-**Resolution Plan:** Phase 1 addresses items 1, 2, 5 directly. Phase 2 addresses item 4. Phase 5/6 addresses item 3 with better collision handling.
+**Resolution Plan:** Phase 1 Plan 01-03 resolved items 1 and 5. Item 2 remains (PhotoTimeFixer.py itself still has hardcoded paths, but new library code uses pathlib). Phase 2 addresses item 4. Phase 5/6 addresses item 3 with better collision handling.
 
 ### Research Flags
 
@@ -88,22 +92,23 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 16:43 UTC
-**Stopped at:** Completed 01-04-PLAN.md
+**Last session:** 2026-02-02 16:44 UTC
+**Stopped at:** Completed 01-03-PLAN.md
 **Resume file:** None
 
 **For Next Session:**
-1. Execute 01-03-PLAN.md: Refactor timestamp detection from PhotoTimeFixer.py
-2. Execute 01-05-PLAN.md: Remaining foundation components
+1. Execute 01-05-PLAN.md: Remaining foundation components
 
 **Context to Preserve:**
-- Phase 1 Plans 01-01, 01-02, 01-04 established foundational patterns (pathlib, app factory, env config, database schema, task queue)
+- Phase 1 Plans 01-01, 01-02, 01-03, 01-04 established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue)
 - All future code should follow these patterns: pathlib for paths, env vars for config, Mapped[] for models, get_app() for workers
 - Database URI: sqlite:///instance/mediaparser.db (SQLAlchemy configured, WAL mode enabled)
 - Storage dirs: storage/{uploads,processing,output}/ (auto-created on app start)
 - Timezone: Configurable via TIMEZONE env var (default America/New_York)
 - Models: File, Job, Duplicate, UserDecision with type-safe SQLAlchemy 2.x patterns
 - Enums: JobStatus (PENDING/RUNNING/COMPLETED/FAILED), ConfidenceLevel (HIGH/MEDIUM/LOW/NONE)
+- Library functions: app.lib.timestamp (get_datetime_from_name, convert_str_to_datetime), app.lib.metadata (extract_metadata, get_best_datetime, get_file_type, get_image_dimensions)
+- Timezone handling: All library functions accept default_tz parameter, return UTC-normalized datetimes
 - Task queue: Huey with SQLite backend (instance/huey_queue.db), thread-based workers
 - Task pattern: get_app() + with app.app_context() for database access in workers
 - Helper functions: enqueue_import_job(job_id) for web routes, health_check() for worker verification
