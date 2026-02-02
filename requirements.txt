@@ -17,3 +17,6 @@ pyexiftool
 
 # Image processing (used by existing PhotoTimeFixer.py)
 pillow
+
+# Testing
+pytest>=7.0.0
