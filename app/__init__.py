@@ -80,10 +80,11 @@ def create_app(config_name='development'):
         db.create_all()
 
     # Register blueprints
-    from app.routes import upload_bp, jobs_bp, api_bp
+    from app.routes import upload_bp, jobs_bp, api_bp, settings_bp
     app.register_blueprint(upload_bp)
     app.register_blueprint(jobs_bp)
     app.register_blueprint(api_bp)
+    app.register_blueprint(settings_bp)
 
     # Main route
     @app.route('/')

@@ -248,6 +248,35 @@ class UserDecision(db.Model):
         return f"<UserDecision {self.id}: {self.decision_type} for file {self.file_id}>"
 
 
+class Setting(db.Model):
+    """Application settings (key-value store)."""
+    __tablename__ = 'settings'
+
+    # Primary key
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # Setting key (unique)
+    key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+
+    # Setting value (stored as text, can be JSON)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Timestamp
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+
+    def touch_updated(self):
+        """Manually update the updated_at timestamp."""
+        self.updated_at = datetime.now(timezone.utc)
+
+    def __repr__(self):
+        return f"<Setting {self.key}: {self.value}>"
+
+
 # ============================================================================
 # SQLite Foreign Key Enforcement
 # ============================================================================
