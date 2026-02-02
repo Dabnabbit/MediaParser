@@ -51,7 +51,6 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: Application runs in Docker container
 - [ ] **INFRA-02**: Background job queue for long-running processing (not blocking web UI)
 - [ ] **INFRA-03**: Database stores file metadata, hashes, and user decisions
 - [ ] **INFRA-04**: Fix hardcoded timezone issue in existing code
@@ -77,6 +76,12 @@ Deferred to future release. Tracked but not in current roadmap.
 - **AUTH-01**: User authentication/login
 - **AUTH-02**: Separate workspaces per household member
 - **AUTH-03**: Session management
+
+### Deployment
+
+- **INFRA-01**: Application runs in Docker container
+- **DEPLOY-01**: docker-compose.yml for easy setup
+- **DEPLOY-02**: Volume mounts for uploads, output, database
 
 ### Integration
 
@@ -108,44 +113,43 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | TBD | Pending |
-| INFRA-02 | TBD | Pending |
-| INFRA-03 | TBD | Pending |
-| INFRA-04 | TBD | Pending |
-| INFRA-05 | TBD | Pending |
-| WEB-01 | TBD | Pending |
-| WEB-02 | TBD | Pending |
-| WEB-03 | TBD | Pending |
-| WEB-04 | TBD | Pending |
-| WEB-05 | TBD | Pending |
-| WEB-06 | TBD | Pending |
-| TIME-01 | TBD | Pending |
-| TIME-02 | TBD | Pending |
-| TIME-03 | TBD | Pending |
-| TIME-04 | TBD | Pending |
-| TIME-05 | TBD | Pending |
-| TIME-06 | TBD | Pending |
-| DUP-01 | TBD | Pending |
-| DUP-02 | TBD | Pending |
-| DUP-03 | TBD | Pending |
-| DUP-04 | TBD | Pending |
-| DUP-05 | TBD | Pending |
-| DUP-06 | TBD | Pending |
-| TAG-01 | TBD | Pending |
-| TAG-02 | TBD | Pending |
-| TAG-03 | TBD | Pending |
-| TAG-04 | TBD | Pending |
-| PROC-01 | TBD | Pending |
-| PROC-02 | TBD | Pending |
-| PROC-03 | TBD | Pending |
-| PROC-04 | TBD | Pending |
-| PROC-05 | TBD | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
+| TIME-01 | Phase 2 | Pending |
+| TIME-06 | Phase 2 | Pending |
+| PROC-01 | Phase 2 | Pending |
+| WEB-02 | Phase 3 | Pending |
+| WEB-03 | Phase 3 | Pending |
+| WEB-04 | Phase 3 | Pending |
+| WEB-05 | Phase 3 | Pending |
+| WEB-06 | Phase 3 | Pending |
+| TIME-02 | Phase 4 | Pending |
+| TIME-03 | Phase 4 | Pending |
+| TIME-04 | Phase 4 | Pending |
+| TIME-05 | Phase 4 | Pending |
+| WEB-01 | Phase 4 | Pending |
+| DUP-01 | Phase 5 | Pending |
+| DUP-04 | Phase 5 | Pending |
+| DUP-05 | Phase 5 | Pending |
+| DUP-06 | Phase 5 | Pending |
+| DUP-02 | Phase 6 | Pending |
+| DUP-03 | Phase 6 | Pending |
+| TAG-01 | Phase 7 | Pending |
+| TAG-02 | Phase 7 | Pending |
+| TAG-03 | Phase 7 | Pending |
+| TAG-04 | Phase 7 | Pending |
+| PROC-02 | Phase 7 | Pending |
+| PROC-03 | Phase 7 | Pending |
+| PROC-04 | Phase 7 | Pending |
+| PROC-05 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 28 total
-- Mapped to phases: 0
-- Unmapped: 28 ⚠️
+- v1 requirements: 27 total
+- Mapped to phases: 27
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-02-02*
-*Last updated: 2026-02-02 after initial definition*
+*Last updated: 2026-02-02 after roadmap creation*
