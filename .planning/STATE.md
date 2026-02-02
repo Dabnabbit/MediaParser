@@ -11,9 +11,9 @@
 ## Current Position
 
 **Phase:** 2 - Background Workers + Core Processing
-**Plan:** 02-01 complete
+**Plan:** 02-02 complete
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 02-01-PLAN.md (hashing and confidence scoring)
+**Last activity:** 2026-02-02 - Completed 02-02-PLAN.md (single file processing pipeline)
 **Progress:** `[███░░░░░░░░░░░░░░░░░░] 15%` (1/3 requirements - TIME-01 partial)
 
 **Active Requirements:**
@@ -29,8 +29,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 6 plans in ~13 minutes (avg 2.2 min/plan) - Phase 1+2
-**Plan Success Rate:** 100% (6/6 completed successfully)
+**Velocity:** 7 plans in ~15 minutes (avg 2.1 min/plan) - Phase 1+2
+**Plan Success Rate:** 100% (7/7 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 1/7 (Phase 2 in progress)
 
@@ -67,6 +67,9 @@
 | Store all timestamp candidates as JSON | 2026-02-02 | Enables Phase 4 review UI to show side-by-side comparison | 02-01: Database design |
 | Return None for perceptual hash on non-images | 2026-02-02 | Expected behavior, videos can use thumbnails in Phase 6 | 02-01: Library design |
 | Add PAUSED/CANCELLED/HALTED statuses | 2026-02-02 | Enables graceful job control and error threshold halting | 02-01: Job workflow |
+| Return dict from worker, main thread commits | 2026-02-02 | ThreadPoolExecutor workers cannot share SQLAlchemy sessions | 02-02: Thread safety pattern |
+| Use python-magic for type detection | 2026-02-02 | Detect executables masquerading as images via magic bytes | 02-02: Security improvement |
+| Normalize jpeg->jpg in type detection | 2026-02-02 | Common variation causes false mismatch warnings | 02-02: False positive reduction |
 
 ### Active TODOs
 
@@ -79,6 +82,7 @@
 
 **Phase 2 - Background Workers + Core Processing (IN PROGRESS):**
 - [x] 02-01: Hashing and confidence scoring libraries (COMPLETE)
+- [x] 02-02: Single file processing pipeline (COMPLETE)
 
 ### Known Blockers
 
@@ -108,16 +112,16 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 17:54 UTC
-**Stopped at:** Completed 02-01-PLAN.md (hashing and confidence scoring libraries)
+**Last session:** 2026-02-02 18:00 UTC
+**Stopped at:** Completed 02-02-PLAN.md (single file processing pipeline)
 **Resume file:** None
 
 **For Next Session:**
-1. Continue Phase 2 - Implement file processing workers (Plan 02-02)
+1. Continue Phase 2 - Implement worker functions (Plan 02-03)
 
 **Context to Preserve:**
 - Phase 1 (COMPLETE): Established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue, integration tests)
-- Phase 2 (IN PROGRESS): Core algorithms for file processing (hashing, confidence scoring)
+- Phase 2 (IN PROGRESS): Core algorithms for file processing (hashing, confidence scoring, processing pipeline)
 - All future code should follow these patterns: pathlib for paths, env vars for config, Mapped[] for models, get_app() for workers
 - Database URI: sqlite:///instance/mediaparser.db (SQLAlchemy configured, WAL mode enabled)
 - Storage dirs: storage/{uploads,processing,output}/ (auto-created on app start)
@@ -129,6 +133,9 @@ None
   - app.lib.metadata (extract_metadata, get_best_datetime, get_file_type, get_image_dimensions)
   - app.lib.hashing (calculate_sha256, calculate_perceptual_hash)
   - app.lib.confidence (calculate_confidence, SOURCE_WEIGHTS)
+  - app.lib.processing (process_single_file, detect_file_type_mismatch)
+- Processing pipeline: process_single_file() orchestrates all libraries, returns dict (thread-safe)
+- Thread safety pattern: Worker functions return dicts, main thread commits to database (no shared SQLAlchemy sessions)
 - Timezone handling: All library functions accept default_tz parameter, return UTC-normalized datetimes
 - Task queue: Huey with SQLite backend (instance/huey_queue.db), thread-based workers
 - Task pattern: get_app() + with app.app_context() for database access in workers
@@ -138,6 +145,7 @@ None
 - Hashing: SHA256 with chunked reading (65KB), dHash for perceptual
 - Confidence: Weighted scoring (EXIF:DateTimeOriginal=10, filename=2-3, filesystem=1), 1-second agreement tolerance
 - Job control: New statuses enable pause/resume, graceful cancel, error threshold halting
+- Type detection: python-magic checks magic bytes vs extension, logs warnings for mismatches
 - Database migration needed: New fields (timestamp_candidates, current_filename, error_count) require Alembic migration in next plan
 
 ---
