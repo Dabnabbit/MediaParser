@@ -11,13 +11,13 @@
 ## Current Position
 
 **Phase:** 2 - Background Workers + Core Processing
-**Plan:** None (awaiting plan-phase)
-**Status:** Pending
-**Last activity:** 2026-02-02 - Completed Phase 1 execution and verification
-**Progress:** `[░░░░░░░░░░░░░░░░░░░░] 0%` (0/3 requirements)
+**Plan:** 02-01 complete
+**Status:** In progress
+**Last activity:** 2026-02-02 - Completed 02-01-PLAN.md (hashing and confidence scoring)
+**Progress:** `[███░░░░░░░░░░░░░░░░░░] 15%` (1/3 requirements - TIME-01 partial)
 
 **Active Requirements:**
-- TIME-01: Confidence score for timestamp detection
+- TIME-01: Confidence score for timestamp detection (PARTIAL - algorithm implemented, needs worker integration)
 - TIME-06: Preserve existing timestamp detection logic from CLI
 - PROC-01: Multi-threading for performance
 
@@ -29,10 +29,10 @@
 
 ## Performance Metrics
 
-**Velocity:** 5 plans in ~11 minutes (avg 2.2 min/plan) - Phase 1
-**Plan Success Rate:** 100% (5/5 completed successfully)
+**Velocity:** 6 plans in ~13 minutes (avg 2.2 min/plan) - Phase 1+2
+**Plan Success Rate:** 100% (6/6 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
-**Phases Complete:** 1/7
+**Phases Complete:** 1/7 (Phase 2 in progress)
 
 ## Accumulated Context
 
@@ -62,6 +62,11 @@
 | pytest fixtures for test isolation | 2026-02-02 | Temporary database per test run prevents pollution | 01-05: Integration testing |
 | Test organization by component | 2026-02-02 | Test classes group related tests (Configuration, DatabaseModels, etc.) | 01-05: Test structure |
 | Environment-based config in run.py | 2026-02-02 | FLASK_ENV maps to config classes for deployment flexibility | 01-05: Application entry |
+| Use dHash over pHash for perceptual hashing | 2026-02-02 | Faster computation, good for duplicate detection | 02-01: Perceptual hash algorithm |
+| Select earliest valid timestamp with min_year filter | 2026-02-02 | User decision from CONTEXT.md, filters out epoch dates | 02-01: Confidence scoring |
+| Store all timestamp candidates as JSON | 2026-02-02 | Enables Phase 4 review UI to show side-by-side comparison | 02-01: Database design |
+| Return None for perceptual hash on non-images | 2026-02-02 | Expected behavior, videos can use thumbnails in Phase 6 | 02-01: Library design |
+| Add PAUSED/CANCELLED/HALTED statuses | 2026-02-02 | Enables graceful job control and error threshold halting | 02-01: Job workflow |
 
 ### Active TODOs
 
@@ -71,6 +76,9 @@
 - [x] 01-03: Timestamp and metadata library extraction (COMPLETE)
 - [x] 01-04: Background job queue setup (Huey) (COMPLETE)
 - [x] 01-05: Integration tests and application entry point (COMPLETE)
+
+**Phase 2 - Background Workers + Core Processing (IN PROGRESS):**
+- [x] 02-01: Hashing and confidence scoring libraries (COMPLETE)
 
 ### Known Blockers
 
@@ -100,28 +108,37 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 16:51 UTC
-**Stopped at:** Completed 01-05-PLAN.md (Phase 1 complete)
+**Last session:** 2026-02-02 17:54 UTC
+**Stopped at:** Completed 02-01-PLAN.md (hashing and confidence scoring libraries)
 **Resume file:** None
 
 **For Next Session:**
-1. Begin Phase 2 - File Import and Processing
+1. Continue Phase 2 - Implement file processing workers (Plan 02-02)
 
 **Context to Preserve:**
 - Phase 1 (COMPLETE): Established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue, integration tests)
+- Phase 2 (IN PROGRESS): Core algorithms for file processing (hashing, confidence scoring)
 - All future code should follow these patterns: pathlib for paths, env vars for config, Mapped[] for models, get_app() for workers
 - Database URI: sqlite:///instance/mediaparser.db (SQLAlchemy configured, WAL mode enabled)
 - Storage dirs: storage/{uploads,processing,output}/ (auto-created on app start)
 - Timezone: Configurable via TIMEZONE env var (default America/New_York)
 - Models: File, Job, Duplicate, UserDecision with type-safe SQLAlchemy 2.x patterns
-- Enums: JobStatus (PENDING/RUNNING/COMPLETED/FAILED), ConfidenceLevel (HIGH/MEDIUM/LOW/NONE)
-- Library functions: app.lib.timestamp (get_datetime_from_name, convert_str_to_datetime), app.lib.metadata (extract_metadata, get_best_datetime, get_file_type, get_image_dimensions)
+- Enums: JobStatus (PENDING/RUNNING/COMPLETED/FAILED/PAUSED/CANCELLED/HALTED), ConfidenceLevel (HIGH/MEDIUM/LOW/NONE)
+- Library functions:
+  - app.lib.timestamp (get_datetime_from_name, convert_str_to_datetime)
+  - app.lib.metadata (extract_metadata, get_best_datetime, get_file_type, get_image_dimensions)
+  - app.lib.hashing (calculate_sha256, calculate_perceptual_hash)
+  - app.lib.confidence (calculate_confidence, SOURCE_WEIGHTS)
 - Timezone handling: All library functions accept default_tz parameter, return UTC-normalized datetimes
 - Task queue: Huey with SQLite backend (instance/huey_queue.db), thread-based workers
 - Task pattern: get_app() + with app.app_context() for database access in workers
 - Helper functions: enqueue_import_job(job_id) for web routes, health_check() for worker verification
 - Application entry: run.py creates app for development server and WSGI deployment
 - Testing: pytest with fixtures (app, client), temporary database for isolation, test classes by component
+- Hashing: SHA256 with chunked reading (65KB), dHash for perceptual
+- Confidence: Weighted scoring (EXIF:DateTimeOriginal=10, filename=2-3, filesystem=1), 1-second agreement tolerance
+- Job control: New statuses enable pause/resume, graceful cancel, error threshold halting
+- Database migration needed: New fields (timestamp_candidates, current_filename, error_count) require Alembic migration in next plan
 
 ---
 
