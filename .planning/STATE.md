@@ -11,10 +11,10 @@
 ## Current Position
 
 **Phase:** 1 - Foundation Architecture
-**Plan:** 01-01 of 5 (Application Scaffold - Complete)
+**Plan:** 01-02 of 5 (Database Models - Complete)
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 01-01-PLAN.md
-**Progress:** `[████░░░░░░░░░░░░░░░░] 20%` (1/5 plans complete)
+**Last activity:** 2026-02-02 - Completed 01-02-PLAN.md
+**Progress:** `[████████░░░░░░░░░░░░] 40%` (2/5 plans complete)
 
 **Active Requirements:**
 - INFRA-01: Application runs in Docker container
@@ -25,8 +25,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 1 plan in ~2 minutes
-**Plan Success Rate:** 100% (1/1 completed successfully)
+**Velocity:** 2 plans in ~4 minutes (avg 2 min/plan)
+**Plan Success Rate:** 100% (2/2 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 
 ## Accumulated Context
@@ -43,11 +43,16 @@
 | Use zoneinfo over pytz | 2026-02-02 | Standard library in Python 3.9+, one less dependency | 01-01: Config validation |
 | Config at root not in app/ | 2026-02-02 | Simpler imports, Flask convention for single-app projects | 01-01: Import paths |
 | Auto-create directories | 2026-02-02 | Better developer experience, prevents errors | 01-01: Startup behavior |
+| INTEGER PRIMARY KEY for all tables | 2026-02-02 | SQLite optimization - 3-4x faster than UUIDs | 01-02: Database schema |
+| ConfidenceLevel enum for timestamps | 2026-02-02 | Enables review queue filtering by detection quality | 01-02: User workflow |
+| Timezone-aware datetimes everywhere | 2026-02-02 | Prevents naive/aware comparison errors, DST bugs | 01-02: Timestamp handling |
+| Many-to-many Job<->File relationship | 2026-02-02 | Supports batch operations and job history | 01-02: Job tracking |
 
 ### Active TODOs
 
 **Phase 1 - Foundation Architecture (in progress):**
-- [ ] 01-02: Database models (files, jobs, duplicates, decisions)
+- [x] 01-01: Application scaffold with Flask factory and storage (COMPLETE)
+- [x] 01-02: Database models (files, jobs, duplicates, decisions) (COMPLETE)
 - [ ] 01-03: Background job queue setup (Huey)
 - [ ] 01-04: Refactor timestamp detection from PhotoTimeFixer.py
 - [ ] 01-05: Additional foundation components
@@ -80,22 +85,23 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 16:33 UTC
-**Stopped at:** Completed 01-01-PLAN.md
+**Last session:** 2026-02-02 16:36 UTC
+**Stopped at:** Completed 01-02-PLAN.md
 **Resume file:** None
 
 **For Next Session:**
-1. Execute 01-02-PLAN.md: Database models
-2. Execute 01-03-PLAN.md: Background job queue (Huey)
-3. Execute 01-04-PLAN.md: Refactor timestamp detection
-4. Execute 01-05-PLAN.md: Remaining foundation components
+1. Execute 01-03-PLAN.md: Background job queue (Huey)
+2. Execute 01-04-PLAN.md: Refactor timestamp detection
+3. Execute 01-05-PLAN.md: Remaining foundation components
 
 **Context to Preserve:**
-- Phase 1 Plan 01 established foundational patterns (pathlib, app factory, env config)
-- All future code should follow these patterns: pathlib for paths, env vars for config
-- Database URI: sqlite:///instance/mediaparser.db (SQLAlchemy configured)
+- Phase 1 Plans 01-02 established foundational patterns (pathlib, app factory, env config, database schema)
+- All future code should follow these patterns: pathlib for paths, env vars for config, Mapped[] for models
+- Database URI: sqlite:///instance/mediaparser.db (SQLAlchemy configured, WAL mode enabled)
 - Storage dirs: storage/{uploads,processing,output}/ (auto-created on app start)
 - Timezone: Configurable via TIMEZONE env var (default America/New_York)
+- Models: File, Job, Duplicate, UserDecision with type-safe SQLAlchemy 2.x patterns
+- Enums: JobStatus (PENDING/RUNNING/COMPLETED/FAILED), ConfidenceLevel (HIGH/MEDIUM/LOW/NONE)
 
 ---
 
