@@ -11,10 +11,10 @@
 ## Current Position
 
 **Phase:** 3 of 7 - Web UI: Upload + Status
-**Plan:** 01 of ~7 (estimated)
+**Plan:** 02 of ~7 (estimated)
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 03-01-PLAN.md (Web UI foundation)
-**Progress:** `[██████░░░░░░░░░░░░░░] 29%` (2/7 phases complete, 1/7 plans in Phase 3)
+**Last activity:** 2026-02-02 - Completed 03-02-PLAN.md (Upload and job management routes)
+**Progress:** `[███████░░░░░░░░░░░░░] 33%` (2/7 phases complete, 2/7 plans in Phase 3)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -29,8 +29,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 10 plans in ~22 minutes (avg 2.2 min/plan) - Phase 1+2+3
-**Plan Success Rate:** 100% (10/10 completed successfully)
+**Velocity:** 11 plans in ~25.5 minutes (avg 2.3 min/plan) - Phase 1+2+3
+**Plan Success Rate:** 100% (11/11 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 2/7 (Phase 1 and Phase 2 complete, Phase 3 in progress)
 
@@ -80,6 +80,10 @@
 | Three thumbnail size presets | 2026-02-02 | Different use cases (compact for bulk, large for duplicates) | 03-01: Thumbnail UI |
 | EXIF orientation correction first | 2026-02-02 | Mobile photos have rotation metadata, prevents rotated thumbnails | 03-01: Thumbnail generation |
 | CSS variables for theming | 2026-02-02 | Single source of truth for colors, consistent palette across UI | 03-01: Styling approach |
+| Job-specific subdirectories for uploads | 2026-02-02 | Prevents filename collisions, improves organization | 03-02: Upload routes |
+| Extension whitelist validation | 2026-02-02 | Security - prevents upload of executables or scripts | 03-02: File upload |
+| State transition validation for job control | 2026-02-02 | Prevents invalid actions (can't pause completed job) | 03-02: Job control |
+| SHA256 hash grouping for duplicates | 2026-02-02 | Exact duplicate detection (perceptual deferred to Phase 6) | 03-02: Duplicate detection |
 
 ### Active TODOs
 
@@ -98,6 +102,7 @@
 
 **Phase 3 - Web UI: Upload + Status (IN PROGRESS):**
 - [x] 03-01: HTML templates, CSS styles, thumbnail library (COMPLETE)
+- [x] 03-02: Upload and job management routes (COMPLETE)
 
 ### Known Blockers
 
@@ -127,16 +132,16 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 19:26 UTC
-**Stopped at:** Completed 03-01-PLAN.md (Web UI foundation - templates, CSS, thumbnails)
+**Last session:** 2026-02-02 19:33 UTC
+**Stopped at:** Completed 03-02-PLAN.md (Upload and job management routes)
 **Resume file:** None
 
 **For Next Session:**
 1. Continue Phase 3 - Web Interface: Upload + Status
-   - Next: 03-02 Upload routes (file/folder/server path handling)
-   - Then: 03-03 Progress API (job status polling endpoint)
-   - Then: 03-04 Results display (confidence buckets, thumbnails)
-   - Later: Real-time updates, job control buttons
+   - Next: 03-03 Progress API (job status polling endpoint) - may already be complete
+   - Then: 03-04 Results display JavaScript (confidence buckets, thumbnails)
+   - Then: 03-05 Real-time updates (SSE or WebSocket)
+   - Later: Job control buttons, duplicate comparison UI
 
 **Context to Preserve:**
 - Phase 1 (COMPLETE): Established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue, integration tests)
@@ -184,6 +189,16 @@ None
   - Status badges: RUNNING=blue, COMPLETED=green, FAILED=red, PAUSED=yellow
   - Confidence badges: HIGH=green, MEDIUM=yellow, LOW=red
 - Thumbnail generation: ImageOps.exif_transpose() for orientation, RGB conversion for JPEG compatibility, LANCZOS resampling
+- Upload routes:
+  - POST /api/upload for browser file upload (multipart/form-data, extension whitelist, secure_filename)
+  - POST /api/import-path for server-side directory scanning (recursive, same extensions)
+  - Job subdirectories: storage/uploads/job_{id}/ for organization
+- Job management routes:
+  - GET /api/jobs/:id for status with progress percentage
+  - POST /api/jobs/:id/control for pause/cancel/resume with state validation
+  - GET /api/jobs/:id/files with pagination and confidence filtering
+  - GET /api/jobs/:id/duplicates for SHA256-based exact duplicate groups
+- Main route: GET / renders index.html with current job for session resume
 
 ---
 
