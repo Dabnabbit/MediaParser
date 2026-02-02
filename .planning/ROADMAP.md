@@ -66,11 +66,21 @@ Plans:
 
 ### Phase 3: Web UI - Upload + Status
 
-**Goal:** Users upload files via browser, track processing progress in real-time, and view basic file metadata without waiting for processing to complete.
+**Goal:** Users upload files via browser, track processing progress in real-time, and view basic file metadata organized by confidence buckets and duplicate groups.
 
 **Dependencies:** Phase 2 (requires workers to process uploads)
 
 **Requirements:** WEB-02, WEB-03, WEB-04, WEB-05, WEB-06
+
+**Plans:** 6 plans in 4 waves
+
+Plans:
+- [ ] 03-01-PLAN.md — HTML templates, CSS styles, and thumbnail library
+- [ ] 03-02-PLAN.md — Upload routes and job management routes
+- [ ] 03-03-PLAN.md — Progress API and thumbnail integration in processing
+- [ ] 03-04-PLAN.md — Upload and progress JavaScript modules
+- [ ] 03-05-PLAN.md — Results display with buckets and multi-select
+- [ ] 03-06-PLAN.md — Human verification of complete UI
 
 **Success Criteria:**
 1. User drags files onto browser window to upload
@@ -165,7 +175,7 @@ Plans:
 |-------|--------|--------------|------------|
 | 1 - Foundation Architecture | ✓ Complete | 4 | 100% |
 | 2 - Background Workers + Core Processing | ✓ Complete | 3 | 100% |
-| 3 - Web UI - Upload + Status | Pending | 5 | 0% |
+| 3 - Web UI - Upload + Status | In Progress | 5 | 0% |
 | 4 - Review Queues - Timestamps | Pending | 5 | 0% |
 | 5 - Duplicate Detection - Exact | Pending | 4 | 0% |
 | 6 - Duplicate Detection - Perceptual | Pending | 2 | 0% |
