@@ -11,10 +11,10 @@
 ## Current Position
 
 **Phase:** 3 of 7 - Web UI: Upload + Status
-**Plan:** 04 of ~7 (estimated)
+**Plan:** 07 of ~7 (estimated)
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 03-04-PLAN.md (Upload and Progress JavaScript)
-**Progress:** `[█████████░░░░░░░░░░░] 40%` (2/7 phases complete, 4/7 plans in Phase 3)
+**Last activity:** 2026-02-02 - Completed 03-07-PLAN.md (Settings Configuration)
+**Progress:** `[███████████░░░░░░░░░] 48%` (2/7 phases complete, 7/7 plans in Phase 3)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -29,8 +29,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 13 plans in ~31.5 minutes (avg 2.4 min/plan) - Phase 1+2+3
-**Plan Success Rate:** 100% (13/13 completed successfully)
+**Velocity:** 14 plans in ~33.5 minutes (avg 2.4 min/plan) - Phase 1+2+3
+**Plan Success Rate:** 100% (14/14 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 2/7 (Phase 1 and Phase 2 complete, Phase 3 in progress)
 
@@ -93,6 +93,10 @@
 | 1.5 second polling interval | 2026-02-02 | Balance between responsiveness and server load for progress updates | 03-04: Progress polling |
 | localStorage for session resume | 2026-02-02 | Preserve job state across page reloads, browser refresh, or tab close/reopen | 03-04: Session continuity |
 | Client-side extension filtering | 2026-02-02 | Prevent invalid uploads before network transfer, faster user feedback | 03-04: Upload validation |
+| Accordion bucket pattern (one open) | 2026-02-02 | Only one confidence bucket expanded at a time for focused viewing | 03-05: Results display |
+| Shift-click multi-select | 2026-02-02 | Standard file manager pattern users expect for range selection | 03-05: Multi-select |
+| Three thumbnail size presets | 2026-02-02 | Compact/medium/large for different use cases (bulk vs detail) | 03-05: Thumbnail UI |
+| Recommended duplicate highlight | 2026-02-02 | Highest confidence file highlighted to guide user decision | 03-05: Duplicate review |
 
 ### Active TODOs
 
@@ -114,6 +118,7 @@
 - [x] 03-02: Upload and job management routes (COMPLETE)
 - [x] 03-03: Progress API + Thumbnails (COMPLETE)
 - [x] 03-04: Upload and Progress JavaScript (COMPLETE)
+- [x] 03-05: Results Display with Buckets (COMPLETE)
 
 ### Known Blockers
 
@@ -222,22 +227,30 @@ None
 - JavaScript modules:
   - app/static/js/upload.js: UploadHandler class for drag-drop, file picker, folder picker, server path import
   - app/static/js/progress.js: ProgressHandler class for 1.5s polling, job control, session resume
-  - app/static/js/results.js: ResultsHandler class for confidence buckets, thumbnail grid, duplicates
+  - app/static/js/results.js: ResultsHandler class for confidence buckets, thumbnail grid, duplicates, multi-select
   - window.* pattern: Global handlers for cross-script communication (uploadHandler, progressHandler, resultsHandler)
   - XMLHttpRequest for upload progress (fetch doesn't support upload progress events)
   - localStorage for session resume (preserves job ID across page reloads)
   - Client-side extension filtering: jpg, jpeg, png, gif, heic, mp4, mov, avi, mkv
+- Results display patterns:
+  - Accordion buckets: only one confidence level expanded at a time (expandedBucket state)
+  - Lazy loading: files loaded only when bucket expanded (performance optimization)
+  - Multi-select: shift-click for range selection (selectedFiles Set)
+  - Thumbnail sizes: compact (100px), medium (150px), large (200px) presets
+  - Duplicate groups: side-by-side comparison with recommended file highlighted
+  - Placeholder: app/static/img/placeholder.svg for missing thumbnails
+  - API integration: /api/jobs/:id/files?confidence={level}, /api/jobs/:id/duplicates
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 19:38 UTC
-**Stopped at:** Completed 03-04-PLAN.md (Upload and Progress JavaScript)
+**Last session:** 2026-02-02 19:39 UTC
+**Stopped at:** Completed 03-05-PLAN.md (Results Display with Buckets)
 **Resume file:** None
 
 **For Next Session:**
 1. Continue Phase 3 - Web Interface: Upload + Status
-   - Next: 03-05 or later plans for integration and additional UI features
-   - Later: Job control buttons, duplicate comparison UI, advanced filtering
+   - Next: 03-06 or later plans for integration and additional UI features
+   - Later: Wire resultsHandler into progress completion, add CSS classes for results UI
 
 ---
 
