@@ -11,10 +11,10 @@
 ## Current Position
 
 **Phase:** 1 - Foundation Architecture
-**Plan:** 01-03 of 5 (Timestamp and Metadata Library - Complete)
-**Status:** In progress
-**Last activity:** 2026-02-02 - Completed 01-03-PLAN.md
-**Progress:** `[████████████░░░░░░░░] 60%` (3/5 plans complete)
+**Plan:** 01-05 of 5 (Integration Tests and Entry Point - Complete)
+**Status:** Phase complete
+**Last activity:** 2026-02-02 - Completed 01-05-PLAN.md
+**Progress:** `[████████████████████] 100%` (5/5 plans complete)
 
 **Active Requirements:**
 - INFRA-01: Application runs in Docker container
@@ -25,8 +25,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 3 plans in ~6.5 minutes (avg 2.2 min/plan)
-**Plan Success Rate:** 100% (3/3 completed successfully)
+**Velocity:** 5 plans in ~11 minutes (avg 2.2 min/plan)
+**Plan Success Rate:** 100% (5/5 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 
 ## Accumulated Context
@@ -54,15 +54,18 @@
 | SQLite backend for Huey queue | 2026-02-02 | Separate queue db from app db, thread-based workers | 01-04: Task queue setup |
 | get_app() pattern for worker tasks | 2026-02-02 | Avoids circular imports, deferred app creation | 01-04: Flask context in workers |
 | Re-raise exceptions after marking FAILED | 2026-02-02 | Enables Huey retry logic with proper job status | 01-04: Error handling |
+| pytest fixtures for test isolation | 2026-02-02 | Temporary database per test run prevents pollution | 01-05: Integration testing |
+| Test organization by component | 2026-02-02 | Test classes group related tests (Configuration, DatabaseModels, etc.) | 01-05: Test structure |
+| Environment-based config in run.py | 2026-02-02 | FLASK_ENV maps to config classes for deployment flexibility | 01-05: Application entry |
 
 ### Active TODOs
 
-**Phase 1 - Foundation Architecture (in progress):**
+**Phase 1 - Foundation Architecture (COMPLETE):**
 - [x] 01-01: Application scaffold with Flask factory and storage (COMPLETE)
 - [x] 01-02: Database models (files, jobs, duplicates, decisions) (COMPLETE)
 - [x] 01-03: Timestamp and metadata library extraction (COMPLETE)
 - [x] 01-04: Background job queue setup (Huey) (COMPLETE)
-- [ ] 01-05: Additional foundation components
+- [x] 01-05: Integration tests and application entry point (COMPLETE)
 
 ### Known Blockers
 
@@ -92,15 +95,15 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 16:44 UTC
-**Stopped at:** Completed 01-03-PLAN.md
+**Last session:** 2026-02-02 16:51 UTC
+**Stopped at:** Completed 01-05-PLAN.md (Phase 1 complete)
 **Resume file:** None
 
 **For Next Session:**
-1. Execute 01-05-PLAN.md: Remaining foundation components
+1. Begin Phase 2 - File Import and Processing
 
 **Context to Preserve:**
-- Phase 1 Plans 01-01, 01-02, 01-03, 01-04 established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue)
+- Phase 1 (COMPLETE): Established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue, integration tests)
 - All future code should follow these patterns: pathlib for paths, env vars for config, Mapped[] for models, get_app() for workers
 - Database URI: sqlite:///instance/mediaparser.db (SQLAlchemy configured, WAL mode enabled)
 - Storage dirs: storage/{uploads,processing,output}/ (auto-created on app start)
@@ -112,6 +115,8 @@ None
 - Task queue: Huey with SQLite backend (instance/huey_queue.db), thread-based workers
 - Task pattern: get_app() + with app.app_context() for database access in workers
 - Helper functions: enqueue_import_job(job_id) for web routes, health_check() for worker verification
+- Application entry: run.py creates app for development server and WSGI deployment
+- Testing: pytest with fixtures (app, client), temporary database for isolation, test classes by component
 
 ---
 
