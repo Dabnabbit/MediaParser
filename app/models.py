@@ -23,6 +23,9 @@ class JobStatus(str, PyEnum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    PAUSED = "paused"        # Job paused by user, can be resumed
+    CANCELLED = "cancelled"  # Job cancelled by user, stopped gracefully
+    HALTED = "halted"        # Job halted due to error threshold exceeded
 
 
 class ConfidenceLevel(str, PyEnum):
@@ -77,6 +80,7 @@ class File(db.Model):
         default=ConfidenceLevel.LOW,
         nullable=False
     )
+    timestamp_candidates: Mapped[Optional[str]] = mapped_column(Text)  # JSON array of all detected timestamps with sources
 
     # Output
     output_path: Mapped[Optional[str]] = mapped_column(String(500))  # Final output location
@@ -138,6 +142,8 @@ class Job(db.Model):
     # Progress tracking
     progress_current: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     progress_total: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    current_filename: Mapped[Optional[str]] = mapped_column(String(255))  # Currently processing file
+    error_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)  # Track errors for threshold
 
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
