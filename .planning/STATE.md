@@ -11,10 +11,10 @@
 ## Current Position
 
 **Phase:** 3 of 7 - Web UI: Upload + Status
-**Plan:** 03 of ~7 (estimated)
+**Plan:** 04 of ~7 (estimated)
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 03-03-PLAN.md (Progress API + Thumbnails)
-**Progress:** `[████████░░░░░░░░░░░░] 36%` (2/7 phases complete, 3/7 plans in Phase 3)
+**Last activity:** 2026-02-02 - Completed 03-04-PLAN.md (Upload and Progress JavaScript)
+**Progress:** `[█████████░░░░░░░░░░░] 40%` (2/7 phases complete, 4/7 plans in Phase 3)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -29,8 +29,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 12 plans in ~29.5 minutes (avg 2.5 min/plan) - Phase 1+2+3
-**Plan Success Rate:** 100% (12/12 completed successfully)
+**Velocity:** 13 plans in ~31.5 minutes (avg 2.4 min/plan) - Phase 1+2+3
+**Plan Success Rate:** 100% (13/13 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 2/7 (Phase 1 and Phase 2 complete, Phase 3 in progress)
 
@@ -89,6 +89,10 @@
 | Completed jobs include summary data | 2026-02-02 | Confidence counts and duplicate count in progress response, no second API call | 03-03: Progress API |
 | Thumbnail failures don't fail processing | 2026-02-02 | Thumbnail is enhancement not critical, log warning and continue | 03-03: Error handling |
 | Store relative thumbnail paths | 2026-02-02 | thumbnails/123_thumb.jpg format works with Flask static serving | 03-03: Web serving |
+| XMLHttpRequest for file uploads | 2026-02-02 | fetch() doesn't support upload progress events, XHR provides fine-grained tracking | 03-04: Upload UX |
+| 1.5 second polling interval | 2026-02-02 | Balance between responsiveness and server load for progress updates | 03-04: Progress polling |
+| localStorage for session resume | 2026-02-02 | Preserve job state across page reloads, browser refresh, or tab close/reopen | 03-04: Session continuity |
+| Client-side extension filtering | 2026-02-02 | Prevent invalid uploads before network transfer, faster user feedback | 03-04: Upload validation |
 
 ### Active TODOs
 
@@ -109,6 +113,7 @@
 - [x] 03-01: HTML templates, CSS styles, thumbnail library (COMPLETE)
 - [x] 03-02: Upload and job management routes (COMPLETE)
 - [x] 03-03: Progress API + Thumbnails (COMPLETE)
+- [x] 03-04: Upload and Progress JavaScript (COMPLETE)
 
 ### Known Blockers
 
@@ -214,6 +219,25 @@ None
   - thumbnail_path field in File model stores relative paths
   - Failures logged but don't block processing
   - Served via Flask static: /thumbnails/{file_id}_thumb.jpg
+- JavaScript modules:
+  - app/static/js/upload.js: UploadHandler class for drag-drop, file picker, folder picker, server path import
+  - app/static/js/progress.js: ProgressHandler class for 1.5s polling, job control, session resume
+  - app/static/js/results.js: ResultsHandler class for confidence buckets, thumbnail grid, duplicates
+  - window.* pattern: Global handlers for cross-script communication (uploadHandler, progressHandler, resultsHandler)
+  - XMLHttpRequest for upload progress (fetch doesn't support upload progress events)
+  - localStorage for session resume (preserves job ID across page reloads)
+  - Client-side extension filtering: jpg, jpeg, png, gif, heic, mp4, mov, avi, mkv
+
+## Session Continuity
+
+**Last session:** 2026-02-02 19:38 UTC
+**Stopped at:** Completed 03-04-PLAN.md (Upload and Progress JavaScript)
+**Resume file:** None
+
+**For Next Session:**
+1. Continue Phase 3 - Web Interface: Upload + Status
+   - Next: 03-05 or later plans for integration and additional UI features
+   - Later: Job control buttons, duplicate comparison UI, advanced filtering
 
 ---
 
