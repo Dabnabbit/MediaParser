@@ -6,6 +6,7 @@ Creates and configures the application with database and storage setup.
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import text
 
 
 class Base(DeclarativeBase):
@@ -56,8 +57,21 @@ def create_app(config_name='development'):
     # Initialize database
     db.init_app(app)
 
-    # Ensure storage directories exist
+    # Ensure storage directories exist and setup database
     with app.app_context():
         ensure_directories(app)
+
+        # Import models to register them with SQLAlchemy
+        from app import models  # noqa: F401 - registers models
+
+        # Enable SQLite WAL mode for better concurrency
+        if 'sqlite' in app.config.get('SQLALCHEMY_DATABASE_URI', ''):
+            with db.engine.connect() as conn:
+                conn.execute(text('PRAGMA journal_mode=WAL'))
+                conn.execute(text('PRAGMA busy_timeout=5000'))
+                conn.commit()
+
+        # Create all tables
+        db.create_all()
 
     return app
