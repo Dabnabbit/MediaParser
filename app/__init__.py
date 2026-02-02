@@ -61,6 +61,11 @@ def create_app(config_name='development'):
     with app.app_context():
         ensure_directories(app)
 
+        # Also ensure thumbnails directory exists
+        thumbnails_dir = app.config.get('UPLOAD_FOLDER').parent / 'thumbnails'
+        thumbnails_dir.mkdir(parents=True, exist_ok=True)
+        app.config['THUMBNAILS_FOLDER'] = thumbnails_dir
+
         # Import models to register them with SQLAlchemy
         from app import models  # noqa: F401 - registers models
 
@@ -73,5 +78,24 @@ def create_app(config_name='development'):
 
         # Create all tables
         db.create_all()
+
+    # Register blueprints
+    from app.routes import upload_bp, jobs_bp, api_bp
+    app.register_blueprint(upload_bp)
+    app.register_blueprint(jobs_bp)
+    app.register_blueprint(api_bp)
+
+    # Main route
+    @app.route('/')
+    def index():
+        from flask import render_template
+        from app.models import Job, JobStatus
+
+        # Get current job if exists (for session resume)
+        current_job = Job.query.filter(
+            Job.status.in_([JobStatus.RUNNING, JobStatus.PAUSED, JobStatus.PENDING])
+        ).order_by(Job.created_at.desc()).first()
+
+        return render_template('index.html', current_job=current_job)
 
     return app

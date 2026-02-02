@@ -1,0 +1,99 @@
+"""API routes for progress tracking and general utilities."""
+from flask import Blueprint, jsonify, current_app
+from datetime import datetime, timezone
+
+from app import db
+from app.models import Job, JobStatus, File, ConfidenceLevel
+
+api_bp = Blueprint('api', __name__, url_prefix='/api')
+
+
+@api_bp.route('/progress/<int:job_id>', methods=['GET'])
+def get_progress(job_id):
+    """Get job progress for polling.
+
+    Returns minimal payload optimized for frequent polling (1-2 second intervals).
+    """
+    job = db.session.get(Job, job_id)
+    if not job:
+        return jsonify({'error': 'Job not found'}), 404
+
+    # Calculate progress percentage
+    progress_percent = 0
+    if job.progress_total > 0:
+        progress_percent = round(job.progress_current / job.progress_total * 100, 1)
+
+    # Calculate elapsed time and ETA
+    elapsed_seconds = None
+    eta_seconds = None
+    if job.started_at:
+        elapsed = datetime.now(timezone.utc) - job.started_at
+        elapsed_seconds = int(elapsed.total_seconds())
+
+        # Estimate remaining time based on progress
+        if job.progress_current > 0 and job.status == JobStatus.RUNNING:
+            seconds_per_file = elapsed_seconds / job.progress_current
+            remaining_files = job.progress_total - job.progress_current
+            eta_seconds = int(seconds_per_file * remaining_files)
+
+    response = {
+        'job_id': job.id,
+        'status': job.status.value,
+        'progress_current': job.progress_current,
+        'progress_total': job.progress_total,
+        'progress_percent': progress_percent,
+        'current_filename': job.current_filename,
+        'error_count': job.error_count,
+        'elapsed_seconds': elapsed_seconds,
+        'eta_seconds': eta_seconds,
+    }
+
+    # Include summary data when job completes
+    if job.status in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.HALTED, JobStatus.CANCELLED]:
+        # Get file counts by confidence
+        confidence_counts = {}
+        for level in ConfidenceLevel:
+            count = File.query.join(File.jobs).filter(
+                Job.id == job_id,
+                File.confidence == level
+            ).count()
+            confidence_counts[level.value] = count
+
+        # Get duplicate count
+        duplicate_count = db.session.execute(
+            db.select(db.func.count(db.distinct(File.file_hash_sha256)))
+            .join(File.jobs)
+            .where(Job.id == job_id)
+            .where(File.file_hash_sha256.isnot(None))
+            .group_by(File.file_hash_sha256)
+            .having(db.func.count(File.id) > 1)
+        ).scalar() or 0
+
+        response['summary'] = {
+            'confidence_counts': confidence_counts,
+            'duplicate_groups': duplicate_count,
+            'success_count': job.progress_current - job.error_count,
+            'error_count': job.error_count,
+        }
+
+        if job.completed_at and job.started_at:
+            duration = job.completed_at - job.started_at
+            response['summary']['duration_seconds'] = int(duration.total_seconds())
+
+    return jsonify(response)
+
+
+@api_bp.route('/current-job', methods=['GET'])
+def get_current_job():
+    """Get the most recent incomplete job for session resume.
+
+    Returns the most recent job that is not completed/failed/cancelled.
+    """
+    job = Job.query.filter(
+        Job.status.in_([JobStatus.PENDING, JobStatus.RUNNING, JobStatus.PAUSED])
+    ).order_by(Job.created_at.desc()).first()
+
+    if not job:
+        return jsonify({'job_id': None})
+
+    return jsonify({'job_id': job.id, 'status': job.status.value})
