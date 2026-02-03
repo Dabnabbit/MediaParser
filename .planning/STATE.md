@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-02
+**Last Updated:** 2026-02-03 14:31 UTC
 
 ## Environment
 
@@ -13,15 +13,15 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 4 - Review Queues: Timestamps (Ready to plan)
+**Current Focus:** Phase 4 - Review Queues: Timestamps (In progress)
 
 ## Current Position
 
 **Phase:** 4 of 7 - Review Queues: Timestamps
-**Plan:** 0 of ~? (not yet planned)
-**Status:** Ready to plan
-**Last activity:** 2026-02-02 - Completed Phase 3 (Web UI: Upload + Status)
-**Progress:** `[████████████████░░░░] 43%` (3/7 phases complete)
+**Plan:** 1 of ~6 (04-01 complete)
+**Status:** In progress
+**Last activity:** 2026-02-03 - Completed 04-01-PLAN.md (Review API Models and Endpoints)
+**Progress:** `[█████████████████░░░] 46%` (16/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,10 +36,10 @@
 
 ## Performance Metrics
 
-**Velocity:** 15 plans in ~36.5 minutes (avg 2.4 min/plan) - Phase 1+2+3
-**Plan Success Rate:** 100% (15/15 completed successfully)
+**Velocity:** 16 plans in ~38.6 minutes (avg 2.4 min/plan) - Phase 1+2+3+4 (partial)
+**Plan Success Rate:** 100% (16/16 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
-**Phases Complete:** 2/7 (Phase 1 and Phase 2 complete, Phase 3 in progress)
+**Phases Complete:** 3/7 (Phase 1, 2, 3 complete, Phase 4 in progress)
 
 ## Accumulated Context
 
@@ -113,6 +113,9 @@
 | Collapsible duplicate groups | 2026-02-02 | Click group header to expand/collapse, reduces visual clutter | 03-06: Duplicate UX |
 | Failed files bucket | 2026-02-02 | Track per-file processing errors, display in dedicated bucket | 03-06: Error visibility |
 | Duplicate selection UI deferred | 2026-02-02 | Radio/checkbox selection for keep/discard decisions → Phase 5 | Phase 5: Duplicate review |
+| Tag normalization in app code | 2026-02-03 | SQLite func.lower() in unique constraint causes issues; enforce at app level | 04-01: Tag model |
+| Duplicate group as field | 2026-02-03 | Use duplicate_group_id field on File rather than separate association table | 04-01: Model design |
+| Usage count caching | 2026-02-03 | Cache tag usage_count to avoid expensive COUNT queries on autocomplete | 04-01: Tag performance |
 
 ### Active TODOs
 
@@ -129,7 +132,7 @@
 - [x] 02-03: Multi-threaded file processing task (COMPLETE)
 - [x] 02-04: Phase 2 processing tests (COMPLETE)
 
-**Phase 3 - Web UI: Upload + Status (IN PROGRESS):**
+**Phase 3 - Web UI: Upload + Status (COMPLETE):**
 - [x] 03-01: HTML templates, CSS styles, thumbnail library (COMPLETE)
 - [x] 03-02: Upload and job management routes (COMPLETE)
 - [x] 03-03: Progress API + Thumbnails (COMPLETE)
@@ -137,6 +140,14 @@
 - [x] 03-05: Results Display with Buckets (COMPLETE)
 - [x] 03-06: Real-time Updates and Integration (COMPLETE)
 - [x] 03-07: Settings Configuration (COMPLETE)
+
+**Phase 4 - Review Queues: Timestamps (IN PROGRESS):**
+- [x] 04-01: Review API Models and Endpoints (COMPLETE)
+- [ ] 04-02: Unified Grid with Filter Chips
+- [ ] 04-03: Results handler integration
+- [ ] 04-04: Timestamp review detail panel
+- [ ] 04-05: Manual timestamp override
+- [ ] 04-06: Session state and navigation
 
 ### Known Blockers
 
@@ -267,17 +278,18 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02
-**Stopped at:** Phase 3 complete, ready for Phase 4 planning
+**Last session:** 2026-02-03 14:31 UTC
+**Stopped at:** Completed 04-01-PLAN.md (Review API Models and Endpoints)
 **Resume file:** None
 
 **For Next Session:**
-1. Plan Phase 4: Timestamp Review & Override
-   - Review queue for low-confidence timestamps
-   - Side-by-side timestamp source comparison
-   - Manual timestamp entry
-   - User decision recording
-2. Use `/gsd:discuss-phase 4` to gather context first, or `/gsd:plan-phase 4` to plan directly
+1. Continue Phase 4: Execute 04-02-PLAN.md (Unified Grid with Filter Chips)
+2. Review API is now complete:
+   - File model extended with reviewed_at, final_timestamp, discarded, duplicate_group_id
+   - Tag model exists with many-to-many to File
+   - 10 review/tagging API endpoints functional
+   - Jobs files endpoint extended with filters and sorts
+   - Summary endpoint returns filter chip counts
 
 ---
 
