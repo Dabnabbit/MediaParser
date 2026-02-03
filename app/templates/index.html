@@ -228,4 +228,83 @@
         <div class="grid-pagination" id="grid-pagination" style="display: none;"></div>
     </div>
 </section>
+
+<!-- Examination Dialog (Modal) -->
+<dialog id="examination-dialog" class="examination-dialog">
+    <div class="examination-layout">
+        <!-- Header -->
+        <header class="examination-header">
+            <h2 class="examination-title" id="exam-filename">filename.jpg</h2>
+            <div class="examination-nav">
+                <span class="nav-position" id="exam-position">1 of 10</span>
+                <button class="btn btn-icon" id="exam-prev" title="Previous (Left Arrow)">
+                    &#9664;
+                </button>
+                <button class="btn btn-icon" id="exam-next" title="Next (Right Arrow)">
+                    &#9654;
+                </button>
+            </div>
+            <button class="btn btn-icon close-btn" id="exam-close" title="Close (Escape)" autofocus>
+                &#10005;
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <div class="examination-content">
+            <!-- Preview Area -->
+            <div class="examination-preview">
+                <img id="exam-image" src="" alt="File preview">
+                <div class="preview-loading" id="exam-loading" style="display: none;">
+                    <span class="spinner"></span>
+                </div>
+            </div>
+
+            <!-- Details Panel -->
+            <aside class="examination-details">
+                <!-- File Info -->
+                <section class="detail-section">
+                    <h3>File Info</h3>
+                    <dl class="detail-list">
+                        <dt>Size</dt>
+                        <dd id="exam-filesize">-</dd>
+                        <dt>Type</dt>
+                        <dd id="exam-mimetype">-</dd>
+                        <dt>Dimensions</dt>
+                        <dd id="exam-dimensions">-</dd>
+                        <dt>Confidence</dt>
+                        <dd id="exam-confidence">-</dd>
+                    </dl>
+                </section>
+
+                <!-- Timestamp Sources (placeholder for 04-06) -->
+                <section class="detail-section" id="timestamp-section">
+                    <h3>Timestamp Sources</h3>
+                    <div id="timestamp-sources-container">
+                        <!-- Populated by timestamp.js -->
+                        <p class="placeholder">Loading timestamp sources...</p>
+                    </div>
+                </section>
+
+                <!-- Tags (placeholder for 04-08) -->
+                <section class="detail-section" id="tags-section">
+                    <h3>Tags</h3>
+                    <div id="tags-container">
+                        <!-- Populated by tags.js -->
+                        <p class="placeholder">No tags</p>
+                    </div>
+                </section>
+
+                <!-- Actions -->
+                <section class="detail-section actions-section">
+                    <button class="btn btn-primary" id="exam-confirm" style="display: none;">
+                        Confirm & Next
+                    </button>
+                    <button class="btn btn-secondary" id="exam-unreview" style="display: none;">
+                        Unreview
+                    </button>
+                </section>
+            </aside>
+        </div>
+    </div>
+</dialog>
 {% endblock %}
