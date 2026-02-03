@@ -139,13 +139,18 @@ def control_job(job_id):
 @jobs_bp.route('/api/jobs/<int:job_id>/files', methods=['GET'])
 def get_job_files(job_id):
     """
-    Get files associated with a job.
+    Get files associated with a job with extended filtering and sorting.
 
     Args:
         job_id: ID of the job
 
     Query params:
-        - confidence: Filter by confidence level (high|medium|low|none)
+        - confidence: Filter by confidence level(s) (high,medium,low,none - comma-separated)
+        - reviewed: Filter by review status (true/false/any)
+        - has_duplicates: Filter files in duplicate groups (true/false)
+        - discarded: Filter by discarded status (true/false, default false to hide discarded)
+        - sort: Sort field (detected_timestamp, original_timestamp, filename, file_size)
+        - order: Sort order (asc, desc) - default asc
         - page: Page number (default: 1)
         - per_page: Results per page (default: 50, max: 200)
         - group_by: Group results by field (confidence)
@@ -160,6 +165,11 @@ def get_job_files(job_id):
 
     # Parse query parameters
     confidence_filter = request.args.get('confidence', '').lower()
+    reviewed_filter = request.args.get('reviewed', '').lower()
+    has_duplicates_filter = request.args.get('has_duplicates', '').lower()
+    discarded_filter = request.args.get('discarded', 'false').lower()
+    sort_field = request.args.get('sort', 'detected_timestamp').lower()
+    sort_order = request.args.get('order', 'asc').lower()
     page = max(1, int(request.args.get('page', 1)))
     per_page = min(200, max(1, int(request.args.get('per_page', 50))))
     group_by = request.args.get('group_by', '')
@@ -171,32 +181,64 @@ def get_job_files(job_id):
         Job.id == job_id
     )
 
-    # Apply confidence filter
+    # Apply confidence filter (supports multiple values comma-separated)
     if confidence_filter:
-        try:
-            confidence_level = ConfidenceLevel(confidence_filter)
-            query = query.filter(File.confidence == confidence_level)
-        except ValueError:
-            return jsonify({
-                'error': f'Invalid confidence level: {confidence_filter}',
-                'allowed_values': ['high', 'medium', 'low', 'none']
-            }), 400
+        confidence_values = [c.strip() for c in confidence_filter.split(',')]
+        valid_levels = []
+        for conf_value in confidence_values:
+            try:
+                valid_levels.append(ConfidenceLevel(conf_value))
+            except ValueError:
+                return jsonify({
+                    'error': f'Invalid confidence level: {conf_value}',
+                    'allowed_values': ['high', 'medium', 'low', 'none']
+                }), 400
+        if len(valid_levels) == 1:
+            query = query.filter(File.confidence == valid_levels[0])
+        else:
+            query = query.filter(File.confidence.in_(valid_levels))
+
+    # Apply reviewed filter
+    if reviewed_filter == 'true':
+        query = query.filter(File.reviewed_at.isnot(None))
+    elif reviewed_filter == 'false':
+        query = query.filter(File.reviewed_at.is_(None))
+    # 'any' or empty means no filter
+
+    # Apply has_duplicates filter
+    if has_duplicates_filter == 'true':
+        query = query.filter(File.duplicate_group_id.isnot(None))
+    elif has_duplicates_filter == 'false':
+        query = query.filter(File.duplicate_group_id.is_(None))
+
+    # Apply discarded filter (default: hide discarded)
+    if discarded_filter == 'false':
+        query = query.filter(File.discarded == False)
+    elif discarded_filter == 'true':
+        query = query.filter(File.discarded == True)
+    # 'any' shows all
+
+    # Apply sorting
+    sort_mapping = {
+        'detected_timestamp': File.detected_timestamp,
+        'original_timestamp': File.created_at,  # Use created_at as proxy for original timestamp
+        'filename': File.original_filename,
+        'file_size': File.file_size_bytes
+    }
+    sort_column = sort_mapping.get(sort_field, File.detected_timestamp)
+    if sort_order == 'desc':
+        query = query.order_by(sort_column.desc().nullslast())
+    else:
+        query = query.order_by(sort_column.asc().nullsfirst())
 
     # Group by confidence if requested
     if group_by == 'confidence':
         results = {}
         for level in ConfidenceLevel:
-            level_files = query.filter(File.confidence == level).all()
+            level_query = query.filter(File.confidence == level)
+            level_files = level_query.all()
             results[level.value] = [
-                {
-                    'id': f.id,
-                    'original_filename': f.original_filename,
-                    'detected_timestamp': f.detected_timestamp.isoformat() if f.detected_timestamp else None,
-                    'timestamp_source': f.timestamp_source,
-                    'confidence': f.confidence.value,
-                    'file_hash_sha256': f.file_hash_sha256,
-                    'thumbnail_path': f.thumbnail_path
-                }
+                _serialize_file_extended(f)
                 for f in level_files
             ]
 
@@ -210,18 +252,7 @@ def get_job_files(job_id):
     # Paginate results
     paginated = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    files_data = [
-        {
-            'id': f.id,
-            'original_filename': f.original_filename,
-            'detected_timestamp': f.detected_timestamp.isoformat() if f.detected_timestamp else None,
-            'timestamp_source': f.timestamp_source,
-            'confidence': f.confidence.value,
-            'file_hash_sha256': f.file_hash_sha256,
-            'thumbnail_path': f.thumbnail_path
-        }
-        for f in paginated.items
-    ]
+    files_data = [_serialize_file_extended(f) for f in paginated.items]
 
     return jsonify({
         'job_id': job_id,
@@ -231,6 +262,25 @@ def get_job_files(job_id):
         'total': paginated.total,
         'pages': paginated.pages
     }), 200
+
+
+def _serialize_file_extended(f):
+    """Serialize a File object with extended fields for the review grid."""
+    return {
+        'id': f.id,
+        'original_filename': f.original_filename,
+        'detected_timestamp': f.detected_timestamp.isoformat() if f.detected_timestamp else None,
+        'final_timestamp': f.final_timestamp.isoformat() if f.final_timestamp else None,
+        'timestamp_source': f.timestamp_source,
+        'confidence': f.confidence.value,
+        'file_hash': f.file_hash_sha256,
+        'thumbnail_path': f.thumbnail_path,
+        'file_size_bytes': f.file_size_bytes,
+        'mime_type': f.mime_type,
+        'reviewed_at': f.reviewed_at.isoformat() if f.reviewed_at else None,
+        'is_duplicate': f.duplicate_group_id is not None,
+        'discarded': f.discarded
+    }
 
 
 @jobs_bp.route('/api/jobs/<int:job_id>/duplicates', methods=['GET'])
