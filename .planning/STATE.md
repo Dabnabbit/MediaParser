@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-03 14:45 UTC
+**Last Updated:** 2026-02-03 14:50 UTC
 
 ## Environment
 
@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 4 of 7 - Review Queues: Timestamps
-**Plan:** 8 of ~8 (04-08 complete)
+**Plan:** 7 of ~8 (04-07 complete)
 **Status:** In progress
-**Last activity:** 2026-02-03 - Completed 04-08-PLAN.md (Tagging UI)
-**Progress:** `[█████████████████████░] 60%` (21/~35 plans complete)
+**Last activity:** 2026-02-03 - Completed 04-07-PLAN.md (Review Workflow)
+**Progress:** `[██████████████████████░] 63%` (22/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,8 +36,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 21 plans in ~50.8 minutes (avg 2.4 min/plan) - Phase 1+2+3+4 (partial)
-**Plan Success Rate:** 100% (21/21 completed successfully)
+**Velocity:** 22 plans in ~53 minutes (avg 2.4 min/plan) - Phase 1+2+3+4 (partial)
+**Plan Success Rate:** 100% (22/22 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 3/7 (Phase 1, 2, 3 complete, Phase 4 in progress)
 
@@ -126,6 +126,9 @@
 | Custom events for handler communication | 2026-02-03 | fileExamine event from selection.js to examination.js for loose coupling | 04-05: Handler integration |
 | Tag autocomplete caching | 2026-02-03 | 1-minute cache TTL for recent tags to reduce API calls | 04-08: Tag performance |
 | Toast notifications for feedback | 2026-02-03 | Non-blocking user feedback for bulk operations | 04-08: UX improvement |
+| Fallback to detected_timestamp on confirm | 2026-02-03 | Allows confirming files even without explicit timestamp selection | 04-07: Review workflow |
+| localStorage for one-time auto-confirm | 2026-02-03 | Prevents re-confirming HIGH files on page refresh | 04-07: Auto-confirm |
+| Reviewed chip always visible | 2026-02-03 | Shows review progress even when zero files reviewed | 04-07: Filter counts |
 
 ### Active TODOs
 
@@ -157,8 +160,8 @@
 - [x] 04-03: Results handler integration (COMPLETE)
 - [x] 04-04: Multi-select and Selection Toolbar (COMPLETE)
 - [x] 04-05: Examination Modal View (COMPLETE)
-- [ ] 04-06: Manual timestamp override
-- [ ] 04-07: Timeline preview
+- [ ] 04-06: Timestamp source comparison
+- [x] 04-07: Review workflow integration (COMPLETE)
 - [x] 04-08: Tagging UI (COMPLETE)
 
 ### Known Blockers
@@ -290,7 +293,7 @@ None
   - Selection toolbar: sticky bar with count, quick tag input, duplicate actions
   - Custom events: fileExamine, filesDiscard for downstream handlers
   - Syncs with resultsHandler.selectedFiles
-- Examination modal (04-05):
+- Examination modal (04-05, 04-07):
   - app/static/js/examination.js: ExaminationHandler class for file review
   - Native HTML <dialog> with showModal() for accessibility
   - Listens for fileExamine events from selection.js
@@ -300,6 +303,9 @@ None
   - Placeholder sections for timestamp sources and tags
   - Confirm & Next / Unreview action buttons
   - Updates grid items when review status changes
+  - Review workflow: confirmAndNext, moveToNextUnreviewed, unreviewFile
+  - Keyboard shortcut: Ctrl+Enter to confirm & next
+  - Completion detection: prompts when all files reviewed
 - Tagging UI (04-08):
   - app/static/js/tags.js: TagsHandler class for tag management
   - Quick tag input in selection toolbar for bulk operations
@@ -307,6 +313,12 @@ None
   - Autocomplete from recent/common tags (1-minute cache)
   - Toast notifications for user feedback
   - Integration: loadForFile() and reset() called from examination.js
+- Review workflow (04-07):
+  - HIGH confidence auto-confirmation via /api/jobs/:id/auto-confirm-high
+  - One-time operation per job using localStorage flag
+  - Filter counts update on review actions via loadSummary()
+  - Reviewed chip always visible when files exist
+  - filterCountsUpdated custom event for cross-component sync
 - Settings API:
   - GET /api/settings returns current settings and defaults (output_directory, timezone)
   - POST /api/settings validates and persists settings with comprehensive error handling
@@ -318,17 +330,17 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-03 14:45 UTC
-**Stopped at:** Completed 04-08-PLAN.md (Tagging UI)
+**Last session:** 2026-02-03 14:50 UTC
+**Stopped at:** Completed 04-07-PLAN.md (Review Workflow)
 **Resume file:** None
 
 **For Next Session:**
-1. Continue Phase 4: Execute remaining plans (04-06, 04-07)
-2. Tagging UI complete:
-   - TagsHandler class with autocomplete
-   - Quick add in toolbar for bulk operations
-   - Full management in examination view
-   - Toast notifications for feedback
+1. Continue Phase 4: Execute remaining plan (04-06 - Timestamp source comparison)
+2. Review workflow complete:
+   - Confirm & Next saves timestamp and advances to next unreviewed
+   - HIGH confidence auto-confirmation on job complete
+   - Filter counts update in real-time
+   - Ctrl+Enter keyboard shortcut
 
 ---
 
