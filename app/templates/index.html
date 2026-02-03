@@ -136,6 +136,32 @@
 
     <!-- Results: Unified Grid with Filter Bar -->
     <div class="results-container" id="results-container" style="display: none;">
+        <!-- Selection Toolbar (appears when files selected) -->
+        <div class="selection-toolbar" id="selection-toolbar" style="display: none;">
+            <div class="selection-info">
+                <span id="selection-count">0 files selected</span>
+            </div>
+            <div class="selection-actions">
+                <div class="tag-quick-add">
+                    <input type="text" id="quick-tag-input" class="form-input form-input-sm" placeholder="Add tag...">
+                    <button class="btn btn-primary btn-sm" id="add-quick-tag">Add</button>
+                </div>
+                <!-- Duplicate group actions (shown only when duplicates selected) -->
+                <button class="btn btn-secondary btn-sm" id="not-duplicate" style="display: none;" title="Remove from duplicate group">
+                    Not a Duplicate
+                </button>
+                <button class="btn btn-success btn-sm" id="select-best" style="display: none;" title="Keep selected, discard others in group">
+                    Select Best
+                </button>
+                <button class="btn btn-danger btn-sm" id="discard-selected" title="Discard selected files from output">
+                    Discard
+                </button>
+                <button class="btn btn-secondary btn-sm" id="clear-selection">
+                    Clear
+                </button>
+            </div>
+        </div>
+
         <!-- Filter Bar -->
         <div class="filter-bar" id="filter-bar">
             <div class="filter-chips">

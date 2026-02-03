@@ -1334,3 +1334,117 @@ body {
     margin-top: var(--spacing-md);
     border-top: 1px solid var(--color-border);
 }
+
+/* ============================================
+   SELECTION TOOLBAR
+   ============================================ */
+
+.selection-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-primary);
+    color: white;
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-md);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.selection-info {
+    font-weight: 500;
+}
+
+.selection-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.tag-quick-add {
+    display: flex;
+    gap: 4px;
+}
+
+.tag-quick-add .form-input-sm {
+    width: 150px;
+    padding: 4px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    border-radius: var(--border-radius-sm);
+}
+
+.tag-quick-add .form-input-sm::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.tag-quick-add .form-input-sm:focus {
+    outline: none;
+    border-color: white;
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.selection-toolbar .btn {
+    padding: 4px 12px;
+}
+
+.selection-toolbar .btn-primary {
+    background: white;
+    color: var(--color-primary);
+    border: none;
+}
+
+.selection-toolbar .btn-primary:hover {
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.selection-toolbar .btn-secondary {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    color: white;
+}
+
+.selection-toolbar .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: white;
+}
+
+.selection-toolbar .btn-success {
+    background: var(--color-high);
+    border: none;
+}
+
+.selection-toolbar .btn-danger {
+    background: var(--color-low);
+    border: none;
+}
+
+/* ============================================
+   THUMBNAIL SELECTION STATE (enhanced)
+   ============================================ */
+
+.thumbnail.selected::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(59, 130, 246, 0.1);
+    pointer-events: none;
+}
+
+/* ============================================
+   DUPLICATE GROUP VISUAL INDICATOR
+   ============================================ */
+
+.thumbnail.duplicate-group {
+    border-color: var(--color-medium);
+    border-width: 2px;
+}
+
+.thumbnail.duplicate-group.selected {
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 16px rgba(234, 179, 8, 0.4);
+}
