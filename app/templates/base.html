@@ -6,6 +6,8 @@
     <title>{% block title %}MediaParser{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/examination.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/timeline.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tags.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -30,6 +32,9 @@
     <script src="{{ url_for('static', filename='js/results.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/selection.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/examination.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/vendor/chrono.min.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/timestamp.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/tags.js') }}" defer></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
