@@ -16,9 +16,6 @@ class UploadHandler {
         this.fileInput = document.getElementById('file-input');
         this.folderInput = document.getElementById('folder-input');
         this.serverPathInput = document.getElementById('server-path');
-        this.uploadProgress = document.getElementById('upload-progress');
-        this.uploadProgressFill = document.getElementById('upload-progress-fill');
-        this.uploadProgressText = document.getElementById('upload-progress-text');
 
         this.initEventListeners();
     }
@@ -126,7 +123,7 @@ class UploadHandler {
         }
     }
 
-    uploadFiles(files) {
+    async uploadFiles(files) {
         const validFiles = this.filterFiles(files);
 
         if (validFiles.length === 0) {
@@ -138,6 +135,26 @@ class UploadHandler {
             console.warn(`Filtered out ${files.length - validFiles.length} unsupported files`);
         }
 
+        // Check if worker is running before uploading
+        try {
+            const healthResponse = await fetch('/api/worker-health');
+            const healthData = await healthResponse.json();
+
+            if (!healthData.worker_alive) {
+                alert('Background worker is not running.\n\nPlease start the worker with:\n  python run_worker.py');
+                return;
+            }
+        } catch (error) {
+            console.error('Worker health check failed:', error);
+            alert('Cannot verify worker status. The background worker may not be running.\n\nPlease ensure the worker is started with:\n  python run_worker.py');
+            return;
+        }
+
+        // Show job section immediately with PENDING status
+        if (window.progressHandler) {
+            window.progressHandler.showPending(validFiles.length);
+        }
+
         // Use XMLHttpRequest for upload progress tracking
         const formData = new FormData();
         validFiles.forEach(file => {
@@ -146,27 +163,32 @@ class UploadHandler {
 
         const xhr = new XMLHttpRequest();
 
-        // Upload progress
+        // Upload progress - update job section progress bar
         xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable) {
                 const percentComplete = Math.round((e.loaded / e.total) * 100);
-                this.updateUploadProgress(percentComplete);
+                if (window.progressHandler) {
+                    window.progressHandler.updateUploadProgress(percentComplete);
+                }
             }
         });
 
         // Upload complete
         xhr.addEventListener('load', () => {
-            this.hideUploadProgress();
-
             if (xhr.status === 200) {
                 const result = JSON.parse(xhr.responseText);
-                console.log('Upload complete:', result);
+                const uploadEnd = performance.now();
+                console.log(`Upload complete | job_id=${result.job_id} | files=${result.file_count} | server took ${Math.round(uploadEnd - window._uploadStart)}ms`);
 
-                // Start polling for job progress
+                // Start polling for job progress (processing begins)
                 if (window.progressHandler && result.job_id) {
                     window.progressHandler.startPolling(result.job_id);
                 }
             } else {
+                // Hide job section on upload failure
+                if (window.progressHandler) {
+                    window.progressHandler.hideJobSection();
+                }
                 const error = JSON.parse(xhr.responseText);
                 alert(`Upload failed: ${error.error || 'Unknown error'}`);
             }
@@ -174,36 +196,25 @@ class UploadHandler {
 
         // Upload error
         xhr.addEventListener('error', () => {
-            this.hideUploadProgress();
+            if (window.progressHandler) {
+                window.progressHandler.hideJobSection();
+            }
             alert('Upload failed: Network error');
         });
 
         // Upload aborted
         xhr.addEventListener('abort', () => {
-            this.hideUploadProgress();
+            if (window.progressHandler) {
+                window.progressHandler.hideJobSection();
+            }
             alert('Upload cancelled');
         });
 
         // Start upload
-        this.showUploadProgress();
+        window._uploadStart = performance.now();
+        console.log('Upload starting...');
         xhr.open('POST', '/api/upload');
         xhr.send(formData);
-    }
-
-    showUploadProgress() {
-        this.uploadProgress.style.display = 'block';
-        this.updateUploadProgress(0);
-    }
-
-    hideUploadProgress() {
-        setTimeout(() => {
-            this.uploadProgress.style.display = 'none';
-        }, 500);
-    }
-
-    updateUploadProgress(percent) {
-        this.uploadProgressFill.style.width = percent + '%';
-        this.uploadProgressText.textContent = percent + '%';
     }
 }
 

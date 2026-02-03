@@ -14,6 +14,9 @@ def get_progress(job_id):
 
     Returns minimal payload optimized for frequent polling (1-2 second intervals).
     """
+    # Force fresh read from database (bypass SQLAlchemy cache)
+    db.session.expire_all()
+
     job = db.session.get(Job, job_id)
     if not job:
         return jsonify({'error': 'Job not found'}), 404
@@ -27,7 +30,11 @@ def get_progress(job_id):
     elapsed_seconds = None
     eta_seconds = None
     if job.started_at:
-        elapsed = datetime.now(timezone.utc) - job.started_at
+        # Ensure timezone-aware comparison (SQLite stores naive datetimes as UTC)
+        started_at = job.started_at
+        if started_at.tzinfo is None:
+            started_at = started_at.replace(tzinfo=timezone.utc)
+        elapsed = datetime.now(timezone.utc) - started_at
         elapsed_seconds = int(elapsed.total_seconds())
 
         # Estimate remaining time based on progress
@@ -97,3 +104,43 @@ def get_current_job():
         return jsonify({'job_id': None})
 
     return jsonify({'job_id': job.id, 'status': job.status.value})
+
+
+@api_bp.route('/worker-health', methods=['GET'])
+def check_worker_health():
+    """Check if Huey worker process is running.
+
+    Uses process detection for instant response.
+    """
+    import subprocess
+
+    try:
+        # Check for worker process - try multiple patterns
+        # run_worker.py is our launcher, huey_consumer is the direct command
+        for pattern in ['run_worker', 'huey_consumer', 'huey.consumer']:
+            result = subprocess.run(
+                ['pgrep', '-f', pattern],
+                capture_output=True,
+                timeout=1
+            )
+            if result.returncode == 0:
+                pids = result.stdout.decode().strip().split('\n')
+                # Filter out empty strings
+                pids = [p for p in pids if p]
+                if pids:
+                    return jsonify({
+                        'worker_alive': True,
+                        'pids': pids
+                    })
+
+        # No matching process found
+        return jsonify({
+            'worker_alive': False,
+            'error': 'No Huey worker process found'
+        }), 503
+
+    except Exception as e:
+        return jsonify({
+            'worker_alive': False,
+            'error': str(e)
+        }), 503

@@ -24,8 +24,10 @@ class Config:
     # Database configuration
     SQLALCHEMY_DATABASE_URI = f"sqlite:///{INSTANCE_DIR / 'mediaparser.db'}"
     SQLALCHEMY_ENGINE_OPTIONS = {
-        'check_same_thread': False,
-        'timeout': 5.0
+        'connect_args': {
+            'check_same_thread': False,
+            'timeout': 5.0
+        }
     }
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

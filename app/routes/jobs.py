@@ -194,7 +194,8 @@ def get_job_files(job_id):
                     'detected_timestamp': f.detected_timestamp.isoformat() if f.detected_timestamp else None,
                     'timestamp_source': f.timestamp_source,
                     'confidence': f.confidence.value,
-                    'file_hash_sha256': f.file_hash_sha256
+                    'file_hash_sha256': f.file_hash_sha256,
+                    'thumbnail_path': f.thumbnail_path
                 }
                 for f in level_files
             ]
@@ -216,7 +217,8 @@ def get_job_files(job_id):
             'detected_timestamp': f.detected_timestamp.isoformat() if f.detected_timestamp else None,
             'timestamp_source': f.timestamp_source,
             'confidence': f.confidence.value,
-            'file_hash_sha256': f.file_hash_sha256
+            'file_hash_sha256': f.file_hash_sha256,
+            'thumbnail_path': f.thumbnail_path
         }
         for f in paginated.items
     ]

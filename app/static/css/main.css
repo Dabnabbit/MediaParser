@@ -8,11 +8,13 @@
     --color-low: #ef4444;
 
     /* Status colors */
-    --color-running: #3b82f6;
-    --color-completed: #22c55e;
-    --color-failed: #ef4444;
-    --color-paused: #f59e0b;
-    --color-pending: #6b7280;
+    --color-uploading: #8b5cf6;    /* Purple for uploading */
+    --color-running: #3b82f6;      /* Blue for processing */
+    --color-completed: #22c55e;    /* Green for complete */
+    --color-failed: #ef4444;       /* Red for errors */
+    --color-paused: #f59e0b;       /* Yellow/amber for paused */
+    --color-pending: #6b7280;      /* Gray for pending */
+    --color-halted: #ef4444;       /* Red for halted */
 
     /* UI colors */
     --color-primary: #3b82f6;
@@ -65,20 +67,27 @@ body {
 .app-header {
     background-color: var(--color-bg);
     border-bottom: 1px solid var(--color-border);
-    padding: var(--spacing-lg) 0;
-    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-md) 0;
+    margin-bottom: var(--spacing-lg);
 }
 
 .app-title {
     margin: 0;
-    font-size: 2rem;
+    font-size: 1.5rem;
     color: var(--color-primary);
 }
 
 .app-subtitle {
     margin: var(--spacing-xs) 0 0;
     color: var(--color-text-muted);
-    font-size: 0.95rem;
+    font-size: 0.85rem;
+}
+
+/* ========================================
+   Settings (compact row above main tile)
+   ======================================== */
+.settings-section {
+    margin-bottom: var(--spacing-md);
 }
 
 /* ========================================
@@ -88,25 +97,43 @@ body {
     background-color: var(--color-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
-    padding: var(--spacing-xl);
-    margin-bottom: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.section-compact {
+    padding: var(--spacing-md);
+    margin-bottom: 0;
 }
 
 .section-title {
-    margin: 0 0 var(--spacing-lg);
-    font-size: 1.5rem;
+    margin: 0 0 var(--spacing-md);
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.section-title-sm {
+    margin: 0;
+    font-size: 1rem;
     font-weight: 600;
 }
 
 .subsection-title {
-    margin: var(--spacing-xl) 0 var(--spacing-md);
-    font-size: 1.25rem;
+    margin: 0 0 var(--spacing-md);
+    font-size: 1rem;
     font-weight: 500;
 }
 
 /* ========================================
-   Upload Box
+   Upload Area (inside unified tile)
    ======================================== */
+.upload-area {
+    padding: var(--spacing-lg) 0;
+}
+
 .upload-box {
     border: 2px dashed var(--color-border);
     border-radius: var(--border-radius);
@@ -137,7 +164,7 @@ body {
 .upload-text {
     margin: 0;
     color: var(--color-text-muted);
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
 .upload-buttons {
@@ -145,14 +172,30 @@ body {
     gap: var(--spacing-md);
 }
 
+.server-import {
+    margin-top: var(--spacing-md);
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.server-import .input-group {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.server-import .form-input {
+    flex: 1;
+}
+
 /* ========================================
    Buttons
    ======================================== */
 .btn {
-    padding: 0.625rem 1.25rem;
+    padding: 0.5rem 1rem;
     border: none;
     border-radius: var(--border-radius-sm);
-    font-size: 0.95rem;
+    font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -191,8 +234,13 @@ body {
 }
 
 .btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.btn-xs {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.75rem;
 }
 
 .btn-group {
@@ -218,18 +266,17 @@ body {
 }
 
 /* ========================================
-   Settings Section
+   Settings Section (Compact)
    ======================================== */
 .settings-section {
     padding: 0;
-    margin-bottom: var(--spacing-lg);
 }
 
 .settings-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-md) var(--spacing-lg);
+    padding: var(--spacing-md);
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
@@ -249,19 +296,13 @@ body {
     color: var(--color-text-muted);
 }
 
-.settings-title-text {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 500;
-}
-
 .settings-toggle {
     background: none;
     border: none;
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs);
     cursor: pointer;
     color: var(--color-text-muted);
-    transition: transform 0.3s ease;
+    font-size: 0.75rem;
 }
 
 .settings-toggle[aria-expanded="true"] .settings-toggle-icon {
@@ -270,78 +311,65 @@ body {
 }
 
 .settings-panel {
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md);
     border-top: 1px solid var(--color-border);
 }
 
 .settings-form {
-    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
 }
 
-.form-group {
-    margin-bottom: var(--spacing-lg);
+.form-group-sm {
+    margin-bottom: 0;
 }
 
-.form-help {
-    margin: var(--spacing-xs) 0 0;
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-}
-
-.form-actions {
+.form-actions-inline {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
-    margin-top: var(--spacing-lg);
+    gap: var(--spacing-sm);
 }
 
 .settings-status {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: var(--color-completed);
 }
 
 .settings-error {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-md);
-    margin-top: var(--spacing-md);
+    padding: var(--spacing-sm);
     background-color: #fee2e2;
-    border: 1px solid #fecaca;
     border-radius: var(--border-radius-sm);
     color: var(--color-danger);
-    font-size: 0.9rem;
-}
-
-.settings-error .error-icon {
-    font-size: 1.1rem;
+    font-size: 0.8rem;
 }
 
 /* ========================================
    Forms
    ======================================== */
-.server-import {
-    margin-top: var(--spacing-lg);
-}
-
 .form-label {
     display: block;
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
     font-weight: 500;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
 }
 
 .input-group {
     display: flex;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
+}
+
+.input-group-sm .form-input {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
 }
 
 .form-input {
     flex: 1;
-    padding: 0.625rem;
+    padding: 0.5rem;
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .form-input:focus {
@@ -352,67 +380,133 @@ body {
 /* ========================================
    Progress Bars
    ======================================== */
-.upload-progress {
-    margin-top: var(--spacing-lg);
-}
-
-.progress-bar-wrapper {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-}
-
 .progress-bar {
     flex: 1;
-    height: 1.5rem;
+    height: 1rem;
     background-color: var(--color-bg-alt);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
     overflow: hidden;
 }
 
-.progress-bar-large {
-    height: 2rem;
+.progress-bar-lg {
+    height: 1.5rem;
 }
 
 .progress-bar-fill {
     height: 100%;
     background-color: var(--color-primary);
-    transition: width 0.3s ease;
+    transition: width 0.3s ease, background-color 0.3s ease;
 }
 
 .progress-text {
     font-weight: 600;
     min-width: 3rem;
     text-align: right;
-}
-
-.progress-label {
-    margin: var(--spacing-sm) 0 0;
-    color: var(--color-text-muted);
     font-size: 0.9rem;
 }
 
 /* ========================================
-   Job Status & Controls
+   Job Section (Unified Processing + Results)
    ======================================== */
-.job-status-container {
+[data-section="job"] {
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+[data-section="job"][data-status="UPLOADING"] {
+    border-color: var(--color-uploading);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+[data-section="job"][data-status="UPLOADING"] .progress-bar-fill {
+    background-color: var(--color-uploading);
+}
+
+[data-section="job"][data-status="RUNNING"] {
+    border-color: var(--color-running);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+[data-section="job"][data-status="RUNNING"] .progress-bar-fill {
+    background-color: var(--color-running);
+}
+
+[data-section="job"][data-status="COMPLETED"] {
+    border-color: var(--color-completed);
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+[data-section="job"][data-status="COMPLETED"] .progress-bar-fill {
+    background-color: var(--color-completed);
+}
+
+[data-section="job"][data-status="PAUSED"] {
+    border-color: var(--color-paused);
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+
+[data-section="job"][data-status="PAUSED"] .progress-bar-fill {
+    background-color: var(--color-paused);
+}
+
+[data-section="job"][data-status="FAILED"],
+[data-section="job"][data-status="HALTED"] {
+    border-color: var(--color-failed);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+[data-section="job"][data-status="FAILED"] .progress-bar-fill,
+[data-section="job"][data-status="HALTED"] .progress-bar-fill {
+    background-color: var(--color-failed);
+}
+
+/* Job Header */
+.job-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
 }
 
+.job-header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.job-header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.job-controls {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+/* Status Badge */
 .status-badge {
-    padding: 0.5rem 1rem;
-    border-radius: var(--border-radius);
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--border-radius-sm);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.status-badge-sm {
+    padding: 0.15rem 0.5rem;
+    font-size: 0.7rem;
 }
 
 .status-badge[data-status="PENDING"] {
     background-color: #e5e7eb;
     color: var(--color-pending);
+}
+
+.status-badge[data-status="UPLOADING"] {
+    background-color: #ede9fe;
+    color: var(--color-uploading);
 }
 
 .status-badge[data-status="RUNNING"] {
@@ -435,135 +529,128 @@ body {
     color: var(--color-paused);
 }
 
-.job-controls {
+.status-badge[data-status="HALTED"] {
+    background-color: #fee2e2;
+    color: var(--color-halted);
+}
+
+/* Job Progress */
+.job-progress {
+    margin-bottom: var(--spacing-md);
+}
+
+.progress-row {
     display: flex;
-    gap: var(--spacing-sm);
-}
-
-/* ========================================
-   Metrics Grid
-   ======================================== */
-.metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    align-items: center;
     gap: var(--spacing-md);
-    margin: var(--spacing-lg) 0;
+    margin-bottom: var(--spacing-sm);
 }
 
-.metric-card {
-    background-color: var(--color-bg-alt);
-    padding: var(--spacing-md);
-    border-radius: var(--border-radius-sm);
+.metrics-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md) var(--spacing-xl);
+    font-size: 0.85rem;
+}
+
+.metric {
+    display: flex;
+    gap: var(--spacing-xs);
 }
 
 .metric-label {
-    font-size: 0.875rem;
     color: var(--color-text-muted);
-    margin-bottom: var(--spacing-xs);
 }
 
 .metric-value {
-    font-size: 1.5rem;
     font-weight: 600;
 }
 
-.metric-value-small {
-    font-size: 0.95rem;
-    word-break: break-all;
+.metric-value-truncate {
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* ========================================
-   Error Badge
-   ======================================== */
-.error-badge-container {
-    margin-top: var(--spacing-lg);
+.metric-error {
+    color: var(--color-failed);
 }
 
-.error-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: 0.5rem 1rem;
-    background-color: #fef3c7;
-    color: var(--color-paused);
-    border-radius: var(--border-radius);
-    font-weight: 500;
-}
-
-.error-icon {
-    font-size: 1.25rem;
-}
-
-/* ========================================
-   Summary Card
-   ======================================== */
-.summary-card {
+/* Job Summary (replaces progress when complete) */
+.job-summary {
+    padding: var(--spacing-sm) var(--spacing-md);
     background-color: var(--color-bg-alt);
-    padding: var(--spacing-lg);
-    border-radius: var(--border-radius);
-    margin-bottom: var(--spacing-xl);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: var(--spacing-md);
 }
 
-.summary-title {
-    margin: 0 0 var(--spacing-md);
-    font-size: 1.25rem;
-}
-
-.summary-stats {
+.summary-row {
     display: flex;
-    gap: var(--spacing-xl);
     flex-wrap: wrap;
-}
-
-.summary-stat {
-    display: flex;
     gap: var(--spacing-sm);
+    font-size: 0.9rem;
 }
 
-.summary-stat-label {
+.summary-item {
+    display: inline;
+}
+
+.summary-divider {
     color: var(--color-text-muted);
 }
 
-.summary-stat-value {
-    font-weight: 600;
-}
-
-.summary-stat-success {
+.summary-success strong {
     color: var(--color-completed);
 }
 
-.summary-stat-error {
+.summary-error strong {
     color: var(--color-failed);
 }
 
 /* ========================================
-   Thumbnail Controls
+   Buckets Container
    ======================================== */
-.thumbnail-controls {
+.buckets-container {
+    margin-top: var(--spacing-md);
+}
+
+.buckets-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+}
+
+.thumb-size-toggle {
+    display: flex;
+    gap: 2px;
+}
+
+.thumb-size-toggle .btn {
+    background-color: var(--color-bg-alt);
+    color: var(--color-text-muted);
+}
+
+.thumb-size-toggle .btn.active {
+    background-color: var(--color-primary);
+    color: white;
 }
 
 /* ========================================
    Confidence Buckets (Accordion)
    ======================================== */
-.buckets-container {
-    margin-bottom: var(--spacing-xl);
-}
-
 .bucket {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
 }
 
 .bucket-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
     cursor: pointer;
     background-color: var(--color-bg-alt);
     transition: background-color 0.2s ease;
@@ -580,10 +667,10 @@ body {
 }
 
 .confidence-badge {
-    padding: 0.25rem 0.75rem;
+    padding: 0.15rem 0.5rem;
     border-radius: var(--border-radius-sm);
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
 }
 
 .confidence-high {
@@ -603,11 +690,13 @@ body {
 
 .bucket-count {
     color: var(--color-text-muted);
-    font-size: 0.95rem;
+    font-size: 0.85rem;
 }
 
 .bucket-toggle-icon {
     transition: transform 0.3s ease;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
 }
 
 .bucket[data-expanded="true"] .bucket-toggle-icon {
@@ -621,7 +710,7 @@ body {
 }
 
 .bucket[data-expanded="true"] .bucket-content {
-    max-height: 800px;
+    max-height: 600px;
     overflow-y: auto;
     padding: var(--spacing-md);
     border-top: 1px solid var(--color-border);
@@ -632,123 +721,95 @@ body {
    ======================================== */
 .thumbnail-grid {
     display: grid;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
 }
 
 .thumbnail-grid.thumb-compact {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
 }
 
 .thumbnail-grid.thumb-medium {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
 }
 
 .thumbnail-grid.thumb-large {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 }
 
-.thumbnail-tile {
+.thumbnail {
     position: relative;
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
     overflow: hidden;
     cursor: pointer;
     transition: all 0.2s ease;
+    aspect-ratio: 1;
 }
 
-.thumbnail-tile:hover {
+.thumbnail:hover {
     border-color: var(--color-primary);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.thumbnail-tile.selected {
+.thumbnail.selected {
     border-color: var(--color-primary);
     border-width: 2px;
 }
 
-.thumbnail-tile img {
+.thumbnail img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
 }
 
-.thumbnail-checkbox {
+.thumbnail-info {
     position: absolute;
-    top: var(--spacing-sm);
-    right: var(--spacing-sm);
-    width: 1.25rem;
-    height: 1.25rem;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--spacing-xs);
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    color: white;
+    font-size: 0.65rem;
+}
+
+.thumbnail-info .filename {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.thumbnail-info .timestamp {
+    opacity: 0.8;
+}
+
+.thumbnail .file-select {
+    position: absolute;
+    top: var(--spacing-xs);
+    right: var(--spacing-xs);
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Loading/Empty/Error states */
+.loading, .empty, .error {
+    padding: var(--spacing-lg);
+    text-align: center;
+    color: var(--color-text-muted);
+}
+
+.error {
+    color: var(--color-failed);
 }
 
 /* ========================================
    Duplicate Groups
    ======================================== */
-.duplicate-group {
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius);
-    padding: var(--spacing-md);
-    margin-bottom: var(--spacing-md);
-}
-
-.duplicate-group-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-md);
-}
-
-.duplicate-group-title {
-    font-weight: 500;
-}
-
-.recommended-badge {
-    padding: 0.25rem 0.5rem;
-    background-color: #dbeafe;
-    color: var(--color-primary);
-    border-radius: var(--border-radius-sm);
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-.duplicate-files {
-    display: flex;
-    gap: var(--spacing-md);
-    overflow-x: auto;
-}
-
-.duplicate-file-card {
-    min-width: 200px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
-    padding: var(--spacing-sm);
-}
-
-/* ========================================
-   Failed Files
-   ======================================== */
-.failed-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.failed-item {
-    padding: var(--spacing-md);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
-    margin-bottom: var(--spacing-sm);
-    background-color: var(--color-bg-alt);
-}
-
-.failed-filename {
-    font-weight: 500;
-    margin-bottom: var(--spacing-xs);
-}
-
-.failed-error {
-    color: var(--color-danger);
-    font-size: 0.875rem;
+.duplicates-container {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
 }
 
 /* ========================================
@@ -759,47 +820,72 @@ body {
         padding: 0 var(--spacing-md);
     }
 
-    .app-title {
-        font-size: 1.5rem;
-    }
-
-    .section {
-        padding: var(--spacing-lg);
-    }
-
-    .metrics-grid {
+    .top-row {
         grid-template-columns: 1fr;
     }
 
-    .upload-buttons {
+    .job-header {
         flex-direction: column;
-        width: 100%;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
     }
 
-    .btn {
-        width: 100%;
+    .metrics-row {
+        flex-direction: column;
+        gap: var(--spacing-sm);
     }
 
-    .input-group {
+    .summary-row {
         flex-direction: column;
     }
 
-    .summary-stats {
-        flex-direction: column;
-        gap: var(--spacing-md);
+    .summary-divider {
+        display: none;
     }
 
     .thumbnail-grid.thumb-compact,
     .thumbnail-grid.thumb-medium,
     .thumbnail-grid.thumb-large {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
     }
+}
 
-    .duplicate-files {
-        flex-direction: column;
-    }
+/* ========================================
+   Bucket Pagination
+   ======================================== */
+.bucket-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+    grid-column: 1 / -1;
+}
 
-    .duplicate-file-card {
-        min-width: unset;
-    }
+.pagination-btn {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background-color: var(--color-bg-alt);
+    border-color: var(--color-primary);
+}
+
+.pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
 }

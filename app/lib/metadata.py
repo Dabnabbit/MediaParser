@@ -6,10 +6,15 @@ Wraps PyExifTool for consistent metadata extraction across media types.
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Any
+import os
 import exiftool
 
 from app.lib.timestamp import convert_str_to_datetime
 
+
+# Path to exiftool executable - use system default or override via environment
+# In production (Docker), system exiftool is installed via apt
+EXIFTOOL_PATH = os.environ.get('EXIFTOOL_PATH', 'exiftool')
 
 # Tags to check for datetime, in priority order
 DATETIME_TAGS = [
@@ -41,7 +46,7 @@ def extract_metadata(file_path: Path | str) -> dict[str, Any]:
     """
     path_str = str(file_path) if isinstance(file_path, Path) else file_path
 
-    with exiftool.ExifToolHelper() as et:
+    with exiftool.ExifToolHelper(executable=EXIFTOOL_PATH) as et:
         metadata_list = et.get_metadata(path_str)
         if metadata_list:
             return metadata_list[0]

@@ -26,8 +26,11 @@ class SettingsHandler {
      * Initialize event listeners for settings UI.
      */
     initializeEventListeners() {
-        // Toggle panel visibility
-        this.toggleBtn.addEventListener('click', () => this.togglePanel());
+        // Toggle panel visibility (click on header or button)
+        const header = document.getElementById('settings-header');
+        if (header) {
+            header.addEventListener('click', () => this.togglePanel());
+        }
 
         // Reset button
         this.resetOutputDirBtn.addEventListener('click', () => this.resetSetting('output_directory'));

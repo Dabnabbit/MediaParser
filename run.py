@@ -17,14 +17,11 @@ from app import create_app
 # Determine config from environment, default to development
 config_name = os.environ.get('FLASK_ENV', 'development')
 
-# Map environment names to config classes
-config_map = {
-    'development': 'DevelopmentConfig',
-    'production': 'ProductionConfig',
-    'testing': 'DevelopmentConfig',  # Use dev config for testing
-}
+# Normalize config name (testing uses development config)
+if config_name == 'testing':
+    config_name = 'development'
 
-app = create_app(config_map.get(config_name, 'DevelopmentConfig'))
+app = create_app(config_name)
 
 
 if __name__ == '__main__':
@@ -35,7 +32,7 @@ if __name__ == '__main__':
     print(f"Storage: {app.config['UPLOAD_FOLDER']}")
 
     app.run(
-        host='127.0.0.1',
+        host='0.0.0.0',  # Bind to all interfaces (required for WSL -> Windows access)
         port=5000,
         debug=app.config.get('DEBUG', False)
     )

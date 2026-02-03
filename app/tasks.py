@@ -19,6 +19,15 @@ from app.models import Job, File, JobStatus, ConfidenceLevel
 
 logger = logging.getLogger(__name__)
 
+# Debug file for pause/resume tracking
+DEBUG_FILE = '/tmp/job_debug.log'
+
+def debug_log(msg):
+    """Write debug message to dedicated file for easy tracking."""
+    from datetime import datetime
+    with open(DEBUG_FILE, 'a') as f:
+        f.write(f"{datetime.now().isoformat()} | {msg}\n")
+
 # Processing configuration
 BATCH_COMMIT_SIZE = 10  # Commit every N files for database performance
 ERROR_THRESHOLD = 0.10  # Halt job if >10% failures (user decision from CONTEXT.md)
@@ -125,18 +134,44 @@ def process_import_job(job_id: int) -> dict:
             logger.error(f"Job {job_id} not found")
             return {'error': f'Job {job_id} not found'}
 
+        # Check if this is a resume (job already has started_at)
+        is_resume = job.started_at is not None
+
+        debug_log(f"Job {job_id} TASK START: is_resume={is_resume}, current progress_current={job.progress_current}, progress_total={job.progress_total}")
+
         # Update to RUNNING
         job.status = JobStatus.RUNNING
-        job.started_at = datetime.now(timezone.utc)
-        job.error_count = 0
+        if not is_resume:
+            job.started_at = datetime.now(timezone.utc)
+            job.error_count = 0
         db.session.commit()
-        logger.info(f"Job {job_id} started")
+        debug_log(f"Job {job_id} status set to RUNNING, committed")
 
         try:
-            # Get files sorted alphabetically (user decision from CONTEXT.md)
-            files = sorted(job.files, key=lambda f: f.original_filename)
-            job.progress_total = len(files)
+            # Get all files sorted alphabetically (user decision from CONTEXT.md)
+            all_files = sorted(job.files, key=lambda f: f.original_filename)
+            job.progress_total = len(all_files)
+
+            # Filter to only unprocessed files (no sha256 hash yet)
+            files = [f for f in all_files if f.file_hash_sha256 is None]
+
+            # Track how many were already processed (for resume)
+            already_processed = len(all_files) - len(files)
+            debug_log(f"Job {job_id} FILE CHECK: all_files={len(all_files)}, files_without_hash={len(files)}, already_processed={already_processed}")
+            if already_processed > 0:
+                msg = f"Job {job_id} RESUME: {already_processed}/{len(all_files)} have sha256, {len(files)} remaining"
+                logger.info(msg)
+                debug_log(msg)
+                debug_log(f"Job {job_id} SETTING progress_current from {job.progress_current} to {already_processed}")
+                job.progress_current = already_processed
+            else:
+                msg = f"Job {job_id} START: {len(all_files)} files to process"
+                logger.info(msg)
+                debug_log(msg)
+                debug_log(f"Job {job_id} NOT SETTING progress_current (already_processed=0), keeping current value={job.progress_current}")
+
             db.session.commit()
+            debug_log(f"Job {job_id} AFTER COMMIT: progress_current={job.progress_current}, progress_total={job.progress_total}")
 
             if len(files) == 0:
                 logger.warning(f"Job {job_id} has no files to process")
@@ -160,43 +195,42 @@ def process_import_job(job_id: int) -> dict:
                 thumbnails_dir = Path(app.config['UPLOAD_FOLDER']).parent / 'thumbnails'
                 thumbnails_dir.mkdir(parents=True, exist_ok=True)
 
+            import time
+            task_start = time.time()
             logger.info(f"Processing {len(files)} files with {max_workers} workers")
 
-            # Track processing state
-            processed_count = 0
-            error_count = 0
+            # Track processing state (offset by already processed for resume)
+            processed_count = already_processed
+            error_count = job.error_count or 0
             pending_updates = []  # Batch updates for performance
 
             # Process files in parallel
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Collect file paths first (avoid lazy loading during submit)
+                collect_start = time.time()
+                file_paths = [(f, f.storage_path) for f in files]
+                logger.info(f"File paths collected in {time.time() - collect_start:.3f}s")
+
                 # Submit all files to thread pool
+                submit_start = time.time()
                 future_to_file = {
                     executor.submit(
                         process_single_file,
-                        file.storage_path,
+                        path,
                         min_year,
                         default_tz
-                    ): file
-                    for file in files
+                    ): file_obj
+                    for file_obj, path in file_paths
                 }
+                logger.info(f"Tasks submitted in {time.time() - submit_start:.3f}s")
 
                 # Process results as they complete
+                first_result = True
                 for future in as_completed(future_to_file):
+                    if first_result:
+                        logger.info(f"First result received {time.time() - task_start:.3f}s after task start")
+                        first_result = False
                     file_obj = future_to_file[future]
-
-                    # Check for cancellation/pause (every file)
-                    db.session.refresh(job)
-                    if job.status in (JobStatus.CANCELLED, JobStatus.PAUSED):
-                        logger.info(f"Job {job_id} {job.status.value} by user")
-                        # Commit pending updates before returning
-                        if pending_updates:
-                            _commit_pending_updates(db, pending_updates)
-                            db.session.commit()
-                        return {
-                            'job_id': job_id,
-                            'status': job.status.value,
-                            'processed': processed_count
-                        }
 
                     # Get processing result
                     result = future.result()
@@ -205,6 +239,10 @@ def process_import_job(job_id: int) -> dict:
                     # Update progress tracking
                     job.progress_current = processed_count
                     job.current_filename = file_obj.original_filename
+
+                    # Commit progress frequently for responsive UI
+                    if processed_count <= 20 or processed_count % 5 == 0:
+                        db.session.commit()
 
                     if result['status'] == 'error':
                         # Track error
@@ -244,7 +282,6 @@ def process_import_job(job_id: int) -> dict:
                                 file_id=file_obj.id
                             )
                             if thumb_path:
-                                # Store relative path from thumbnails parent (for web serving)
                                 thumbnail_path = str(thumb_path.relative_to(thumbnails_dir.parent))
                             else:
                                 logger.warning(f"Thumbnail generation failed for {file_obj.original_filename}")
@@ -260,17 +297,39 @@ def process_import_job(job_id: int) -> dict:
                     if len(pending_updates) >= BATCH_COMMIT_SIZE:
                         _commit_pending_updates(db, pending_updates)
                         pending_updates = []
-                        db.session.commit()  # Also commit job progress
+                        db.session.commit()
+
+                    # Check for cancellation/pause AFTER processing each result
+                    db.session.refresh(job)
+                    if job.status in (JobStatus.CANCELLED, JobStatus.PAUSED):
+                        pending_count = len(pending_updates)
+                        debug_log(f"Job {job_id} PAUSE DETECTED: status={job.status.value}, processed_count={processed_count}, pending_updates={pending_count}")
+                        if pending_updates:
+                            _commit_pending_updates(db, pending_updates)
+                            debug_log(f"Job {job_id} PAUSE: committed {pending_count} pending updates")
+                        job.progress_current = processed_count
+                        db.session.commit()
+                        debug_log(f"Job {job_id} PAUSE FINAL: progress_current={job.progress_current}, progress_total={job.progress_total}")
+                        msg = f"Job {job_id} {job.status.value} at {processed_count}/{job.progress_total} (committed {pending_count} pending)"
+                        logger.info(msg)
+                        debug_log(msg)
+                        return {
+                            'job_id': job_id,
+                            'status': job.status.value,
+                            'processed': processed_count
+                        }
 
             # Commit any remaining pending updates
             if pending_updates:
                 _commit_pending_updates(db, pending_updates)
 
-            # Finalize job
+            # Finalize job - ensure progress reflects actual count
             job.status = JobStatus.COMPLETED
             job.completed_at = datetime.now(timezone.utc)
             job.current_filename = None
+            job.progress_current = processed_count  # Ensure final count is saved
             db.session.commit()
+            debug_log(f"Job {job_id} COMPLETED: progress_current={job.progress_current}, progress_total={job.progress_total}")
             logger.info(
                 f"Job {job_id} completed successfully: "
                 f"{processed_count} files processed, {error_count} errors"

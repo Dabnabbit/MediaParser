@@ -99,4 +99,10 @@ def create_app(config_name='development'):
 
         return render_template('index.html', current_job=current_job)
 
+    # Serve thumbnails from storage directory
+    @app.route('/thumbnails/<path:filename>')
+    def serve_thumbnail(filename):
+        from flask import send_from_directory
+        return send_from_directory(app.config['THUMBNAILS_FOLDER'], filename)
+
     return app

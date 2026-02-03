@@ -72,7 +72,7 @@ Plans:
 
 **Requirements:** WEB-02, WEB-03, WEB-04, WEB-05, WEB-06
 
-**Plans:** 6 plans in 4 waves
+**Plans:** 7 plans in 4 waves
 
 Plans:
 - [ ] 03-01-PLAN.md — HTML templates, CSS styles, and thumbnail library
@@ -80,6 +80,7 @@ Plans:
 - [ ] 03-03-PLAN.md — Progress API and thumbnail integration in processing
 - [ ] 03-04-PLAN.md — Upload and progress JavaScript modules
 - [ ] 03-05-PLAN.md — Results display with buckets and multi-select
+- [ ] 03-07-PLAN.md — Settings UI and API for output directory configuration
 - [ ] 03-06-PLAN.md — Human verification of complete UI
 
 **Success Criteria:**

@@ -1,9 +1,8 @@
 /**
  * Results Display Handler
  *
- * Displays processed files organized by confidence level and duplicate groups.
- * Implements accordion-style buckets, responsive thumbnail grid with size toggle,
- * and shift-click multi-select for batch operations.
+ * Displays processed files organized by confidence level.
+ * Works within the unified job section.
  */
 
 class ResultsHandler {
@@ -12,264 +11,295 @@ class ResultsHandler {
         this.summary = null;
         this.selectedFiles = new Set();
         this.lastSelectedIndex = null;
-        this.thumbnailSize = 'medium'; // compact | medium | large
-        this.expandedBucket = null; // Only one bucket can be expanded at a time
+        this.thumbnailSize = 'medium';
+        this.expandedBucket = null;
+        this.bucketPages = { high: 1, medium: 1, low: 1 };
+        this.bucketTotals = { high: {}, medium: {}, low: {} };
+        this.PAGE_SIZE = 50;
+
+        // Cache DOM elements
+        this.bucketsContainer = document.getElementById('buckets-container');
+        this.highCount = document.getElementById('high-count');
+        this.mediumCount = document.getElementById('medium-count');
+        this.lowCount = document.getElementById('low-count');
+
+        this.highGrid = document.getElementById('high-grid');
+        this.mediumGrid = document.getElementById('medium-grid');
+        this.lowGrid = document.getElementById('low-grid');
+
+        this.duplicatesContainer = document.getElementById('duplicates-container');
+        this.duplicatesList = document.getElementById('duplicates-list');
+
+        this.initEventListeners();
     }
 
     /**
-     * Load and display results for a completed job
-     * @param {string} jobId - Job ID to load results for
-     * @param {Object} summary - Summary data from progress API
+     * Reset results display for a new job
      */
-    async loadResults(jobId, summary) {
-        this.jobId = jobId;
-        this.summary = summary;
+    reset() {
+        this.jobId = null;
+        this.summary = null;
+        this.selectedFiles.clear();
+        this.lastSelectedIndex = null;
+        this.expandedBucket = null;
+        this.bucketPages = { high: 1, medium: 1, low: 1 };
+        this.bucketTotals = { high: {}, medium: {}, low: {} };
 
-        const resultsSection = document.querySelector('[data-section="results"]');
-        if (!resultsSection) {
-            console.error('Results section not found');
-            return;
-        }
-
-        // Show results section
-        resultsSection.classList.add('visible');
-
-        // Render summary card
-        this.renderSummaryCard();
-
-        // Load confidence buckets (initially all collapsed)
-        await this.loadConfidenceBuckets();
-
-        // Load duplicates if any exist
-        if (summary.duplicates > 0) {
-            await this.loadDuplicates();
-        }
-    }
-
-    /**
-     * Render summary card with confidence breakdown
-     */
-    renderSummaryCard() {
-        const summaryCard = document.querySelector('[data-summary-card]');
-        if (!summaryCard) return;
-
-        const total = this.summary.high + this.summary.medium + this.summary.low + this.summary.none;
-
-        summaryCard.innerHTML = `
-            <h3>Processing Complete</h3>
-            <div class="summary-stats">
-                <div class="stat">
-                    <span class="stat-value">${total}</span>
-                    <span class="stat-label">Total Files</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value confidence-high">${this.summary.high}</span>
-                    <span class="stat-label">High Confidence</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value confidence-medium">${this.summary.medium}</span>
-                    <span class="stat-label">Medium Confidence</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value confidence-low">${this.summary.low + this.summary.none}</span>
-                    <span class="stat-label">Low/None</span>
-                </div>
-                ${this.summary.duplicates > 0 ? `
-                <div class="stat">
-                    <span class="stat-value">${this.summary.duplicates}</span>
-                    <span class="stat-label">Duplicate Groups</span>
-                </div>
-                ` : ''}
-            </div>
-            <div class="thumbnail-size-controls">
-                <label>Thumbnail size:</label>
-                <button class="size-btn ${this.thumbnailSize === 'compact' ? 'active' : ''}"
-                        data-size="compact">Compact</button>
-                <button class="size-btn ${this.thumbnailSize === 'medium' ? 'active' : ''}"
-                        data-size="medium">Medium</button>
-                <button class="size-btn ${this.thumbnailSize === 'large' ? 'active' : ''}"
-                        data-size="large">Large</button>
-            </div>
-        `;
-
-        // Add thumbnail size control event listeners
-        summaryCard.querySelectorAll('.size-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => this.setThumbnailSize(e.target.dataset.size));
-        });
-    }
-
-    /**
-     * Load and render confidence buckets
-     */
-    async loadConfidenceBuckets() {
-        const bucketsContainer = document.querySelector('[data-buckets]');
-        if (!bucketsContainer) return;
-
-        const levels = [
-            { level: 'high', label: 'High Confidence', count: this.summary.high },
-            { level: 'medium', label: 'Medium Confidence', count: this.summary.medium },
-            { level: 'low', label: 'Low Confidence', count: this.summary.low + this.summary.none }
-        ];
-
-        bucketsContainer.innerHTML = '';
-
-        for (const { level, label, count } of levels) {
-            if (count > 0) {
-                const bucketEl = await this.renderBucket(level, label, count);
-                bucketsContainer.appendChild(bucketEl);
+        // Hide all buckets
+        ['high', 'medium', 'low'].forEach(level => {
+            const bucket = document.querySelector(`[data-bucket="${level}"]`);
+            const grid = document.getElementById(`${level}-grid`);
+            if (bucket) {
+                bucket.style.display = 'none';
+                bucket.dataset.expanded = 'false';
             }
+            if (grid) {
+                grid.innerHTML = '';
+            }
+        });
+
+        // Reset counts
+        if (this.highCount) this.highCount.textContent = '0 files';
+        if (this.mediumCount) this.mediumCount.textContent = '0 files';
+        if (this.lowCount) this.lowCount.textContent = '0 files';
+
+        // Hide duplicates
+        if (this.duplicatesContainer) {
+            this.duplicatesContainer.style.display = 'none';
+        }
+        if (this.duplicatesList) {
+            this.duplicatesList.innerHTML = '';
+        }
+    }
+
+    initEventListeners() {
+        // Bucket toggle handlers
+        document.querySelectorAll('[data-bucket-toggle]').forEach(header => {
+            header.addEventListener('click', (e) => {
+                const level = e.currentTarget.dataset.bucketToggle;
+                this.toggleBucket(level);
+            });
+        });
+
+        // Thumbnail size toggle
+        const sizeToggle = document.getElementById('thumb-size-toggle');
+        if (sizeToggle) {
+            sizeToggle.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    this.setThumbnailSize(e.target.dataset.size);
+                });
+            });
         }
     }
 
     /**
-     * Render a single confidence bucket
-     * @param {string} level - Confidence level (high/medium/low)
-     * @param {string} label - Display label
-     * @param {number} count - File count
-     * @returns {HTMLElement} Bucket element
+     * Show results for a completed job (called from progressHandler)
      */
-    async renderBucket(level, label, count) {
-        const bucket = document.createElement('div');
-        bucket.className = 'bucket';
-        bucket.dataset.bucket = level;
+    showResults(jobId, data) {
+        this.jobId = jobId;
 
-        const header = document.createElement('div');
-        header.className = 'bucket-header';
-        header.innerHTML = `
-            <h4>${label}</h4>
-            <span class="badge confidence-${level}">${count} files</span>
-        `;
-        header.addEventListener('click', () => this.toggleBucket(level));
+        // Transform API response format
+        this.summary = data.summary ? {
+            high: data.summary.confidence_counts?.high || 0,
+            medium: data.summary.confidence_counts?.medium || 0,
+            low: data.summary.confidence_counts?.low || 0,
+            none: data.summary.confidence_counts?.none || 0,
+            duplicates: data.summary.duplicate_groups || 0
+        } : { high: 0, medium: 0, low: 0, none: 0, duplicates: 0 };
 
-        const content = document.createElement('div');
-        content.className = 'bucket-content';
-        content.dataset.content = level;
+        // Update bucket counts and visibility
+        this.updateBucketCounts();
 
-        bucket.appendChild(header);
-        bucket.appendChild(content);
+        // Show duplicates section if any
+        if (this.summary.duplicates > 0 && this.duplicatesContainer) {
+            this.duplicatesContainer.style.display = 'block';
+        }
+    }
 
-        return bucket;
+    updateBucketCounts() {
+        const lowTotal = this.summary.low + this.summary.none;
+
+        if (this.highCount) this.highCount.textContent = `${this.summary.high} files`;
+        if (this.mediumCount) this.mediumCount.textContent = `${this.summary.medium} files`;
+        if (this.lowCount) this.lowCount.textContent = `${lowTotal} files`;
+
+        // Show/hide buckets based on count
+        this.toggleBucketVisibility('high', this.summary.high > 0);
+        this.toggleBucketVisibility('medium', this.summary.medium > 0);
+        this.toggleBucketVisibility('low', lowTotal > 0);
+    }
+
+    toggleBucketVisibility(level, visible) {
+        const bucket = document.querySelector(`[data-bucket="${level}"]`);
+        if (bucket) {
+            bucket.style.display = visible ? 'block' : 'none';
+        }
     }
 
     /**
-     * Toggle bucket expansion (only one bucket can be expanded at a time)
-     * @param {string} level - Confidence level to toggle
+     * Toggle bucket expansion (accordion style)
      */
     async toggleBucket(level) {
         const bucket = document.querySelector(`[data-bucket="${level}"]`);
-        const content = document.querySelector(`[data-content="${level}"]`);
+        const grid = document.getElementById(`${level}-grid`);
 
-        if (!bucket || !content) return;
+        if (!bucket || !grid) return;
 
-        // If clicking the currently expanded bucket, collapse it
-        if (this.expandedBucket === level) {
-            bucket.classList.remove('expanded');
-            content.innerHTML = '';
+        const isExpanded = bucket.dataset.expanded === 'true';
+
+        // If clicking currently expanded bucket, collapse it
+        if (isExpanded) {
+            bucket.dataset.expanded = 'false';
+            grid.innerHTML = '';
             this.expandedBucket = null;
             return;
         }
 
-        // Collapse currently expanded bucket
+        // Collapse any currently expanded bucket
         if (this.expandedBucket) {
             const prevBucket = document.querySelector(`[data-bucket="${this.expandedBucket}"]`);
-            const prevContent = document.querySelector(`[data-content="${this.expandedBucket}"]`);
-            if (prevBucket) prevBucket.classList.remove('expanded');
-            if (prevContent) prevContent.innerHTML = '';
+            const prevGrid = document.getElementById(`${this.expandedBucket}-grid`);
+            if (prevBucket) prevBucket.dataset.expanded = 'false';
+            if (prevGrid) prevGrid.innerHTML = '';
         }
 
-        // Expand new bucket and load files
+        // Expand new bucket and load first page
+        bucket.dataset.expanded = 'true';
         this.expandedBucket = level;
-        bucket.classList.add('expanded');
-        content.innerHTML = '<div class="loading">Loading files...</div>';
+        this.bucketPages[level] = 1;
+        await this.loadBucketPage(level, 1);
+    }
+
+    /**
+     * Load a specific page of files for a bucket
+     */
+    async loadBucketPage(level, page) {
+        const grid = document.getElementById(`${level}-grid`);
+        if (!grid) return;
+
+        grid.innerHTML = '<div class="loading">Loading files...</div>';
 
         try {
-            const response = await fetch(`/api/jobs/${this.jobId}/files?confidence=${level}`);
+            const confidenceParam = level === 'low' ? 'low&confidence=none' : level;
+            const response = await fetch(
+                `/api/jobs/${this.jobId}/files?confidence=${confidenceParam}&page=${page}&per_page=${this.PAGE_SIZE}`
+            );
             if (!response.ok) throw new Error('Failed to load files');
 
             const data = await response.json();
-            content.innerHTML = '';
+
+            // Store pagination info
+            this.bucketTotals[level] = {
+                total: data.total,
+                pages: data.pages,
+                currentPage: data.page
+            };
+            this.bucketPages[level] = page;
+
+            grid.innerHTML = '';
 
             if (data.files && data.files.length > 0) {
-                const grid = this.renderThumbnailGrid(data.files);
-                content.appendChild(grid);
+                this.renderThumbnails(grid, data.files);
+                this.renderPagination(grid, level, data);
             } else {
-                content.innerHTML = '<div class="empty">No files found</div>';
+                grid.innerHTML = '<div class="empty">No files found</div>';
             }
         } catch (error) {
             console.error(`Error loading ${level} confidence files:`, error);
-            content.innerHTML = '<div class="error">Failed to load files</div>';
+            grid.innerHTML = '<div class="error">Failed to load files</div>';
         }
     }
 
     /**
-     * Render thumbnail grid
-     * @param {Array} files - Array of file objects
-     * @returns {HTMLElement} Grid element
+     * Render pagination controls below the thumbnail grid
      */
-    renderThumbnailGrid(files) {
-        const grid = document.createElement('div');
-        grid.className = `thumbnail-grid thumb-${this.thumbnailSize}`;
-        grid.dataset.grid = 'thumbnails';
+    renderPagination(grid, level, data) {
+        // Only show pagination if more than one page
+        if (data.pages <= 1) return;
 
-        files.forEach((file, index) => {
-            const thumbnail = this.renderThumbnail(file, index);
-            grid.appendChild(thumbnail);
-        });
+        const pagination = document.createElement('div');
+        pagination.className = 'bucket-pagination';
 
-        return grid;
-    }
+        const prevDisabled = data.page <= 1;
+        const nextDisabled = data.page >= data.pages;
 
-    /**
-     * Render a single thumbnail
-     * @param {Object} file - File object
-     * @param {number} index - Index in the list
-     * @returns {HTMLElement} Thumbnail element
-     */
-    renderThumbnail(file, index) {
-        const thumb = document.createElement('div');
-        thumb.className = 'thumbnail';
-        thumb.dataset.fileId = file.id;
-        thumb.dataset.index = index;
-
-        // Use thumbnail_path if available, otherwise placeholder
-        const imgSrc = file.thumbnail_path
-            ? `/thumbnails/${file.thumbnail_path}`
-            : '/static/img/placeholder.svg';
-
-        thumb.innerHTML = `
-            <img src="${imgSrc}"
-                 alt="${file.original_name}"
-                 loading="lazy"
-                 onerror="this.src='/static/img/placeholder.svg'">
-            <div class="thumbnail-info">
-                <div class="filename" title="${file.original_name}">${file.original_name}</div>
-                <div class="timestamp">${this.formatTimestamp(file.datetime_original)}</div>
-            </div>
-            <input type="checkbox" class="file-select" data-file-id="${file.id}">
+        pagination.innerHTML = `
+            <button class="pagination-btn prev" ${prevDisabled ? 'disabled' : ''}>
+                ← Prev
+            </button>
+            <span class="pagination-info">
+                Page ${data.page} of ${data.pages} (${data.total} files)
+            </span>
+            <button class="pagination-btn next" ${nextDisabled ? 'disabled' : ''}>
+                Next →
+            </button>
         `;
 
-        // Add selection handler with shift-click support
-        const checkbox = thumb.querySelector('.file-select');
-        checkbox.addEventListener('click', (e) => this.handleFileSelect(e, index));
+        // Attach event listeners
+        const prevBtn = pagination.querySelector('.prev');
+        const nextBtn = pagination.querySelector('.next');
 
-        return thumb;
+        prevBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (data.page > 1) {
+                this.loadBucketPage(level, data.page - 1);
+            }
+        });
+
+        nextBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (data.page < data.pages) {
+                this.loadBucketPage(level, data.page + 1);
+            }
+        });
+
+        grid.appendChild(pagination);
     }
 
-    /**
-     * Handle file selection with shift-click range selection
-     * @param {Event} event - Click event
-     * @param {number} index - Index of clicked file
-     */
+    renderThumbnails(grid, files) {
+        grid.className = `thumbnail-grid thumb-${this.thumbnailSize}`;
+
+        files.forEach((file, index) => {
+            const thumb = document.createElement('div');
+            thumb.className = 'thumbnail';
+            thumb.dataset.fileId = file.id;
+            thumb.dataset.index = index;
+
+            const imgSrc = file.thumbnail_path
+                ? `/${file.thumbnail_path}`
+                : '/static/img/placeholder.svg';
+
+            const filename = file.original_filename || file.original_name || 'Unknown';
+            const timestamp = this.formatTimestamp(file.detected_timestamp);
+
+            thumb.innerHTML = `
+                <img src="${imgSrc}"
+                     alt="${filename}"
+                     loading="lazy"
+                     onerror="this.src='/static/img/placeholder.svg'">
+                <div class="thumbnail-info">
+                    <div class="filename" title="${filename}">${filename}</div>
+                    <div class="timestamp">${timestamp}</div>
+                </div>
+                <input type="checkbox" class="file-select" data-file-id="${file.id}">
+            `;
+
+            const checkbox = thumb.querySelector('.file-select');
+            checkbox.addEventListener('click', (e) => this.handleFileSelect(e, index));
+
+            grid.appendChild(thumb);
+        });
+    }
+
     handleFileSelect(event, index) {
         const checkbox = event.target;
         const fileId = parseInt(checkbox.dataset.fileId);
 
         if (event.shiftKey && this.lastSelectedIndex !== null) {
-            // Range selection with shift-click
             const start = Math.min(this.lastSelectedIndex, index);
             const end = Math.max(this.lastSelectedIndex, index);
 
-            const grid = checkbox.closest('[data-grid="thumbnails"]');
+            const grid = checkbox.closest('.thumbnail-grid');
             const checkboxes = grid.querySelectorAll('.file-select');
 
             for (let i = start; i <= end; i++) {
@@ -284,7 +314,6 @@ class ResultsHandler {
                 }
             }
         } else {
-            // Single selection
             if (checkbox.checked) {
                 this.selectedFiles.add(fileId);
             } else {
@@ -293,184 +322,46 @@ class ResultsHandler {
         }
 
         this.lastSelectedIndex = index;
-
-        // Update UI to show selection count
-        this.updateSelectionCount();
+        console.log(`Selected files: ${this.selectedFiles.size}`);
     }
 
-    /**
-     * Update selection count display
-     */
-    updateSelectionCount() {
-        const count = this.selectedFiles.size;
-        // This could update a UI element showing selected count
-        // For now, just log it
-        console.log(`Selected files: ${count}`);
-    }
-
-    /**
-     * Set thumbnail size
-     * @param {string} size - Size (compact/medium/large)
-     */
     setThumbnailSize(size) {
         this.thumbnailSize = size;
 
         // Update active button
-        document.querySelectorAll('.size-btn').forEach(btn => {
+        document.querySelectorAll('#thumb-size-toggle button').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.size === size);
         });
 
         // Update all grids
-        document.querySelectorAll('[data-grid="thumbnails"]').forEach(grid => {
+        document.querySelectorAll('.thumbnail-grid').forEach(grid => {
             grid.className = `thumbnail-grid thumb-${size}`;
         });
     }
 
-    /**
-     * Load and render duplicate groups
-     */
-    async loadDuplicates() {
-        const duplicatesContainer = document.querySelector('[data-duplicates]');
-        if (!duplicatesContainer) return;
-
-        duplicatesContainer.innerHTML = '<h3>Duplicate Groups</h3><div class="loading">Loading duplicates...</div>';
-
-        try {
-            const response = await fetch(`/api/jobs/${this.jobId}/duplicates`);
-            if (!response.ok) throw new Error('Failed to load duplicates');
-
-            const data = await response.json();
-
-            duplicatesContainer.innerHTML = '<h3>Duplicate Groups</h3>';
-
-            if (data.groups && data.groups.length > 0) {
-                data.groups.forEach((group, index) => {
-                    const groupEl = this.renderDuplicateGroup(group, index);
-                    duplicatesContainer.appendChild(groupEl);
-                });
-            } else {
-                duplicatesContainer.innerHTML += '<div class="empty">No duplicates found</div>';
-            }
-        } catch (error) {
-            console.error('Error loading duplicates:', error);
-            duplicatesContainer.innerHTML = '<h3>Duplicate Groups</h3><div class="error">Failed to load duplicates</div>';
-        }
-    }
-
-    /**
-     * Render a duplicate group with side-by-side comparison
-     * @param {Object} group - Duplicate group object
-     * @param {number} index - Group index
-     * @returns {HTMLElement} Group element
-     */
-    renderDuplicateGroup(group, index) {
-        const groupEl = document.createElement('div');
-        groupEl.className = 'duplicate-group';
-        groupEl.dataset.group = index;
-
-        const header = document.createElement('div');
-        header.className = 'duplicate-header';
-        header.innerHTML = `
-            <h4>Group ${index + 1}</h4>
-            <span class="badge">${group.files.length} duplicates</span>
-        `;
-
-        const comparison = document.createElement('div');
-        comparison.className = 'duplicate-comparison';
-
-        // Find recommended file (best timestamp confidence)
-        const recommended = this.findRecommended(group.files);
-
-        group.files.forEach(file => {
-            const isRecommended = file.id === recommended.id;
-            const card = document.createElement('div');
-            card.className = `duplicate-card ${isRecommended ? 'recommended' : ''}`;
-
-            const imgSrc = file.thumbnail_path
-                ? `/thumbnails/${file.thumbnail_path}`
-                : '/static/img/placeholder.svg';
-
-            card.innerHTML = `
-                ${isRecommended ? '<div class="recommended-badge">Recommended</div>' : ''}
-                <img src="${imgSrc}" alt="${file.original_name}" onerror="this.src='/static/img/placeholder.svg'">
-                <div class="file-details">
-                    <div class="filename" title="${file.original_name}">${file.original_name}</div>
-                    <div class="confidence">
-                        <span class="badge confidence-${file.confidence_level}">${file.confidence_level}</span>
-                    </div>
-                    <div class="timestamp">${this.formatTimestamp(file.datetime_original)}</div>
-                    <div class="file-size">${this.formatFileSize(file.file_size)}</div>
-                </div>
-            `;
-
-            comparison.appendChild(card);
-        });
-
-        groupEl.appendChild(header);
-        groupEl.appendChild(comparison);
-
-        return groupEl;
-    }
-
-    /**
-     * Find recommended file in duplicate group (highest confidence)
-     * @param {Array} files - Array of duplicate files
-     * @returns {Object} Recommended file
-     */
-    findRecommended(files) {
-        const confidenceOrder = { high: 3, medium: 2, low: 1, none: 0 };
-
-        return files.reduce((best, file) => {
-            const fileScore = confidenceOrder[file.confidence_level] || 0;
-            const bestScore = confidenceOrder[best.confidence_level] || 0;
-            return fileScore > bestScore ? file : best;
-        }, files[0]);
-    }
-
-    /**
-     * Format timestamp for display
-     * @param {string} timestamp - ISO timestamp
-     * @returns {string} Formatted timestamp
-     */
     formatTimestamp(timestamp) {
         if (!timestamp) return 'Unknown';
 
         try {
             const date = new Date(timestamp);
             return date.toLocaleString('en-US', {
-                year: 'numeric',
                 month: 'short',
                 day: 'numeric',
-                hour: '2-digit',
+                year: '2-digit',
+                hour: 'numeric',
                 minute: '2-digit'
             });
         } catch (error) {
             return timestamp;
         }
     }
-
-    /**
-     * Format file size for display
-     * @param {number} bytes - File size in bytes
-     * @returns {string} Formatted file size
-     */
-    formatFileSize(bytes) {
-        if (!bytes) return 'Unknown';
-
-        const units = ['B', 'KB', 'MB', 'GB'];
-        let size = bytes;
-        let unitIndex = 0;
-
-        while (size >= 1024 && unitIndex < units.length - 1) {
-            size /= 1024;
-            unitIndex++;
-        }
-
-        return `${size.toFixed(1)} ${units[unitIndex]}`;
-    }
 }
 
-// Export for use in main.js
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ResultsHandler;
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        window.resultsHandler = new ResultsHandler();
+    });
+} else {
+    window.resultsHandler = new ResultsHandler();
 }

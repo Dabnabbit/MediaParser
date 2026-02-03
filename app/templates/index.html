@@ -3,15 +3,19 @@
 {% block title %}MediaParser - Home{% endblock %}
 
 {% block content %}
-<!-- Settings Section (collapsible) -->
-<section id="settings-section" class="section settings-section" data-section="settings">
+<!-- Hidden file inputs (global) -->
+<input type="file" id="file-input" multiple accept="image/*,video/*" style="display: none;">
+<input type="file" id="folder-input" webkitdirectory directory multiple style="display: none;">
+
+<!-- Settings Section (compact, above main tile) -->
+<section id="settings-section" class="section section-compact settings-section" data-section="settings">
     <div class="settings-header" id="settings-header">
         <div class="settings-title">
-            <svg class="settings-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg class="settings-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="12" r="3"></circle>
-                <path d="M12 1v6m0 6v6m0-18l-2 2m2-2l2 2m-2 16l-2-2m2 2l2-2m9-9h-6m-6 0H1m18 0l-2-2m2 2l-2 2M1 12l2-2m-2 2l2 2"></path>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
-            <h2 class="settings-title-text">Settings</h2>
+            <h2 class="section-title-sm">Settings</h2>
         </div>
         <button type="button" class="settings-toggle" id="settings-toggle" aria-expanded="false">
             <span class="settings-toggle-icon">▼</span>
@@ -20,172 +24,130 @@
 
     <div class="settings-panel" id="settings-panel" style="display: none;">
         <div class="settings-form">
-            <!-- Output Directory Setting -->
-            <div class="form-group">
+            <div class="form-group form-group-sm">
                 <label for="output-directory" class="form-label">Output Directory</label>
-                <div class="input-group">
+                <div class="input-group input-group-sm">
                     <input type="text" id="output-directory" class="form-input" placeholder="/path/to/output">
-                    <button type="button" class="btn btn-secondary btn-sm" id="reset-output-dir-btn" title="Reset to default">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="23 4 23 10 17 10"></polyline>
-                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                        </svg>
-                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="reset-output-dir-btn" title="Reset">↺</button>
                 </div>
-                <p class="form-help">Where processed files will be written</p>
             </div>
-
-            <!-- Save Button -->
-            <div class="form-actions">
-                <button type="button" class="btn btn-primary" id="save-settings-btn">Save Settings</button>
+            <div class="form-actions-inline">
+                <button type="button" class="btn btn-primary btn-sm" id="save-settings-btn">Save</button>
                 <span class="settings-status" id="settings-status"></span>
             </div>
-
-            <!-- Error Display -->
             <div class="settings-error" id="settings-error" style="display: none;">
-                <span class="error-icon">⚠</span>
                 <span id="settings-error-text"></span>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Upload Section (always visible) -->
-<section id="upload-section" class="section" data-section="upload">
-    <h2 class="section-title">Upload Files</h2>
-
-    <div class="upload-box" id="upload-box" data-upload-box>
-        <div class="upload-box-content">
-            <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <p class="upload-text">Drop files here or click to browse</p>
-            <div class="upload-buttons">
-                <button type="button" class="btn btn-primary" id="select-files-btn">Select Files</button>
-                <button type="button" class="btn btn-primary" id="select-folder-btn">Select Folder</button>
+<!-- Main Processing Tile (unified: upload → processing → results) -->
+<section id="job-section" class="section" data-section="job" data-state="idle">
+    <!-- Job Header -->
+    <div class="job-header">
+        <div class="job-header-left">
+            <h2 class="section-title">
+                <span id="job-title">Import Media</span>
+                <span class="status-badge status-badge-sm" id="job-status-badge" data-status="IDLE" style="display: none;">
+                    <span id="job-status-text">IDLE</span>
+                </span>
+            </h2>
+        </div>
+        <div class="job-header-right">
+            <div class="job-controls" id="job-controls" style="display: none;">
+                <button type="button" class="btn btn-secondary btn-sm" id="pause-btn" data-action="pause">Pause</button>
+                <button type="button" class="btn btn-danger btn-sm" id="cancel-btn">Cancel</button>
             </div>
         </div>
     </div>
 
-    <!-- Hidden file inputs -->
-    <input type="file" id="file-input" multiple accept="image/*,video/*" style="display: none;">
-    <input type="file" id="folder-input" webkitdirectory directory multiple style="display: none;">
-
-    <!-- Server path import -->
-    <div class="server-import">
-        <label for="server-path" class="form-label">Or import from server path:</label>
-        <div class="input-group">
-            <input type="text" id="server-path" class="form-input" placeholder="/path/to/photos">
-            <button type="button" class="btn btn-secondary" id="import-path-btn">Import from Path</button>
-        </div>
-    </div>
-
-    <!-- Upload progress bar (hidden initially) -->
-    <div class="upload-progress" id="upload-progress" style="display: none;">
-        <div class="progress-bar-wrapper">
-            <div class="progress-bar">
-                <div class="progress-bar-fill" id="upload-progress-fill" style="width: 0%;"></div>
+    <!-- Upload Area (visible in idle state) -->
+    <div class="upload-area" id="upload-area">
+        <div class="upload-box" id="upload-box" data-upload-box>
+            <div class="upload-box-content">
+                <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <p class="upload-text">Drop files or folders here</p>
+                <div class="upload-buttons">
+                    <button type="button" class="btn btn-primary" id="select-files-btn">Select Files</button>
+                    <button type="button" class="btn btn-secondary" id="select-folder-btn">Select Folder</button>
+                </div>
             </div>
-            <span class="progress-text" id="upload-progress-text">0%</span>
-        </div>
-        <p class="progress-label">Uploading files...</p>
-    </div>
-</section>
-
-<!-- Progress Section (hidden until job starts) -->
-<section id="progress-section" class="section" data-section="progress" style="display: none;">
-    <h2 class="section-title">Processing Progress</h2>
-
-    <div class="job-status-container">
-        <div class="status-badge" id="job-status-badge" data-status="PENDING">
-            <span id="job-status-text">PENDING</span>
         </div>
 
-        <div class="job-controls">
-            <button type="button" class="btn btn-secondary" id="pause-btn" data-action="pause">Pause</button>
-            <button type="button" class="btn btn-danger" id="cancel-btn" data-action="cancel">Cancel</button>
-        </div>
-    </div>
-
-    <div class="progress-bar-wrapper">
-        <div class="progress-bar progress-bar-large">
-            <div class="progress-bar-fill" id="job-progress-fill" style="width: 0%;"></div>
-        </div>
-        <span class="progress-text" id="job-progress-text">0%</span>
-    </div>
-
-    <div class="metrics-grid">
-        <div class="metric-card">
-            <div class="metric-label">Files Processed</div>
-            <div class="metric-value" id="files-processed">0 / 0</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Current File</div>
-            <div class="metric-value metric-value-small" id="current-filename">-</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Elapsed Time</div>
-            <div class="metric-value" id="elapsed-time">0:00</div>
-        </div>
-        <div class="metric-card">
-            <div class="metric-label">Estimated Remaining</div>
-            <div class="metric-value" id="eta">-</div>
-        </div>
-    </div>
-
-    <div class="error-badge-container" id="error-badge-container" style="display: none;">
-        <div class="error-badge">
-            <span class="error-icon">⚠</span>
-            <span id="error-count">0</span> errors
-        </div>
-    </div>
-</section>
-
-<!-- Results Section (hidden until job completes) -->
-<section id="results-section" class="section" data-section="results" style="display: none;">
-    <h2 class="section-title">Results</h2>
-
-    <!-- Summary Card -->
-    <div class="summary-card">
-        <h3 class="summary-title">Job Complete</h3>
-        <div class="summary-stats">
-            <div class="summary-stat">
-                <span class="summary-stat-label">Total Files:</span>
-                <span class="summary-stat-value" id="summary-total">0</span>
-            </div>
-            <div class="summary-stat">
-                <span class="summary-stat-label">Successful:</span>
-                <span class="summary-stat-value summary-stat-success" id="summary-success">0</span>
-            </div>
-            <div class="summary-stat">
-                <span class="summary-stat-label">Errors:</span>
-                <span class="summary-stat-value summary-stat-error" id="summary-errors">0</span>
-            </div>
-            <div class="summary-stat">
-                <span class="summary-stat-label">Time Taken:</span>
-                <span class="summary-stat-value" id="summary-time">0:00</span>
+        <!-- Server path import -->
+        <div class="server-import">
+            <div class="input-group">
+                <input type="text" id="server-path" class="form-input" placeholder="Or enter server path: /nas/photos/2024">
+                <button type="button" class="btn btn-secondary" id="import-path-btn">Import</button>
             </div>
         </div>
     </div>
 
-    <!-- Thumbnail size toggle -->
-    <div class="thumbnail-controls">
-        <label class="form-label">Thumbnail Size:</label>
-        <div class="btn-group" role="group" id="thumb-size-toggle">
-            <button type="button" class="btn btn-sm" data-size="compact">Compact</button>
-            <button type="button" class="btn btn-sm active" data-size="medium">Medium</button>
-            <button type="button" class="btn btn-sm" data-size="large">Large</button>
+    <!-- Progress Area (visible while processing, collapses when done) -->
+    <div class="job-progress" id="job-progress">
+        <div class="progress-row">
+            <div class="progress-bar progress-bar-lg">
+                <div class="progress-bar-fill" id="job-progress-fill" style="width: 0%;"></div>
+            </div>
+            <span class="progress-text" id="job-progress-text">0%</span>
+        </div>
+
+        <div class="metrics-row" id="metrics-row">
+            <div class="metric">
+                <span class="metric-label">Files:</span>
+                <span class="metric-value" id="files-processed">0 / 0</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Current:</span>
+                <span class="metric-value metric-value-truncate" id="current-filename">-</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Time:</span>
+                <span class="metric-value" id="elapsed-time">0:00</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">ETA:</span>
+                <span class="metric-value" id="eta">-</span>
+            </div>
+            <div class="metric error-metric" id="error-metric" style="display: none;">
+                <span class="metric-label">Errors:</span>
+                <span class="metric-value metric-error" id="error-count">0</span>
+            </div>
         </div>
     </div>
 
-    <!-- Confidence Buckets (accordion style) -->
-    <div class="buckets-container">
-        <h3 class="subsection-title">Files by Confidence</h3>
+    <!-- Summary Row (shown when complete, replaces detailed progress) -->
+    <div class="job-summary" id="job-summary" style="display: none;">
+        <div class="summary-row">
+            <span class="summary-item"><strong id="summary-total">0</strong> files</span>
+            <span class="summary-divider">•</span>
+            <span class="summary-item summary-success"><strong id="summary-success">0</strong> successful</span>
+            <span class="summary-divider">•</span>
+            <span class="summary-item summary-error"><strong id="summary-errors">0</strong> errors</span>
+            <span class="summary-divider">•</span>
+            <span class="summary-item"><strong id="summary-time">0:00</strong> elapsed</span>
+        </div>
+    </div>
+
+    <!-- Results: Confidence Buckets -->
+    <div class="buckets-container" id="buckets-container">
+        <!-- Thumbnail size toggle -->
+        <div class="buckets-header">
+            <h3 class="subsection-title">Files by Confidence</h3>
+            <div class="thumb-size-toggle" id="thumb-size-toggle">
+                <button type="button" class="btn btn-xs" data-size="compact">S</button>
+                <button type="button" class="btn btn-xs active" data-size="medium">M</button>
+                <button type="button" class="btn btn-xs" data-size="large">L</button>
+            </div>
+        </div>
 
         <!-- HIGH Confidence Bucket -->
-        <div class="bucket" data-bucket="high" data-expanded="false">
+        <div class="bucket" data-bucket="high" data-expanded="false" style="display: none;">
             <div class="bucket-header" data-bucket-toggle="high">
                 <div class="bucket-title">
                     <span class="confidence-badge confidence-high">HIGH</span>
@@ -194,14 +156,12 @@
                 <span class="bucket-toggle-icon">▼</span>
             </div>
             <div class="bucket-content" id="high-content">
-                <div class="thumbnail-grid thumb-medium" id="high-grid" data-grid="high">
-                    <!-- Thumbnails populated by JS -->
-                </div>
+                <div class="thumbnail-grid thumb-medium" id="high-grid" data-grid="high"></div>
             </div>
         </div>
 
         <!-- MEDIUM Confidence Bucket -->
-        <div class="bucket" data-bucket="medium" data-expanded="false">
+        <div class="bucket" data-bucket="medium" data-expanded="false" style="display: none;">
             <div class="bucket-header" data-bucket-toggle="medium">
                 <div class="bucket-title">
                     <span class="confidence-badge confidence-medium">MEDIUM</span>
@@ -210,14 +170,12 @@
                 <span class="bucket-toggle-icon">▼</span>
             </div>
             <div class="bucket-content" id="medium-content">
-                <div class="thumbnail-grid thumb-medium" id="medium-grid" data-grid="medium">
-                    <!-- Thumbnails populated by JS -->
-                </div>
+                <div class="thumbnail-grid thumb-medium" id="medium-grid" data-grid="medium"></div>
             </div>
         </div>
 
         <!-- LOW Confidence Bucket -->
-        <div class="bucket" data-bucket="low" data-expanded="false">
+        <div class="bucket" data-bucket="low" data-expanded="false" style="display: none;">
             <div class="bucket-header" data-bucket-toggle="low">
                 <div class="bucket-title">
                     <span class="confidence-badge confidence-low">LOW</span>
@@ -226,9 +184,7 @@
                 <span class="bucket-toggle-icon">▼</span>
             </div>
             <div class="bucket-content" id="low-content">
-                <div class="thumbnail-grid thumb-medium" id="low-grid" data-grid="low">
-                    <!-- Thumbnails populated by JS -->
-                </div>
+                <div class="thumbnail-grid thumb-medium" id="low-grid" data-grid="low"></div>
             </div>
         </div>
     </div>
@@ -236,17 +192,7 @@
     <!-- Duplicate Groups -->
     <div class="duplicates-container" id="duplicates-container" style="display: none;">
         <h3 class="subsection-title">Duplicate Groups</h3>
-        <div id="duplicates-list">
-            <!-- Duplicate groups populated by JS -->
-        </div>
-    </div>
-
-    <!-- Failed Files -->
-    <div class="failed-container" id="failed-container" style="display: none;">
-        <h3 class="subsection-title">Failed Files</h3>
-        <div class="failed-list" id="failed-list">
-            <!-- Failed files populated by JS -->
-        </div>
+        <div id="duplicates-list"></div>
     </div>
 </section>
 {% endblock %}
