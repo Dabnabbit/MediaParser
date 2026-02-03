@@ -1,0 +1,163 @@
+/**
+ * Tag UI Styles
+ *
+ * Styles for tag pills, autocomplete, and tag input.
+ */
+
+/* ============================================
+   TAG PILLS
+   ============================================ */
+
+.tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
+}
+
+.tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+.tag-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    border-radius: 50%;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.tag-remove:hover {
+    background: var(--color-danger);
+    color: white;
+}
+
+.tags-empty {
+    color: var(--color-text-muted);
+    font-style: italic;
+    font-size: 0.9rem;
+    margin-bottom: var(--spacing-sm);
+}
+
+/* ============================================
+   TAG INPUT
+   ============================================ */
+
+.tag-input-group {
+    display: flex;
+    gap: var(--spacing-xs);
+    position: relative;
+}
+
+.tag-input-group .tag-input {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ============================================
+   AUTOCOMPLETE DROPDOWN
+   ============================================ */
+
+.tag-autocomplete {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 2px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.tag-autocomplete.show {
+    display: block;
+}
+
+.autocomplete-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.autocomplete-item:hover {
+    background: var(--color-bg-alt);
+}
+
+.autocomplete-item .tag-count {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+}
+
+/* ============================================
+   QUICK TAG IN TOOLBAR
+   ============================================ */
+
+.tag-quick-add {
+    position: relative;
+}
+
+.tag-quick-add .tag-autocomplete {
+    min-width: 200px;
+}
+
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    background: var(--color-completed);
+    color: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: 10000;
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast-error {
+    background: var(--color-danger);
+}
+
+/* ============================================
+   EXAMINATION VIEW TAGS
+   ============================================ */
+
+#tags-container {
+    /* Inherits from detail-section */
+}
+
+#tags-container .tag-input-group {
+    margin-top: var(--spacing-sm);
+}
