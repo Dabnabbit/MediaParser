@@ -134,11 +134,55 @@
         </div>
     </div>
 
-    <!-- Results: Confidence Buckets -->
-    <div class="buckets-container" id="buckets-container">
-        <!-- Thumbnail size toggle -->
-        <div class="buckets-header">
-            <h3 class="subsection-title">Files by Confidence</h3>
+    <!-- Results: Unified Grid with Filter Bar -->
+    <div class="results-container" id="results-container" style="display: none;">
+        <!-- Filter Bar -->
+        <div class="filter-bar" id="filter-bar">
+            <div class="filter-chips">
+                <button class="filter-chip" data-filter="high">
+                    <span class="chip-badge confidence-high">H</span>
+                    <span class="chip-count" data-count="high">0</span>
+                </button>
+                <button class="filter-chip" data-filter="medium">
+                    <span class="chip-badge confidence-medium">M</span>
+                    <span class="chip-count" data-count="medium">0</span>
+                </button>
+                <button class="filter-chip" data-filter="low">
+                    <span class="chip-badge confidence-low">L</span>
+                    <span class="chip-count" data-count="low">0</span>
+                </button>
+                <span class="filter-divider"></span>
+                <button class="filter-chip" data-filter="reviewed">
+                    <span class="chip-icon">&#10003;</span>
+                    <span class="chip-label">Reviewed</span>
+                    <span class="chip-count" data-count="reviewed">0</span>
+                </button>
+                <button class="filter-chip" data-filter="duplicates">
+                    <span class="chip-icon">&#x29C9;</span>
+                    <span class="chip-label">Duplicates</span>
+                    <span class="chip-count" data-count="duplicates">0</span>
+                </button>
+                <button class="filter-chip" data-filter="failed">
+                    <span class="chip-icon">&#x2717;</span>
+                    <span class="chip-label">Failed</span>
+                    <span class="chip-count" data-count="failed">0</span>
+                </button>
+            </div>
+            <button class="btn btn-link btn-sm" id="clear-filters" style="display: none;">Clear filters</button>
+        </div>
+
+        <!-- Sort and Size Controls -->
+        <div class="grid-controls">
+            <div class="sort-control">
+                <label for="sort-select">Sort:</label>
+                <select id="sort-select" class="form-select form-select-sm">
+                    <option value="detected_timestamp" selected>Date (detected)</option>
+                    <option value="original_timestamp">Date (file system)</option>
+                    <option value="filename">Filename</option>
+                    <option value="file_size">File size</option>
+                </select>
+                <button class="btn btn-xs" id="sort-order" data-order="asc" title="Sort ascending">&#x2191;</button>
+            </div>
             <div class="thumb-size-toggle" id="thumb-size-toggle">
                 <button type="button" class="btn btn-xs" data-size="compact">S</button>
                 <button type="button" class="btn btn-xs active" data-size="medium">M</button>
@@ -146,75 +190,16 @@
             </div>
         </div>
 
-        <!-- HIGH Confidence Bucket -->
-        <div class="bucket" data-bucket="high" data-expanded="false" style="display: none;">
-            <div class="bucket-header" data-bucket-toggle="high">
-                <div class="bucket-title">
-                    <span class="confidence-badge confidence-high">HIGH</span>
-                    <span class="bucket-count" id="high-count">0 files</span>
-                </div>
-                <span class="bucket-toggle-icon">▼</span>
-            </div>
-            <div class="bucket-content" id="high-content">
-                <div class="thumbnail-grid thumb-medium" id="high-grid" data-grid="high"></div>
-            </div>
+        <!-- Unified Thumbnail Grid -->
+        <div class="thumbnail-grid thumb-medium" id="unified-grid"></div>
+
+        <!-- Loading indicator -->
+        <div class="grid-loading" id="grid-loading" style="display: none;">
+            <span class="spinner"></span> Loading files...
         </div>
 
-        <!-- MEDIUM Confidence Bucket -->
-        <div class="bucket" data-bucket="medium" data-expanded="false" style="display: none;">
-            <div class="bucket-header" data-bucket-toggle="medium">
-                <div class="bucket-title">
-                    <span class="confidence-badge confidence-medium">MEDIUM</span>
-                    <span class="bucket-count" id="medium-count">0 files</span>
-                </div>
-                <span class="bucket-toggle-icon">▼</span>
-            </div>
-            <div class="bucket-content" id="medium-content">
-                <div class="thumbnail-grid thumb-medium" id="medium-grid" data-grid="medium"></div>
-            </div>
-        </div>
-
-        <!-- LOW Confidence Bucket -->
-        <div class="bucket" data-bucket="low" data-expanded="false" style="display: none;">
-            <div class="bucket-header" data-bucket-toggle="low">
-                <div class="bucket-title">
-                    <span class="confidence-badge confidence-low">LOW</span>
-                    <span class="bucket-count" id="low-count">0 files</span>
-                </div>
-                <span class="bucket-toggle-icon">▼</span>
-            </div>
-            <div class="bucket-content" id="low-content">
-                <div class="thumbnail-grid thumb-medium" id="low-grid" data-grid="low"></div>
-            </div>
-        </div>
-
-        <!-- Duplicate Groups Bucket -->
-        <div class="bucket" data-bucket="duplicates" data-expanded="false" id="duplicates-container" style="display: none;">
-            <div class="bucket-header" data-bucket-toggle="duplicates">
-                <div class="bucket-title">
-                    <span class="confidence-badge confidence-duplicates">DUPLICATES</span>
-                    <span class="bucket-count" id="duplicates-count">0 groups</span>
-                </div>
-                <span class="bucket-toggle-icon">▼</span>
-            </div>
-            <div class="bucket-content" id="duplicates-content">
-                <div id="duplicates-list"></div>
-            </div>
-        </div>
-
-        <!-- Failed Files Bucket -->
-        <div class="bucket" data-bucket="failed" data-expanded="false" id="failed-container" style="display: none;">
-            <div class="bucket-header" data-bucket-toggle="failed">
-                <div class="bucket-title">
-                    <span class="confidence-badge confidence-failed">FAILED</span>
-                    <span class="bucket-count" id="failed-count">0 files</span>
-                </div>
-                <span class="bucket-toggle-icon">▼</span>
-            </div>
-            <div class="bucket-content" id="failed-content">
-                <div id="failed-list"></div>
-            </div>
-        </div>
+        <!-- Pagination -->
+        <div class="grid-pagination" id="grid-pagination" style="display: none;"></div>
     </div>
 </section>
 {% endblock %}
