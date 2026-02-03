@@ -81,6 +81,11 @@ class ResultsHandler {
             this.gridPagination.style.display = 'none';
         }
 
+        // Reset selection handler
+        if (window.selectionHandler) {
+            window.selectionHandler.reset();
+        }
+
         // Reset filters
         if (window.filterHandler) {
             window.filterHandler.reset();
