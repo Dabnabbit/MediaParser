@@ -94,7 +94,7 @@ Plans:
 
 ---
 
-### Phase 4: Review Queues - Timestamps
+### Phase 4: Review Queues - Timestamps ✓
 
 **Goal:** Users review low-confidence timestamps, resolve conflicts between sources, manually provide missing dates, and understand why each timestamp was chosen.
 
@@ -102,26 +102,26 @@ Plans:
 
 **Requirements:** TIME-02, TIME-03, TIME-04, TIME-05, WEB-01
 
-**Plans:** 9 plans
+**Status:** Complete (2026-02-03)
 
 Plans:
-- [ ] 04-01-PLAN.md — Database models (Tag, File extensions) and review API endpoints
-- [ ] 04-02-PLAN.md — Unified grid HTML structure and filter chips CSS/JS
-- [ ] 04-03-PLAN.md — Results handler refactor for unified grid with lazy loading
-- [ ] 04-04-PLAN.md — Multi-select with shift/ctrl-click and selection toolbar
-- [ ] 04-05-PLAN.md — Examination view modal with native dialog element
-- [ ] 04-06-PLAN.md — Timestamp source comparison and manual entry with Chrono
-- [ ] 04-07-PLAN.md — Review workflow (confirm, auto-confirm HIGH, unreview)
-- [ ] 04-08-PLAN.md — Tagging UI with autocomplete in toolbar and examination
-- [ ] 04-09-PLAN.md — Human verification of complete review workflow
+- [x] 04-01-PLAN.md — Database models (Tag, File extensions) and review API endpoints
+- [x] 04-02-PLAN.md — Unified grid HTML structure and filter chips CSS/JS
+- [x] 04-03-PLAN.md — Results handler refactor for unified grid with lazy loading
+- [x] 04-04-PLAN.md — Multi-select with shift/ctrl-click and selection toolbar
+- [x] 04-05-PLAN.md — Examination view modal with native dialog element
+- [x] 04-06-PLAN.md — Timestamp source comparison and manual entry with Chrono
+- [x] 04-07-PLAN.md — Review workflow (confirm, auto-confirm HIGH, unreview)
+- [x] 04-08-PLAN.md — Tagging UI with autocomplete in toolbar and examination
+- [x] 04-09-PLAN.md — Human verification of complete review workflow
 
-**Success Criteria:**
-1. Files flagged as low-confidence appear in dedicated review queue
-2. User sees thumbnail grid of processed files (not just list)
-3. User can view side-by-side comparison of all detected timestamp sources (EXIF, filename, file date)
-4. User selects correct timestamp from conflict options and decision is recorded
-5. User can manually enter timestamp for files with no determinable date
-6. Confidence score displayed with color-coded badge (green/yellow/red) for each file
+**Success Criteria:** All 6 verified ✓
+1. ✓ Files flagged as low-confidence appear in dedicated review queue (mode-based filtering)
+2. ✓ User sees thumbnail grid of processed files (not just list)
+3. ✓ User can view side-by-side comparison of all detected timestamp sources (EXIF, filename, file date)
+4. ✓ User selects correct timestamp from conflict options and decision is recorded
+5. ✓ User can manually enter timestamp for files with no determinable date
+6. ✓ Confidence score displayed with color-coded badge (green/yellow/red) for each file
 
 ---
 
@@ -132,6 +132,15 @@ Plans:
 **Dependencies:** Phase 4 (requires review queue UI patterns)
 
 **Requirements:** DUP-01, DUP-04, DUP-05, DUP-06
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — API enhancement with quality metrics and recommendation logic
+- [ ] 05-02-PLAN.md — Duplicate cards HTML structure and CSS styling
+- [ ] 05-03-PLAN.md — DuplicatesHandler JavaScript for group navigation and selection
+- [ ] 05-04-PLAN.md — Integration with mode filter and bulk confirmation flow
+- [ ] 05-05-PLAN.md — Human verification of complete duplicate workflow
 
 **Success Criteria:**
 1. System calculates SHA256 hash for each file during import
@@ -190,12 +199,12 @@ Plans:
 | 1 - Foundation Architecture | ✓ Complete | 4 | 100% |
 | 2 - Background Workers + Core Processing | ✓ Complete | 3 | 100% |
 | 3 - Web UI - Upload + Status | ✓ Complete | 5 | 100% |
-| 4 - Review Queues - Timestamps | In Progress | 5 | 0% |
-| 5 - Duplicate Detection - Exact | Pending | 4 | 0% |
+| 4 - Review Queues - Timestamps | ✓ Complete | 5 | 100% |
+| 5 - Duplicate Detection - Exact | In Progress | 4 | 0% |
 | 6 - Duplicate Detection - Perceptual | Pending | 2 | 0% |
 | 7 - Output Generation + Tagging | Pending | 8 | 0% |
 
-**Overall:** 3/7 phases complete (43%)
+**Overall:** 4/7 phases complete (57%)
 
 ---
 
