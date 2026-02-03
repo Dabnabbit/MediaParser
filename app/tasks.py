@@ -245,9 +245,10 @@ def process_import_job(job_id: int) -> dict:
                         db.session.commit()
 
                     if result['status'] == 'error':
-                        # Track error
+                        # Track error on file and job
                         error_count += 1
                         job.error_count = error_count
+                        file_obj.processing_error = result.get('error', 'Unknown error')
                         logger.error(
                             f"File processing error [{error_count}/{processed_count}]: "
                             f"{file_obj.original_filename} - {result['error']}"

@@ -76,9 +76,16 @@ def get_progress(job_id):
             .having(db.func.count(File.id) > 1)
         ).scalar() or 0
 
+        # Get failed file count
+        failed_count = File.query.join(File.jobs).filter(
+            Job.id == job_id,
+            File.processing_error.isnot(None)
+        ).count()
+
         response['summary'] = {
             'confidence_counts': confidence_counts,
             'duplicate_groups': duplicate_count,
+            'failed_count': failed_count,
             'success_count': job.progress_current - job.error_count,
             'error_count': job.error_count,
         }

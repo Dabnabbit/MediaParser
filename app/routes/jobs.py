@@ -249,35 +249,28 @@ def get_job_duplicates(job_id):
     if job is None:
         return jsonify({'error': f'Job {job_id} not found'}), 404
 
-    # Get all duplicates for files in this job
-    # Group by file_hash_sha256 for exact duplicates
+    # Group files in THIS job by SHA256 hash to find exact duplicates
+    # Only considers files within the current job, not across all jobs
     duplicate_groups = {}
 
     for file in job.files:
         if not file.file_hash_sha256:
             continue
 
-        # Find all files with same hash
-        duplicates = db.session.query(File).filter(
-            File.file_hash_sha256 == file.file_hash_sha256
-        ).all()
+        hash_key = file.file_hash_sha256
+        if hash_key not in duplicate_groups:
+            duplicate_groups[hash_key] = []
 
-        # Only consider groups with more than one file
-        if len(duplicates) > 1:
-            hash_key = file.file_hash_sha256
-            if hash_key not in duplicate_groups:
-                duplicate_groups[hash_key] = [
-                    {
-                        'id': f.id,
-                        'original_filename': f.original_filename,
-                        'file_size_bytes': f.file_size_bytes,
-                        'detected_timestamp': f.detected_timestamp.isoformat() if f.detected_timestamp else None,
-                        'storage_path': f.storage_path
-                    }
-                    for f in duplicates
-                ]
+        duplicate_groups[hash_key].append({
+            'id': file.id,
+            'original_filename': file.original_filename,
+            'file_size_bytes': file.file_size_bytes,
+            'detected_timestamp': file.detected_timestamp.isoformat() if file.detected_timestamp else None,
+            'storage_path': file.storage_path,
+            'thumbnail_path': file.thumbnail_path
+        })
 
-    # Convert to array format
+    # Convert to array format, only including groups with 2+ files (actual duplicates)
     groups_array = [
         {
             'hash': hash_key,
@@ -285,6 +278,7 @@ def get_job_duplicates(job_id):
             'files': files
         }
         for hash_key, files in duplicate_groups.items()
+        if len(files) > 1
     ]
 
     return jsonify({
@@ -292,4 +286,52 @@ def get_job_duplicates(job_id):
         'duplicate_groups': groups_array,
         'group_count': len(groups_array),
         'total_duplicates': sum(len(g['files']) for g in groups_array)
+    }), 200
+
+
+@jobs_bp.route('/api/jobs/<int:job_id>/failed', methods=['GET'])
+def get_job_failed_files(job_id):
+    """
+    Get files that failed processing for a job.
+
+    Args:
+        job_id: ID of the job
+
+    Returns:
+        JSON with array of failed files and their errors
+    """
+    job = db.session.get(Job, job_id)
+
+    if job is None:
+        return jsonify({'error': f'Job {job_id} not found'}), 404
+
+    # Get pagination params
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+
+    # Query failed files (those with processing_error set)
+    query = File.query.join(File.jobs).filter(
+        Job.id == job_id,
+        File.processing_error.isnot(None)
+    ).order_by(File.original_filename)
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    files = [
+        {
+            'id': f.id,
+            'original_filename': f.original_filename,
+            'processing_error': f.processing_error,
+            'thumbnail_path': f.thumbnail_path
+        }
+        for f in pagination.items
+    ]
+
+    return jsonify({
+        'job_id': job_id,
+        'files': files,
+        'total': pagination.total,
+        'page': pagination.page,
+        'pages': pagination.pages,
+        'per_page': per_page
     }), 200

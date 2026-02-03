@@ -2,11 +2,18 @@
 
 **Last Updated:** 2026-02-02
 
+## Environment
+
+- **Platform:** WSL2 (Ubuntu on Windows) - migrated from Windows-native development
+- **Working Directory:** `/home/dab/Projects/MediaParser` (NOT `/mnt/d/...`)
+- **Target:** Linux-native, will be Dockerized for deployment
+- **Python:** 3.11+ with venv
+
 ## Project Reference
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 3 - Web UI: Upload + Status (Ready to plan)
+**Current Focus:** Phase 3 - Web UI: Upload + Status (Verification pending)
 
 ## Current Position
 
@@ -40,6 +47,7 @@
 
 | Decision | Date | Rationale | Impact |
 |----------|------|-----------|--------|
+| WSL2 native development | 2026-02-02 | Linux-native for Docker deployment, better tooling compatibility | All development in `/home/dab/Projects/MediaParser` |
 | Flask + Celery over Django | 2026-02-02 | Lightweight brownfield-friendly, separates web UI from background processing | Foundation architecture design |
 | SQLite for v1 | 2026-02-02 | Handles household scale (tens of thousands), zero operational overhead | Database layer simplicity |
 | Job queue pattern (async processing) | 2026-02-02 | Prevents HTTP timeouts, enables progress tracking, allows browser close | Architecture split: web app vs workers |
@@ -101,6 +109,10 @@
 | Auto-create output directories | 2026-02-02 | mkdir(parents=True) creates directory if needed, better UX than error message | 03-07: Directory validation |
 | Collapsible settings panel | 2026-02-02 | Settings hidden by default reduces visual noise in main workflow | 03-07: Settings UI |
 | Reset from config | 2026-02-02 | Reset button loads defaults from current_app.config, not hardcoded strings | 03-07: Settings defaults |
+| Duplicate groups rendering | 2026-02-02 | Display exact duplicates with thumbnails, largest file recommended | 03-06: Results display |
+| Collapsible duplicate groups | 2026-02-02 | Click group header to expand/collapse, reduces visual clutter | 03-06: Duplicate UX |
+| Failed files bucket | 2026-02-02 | Track per-file processing errors, display in dedicated bucket | 03-06: Error visibility |
+| Duplicate selection UI deferred | 2026-02-02 | Radio/checkbox selection for keep/discard decisions → Phase 5 | Phase 5: Duplicate review |
 
 ### Active TODOs
 
@@ -152,17 +164,12 @@ None
 
 **Recommendation:** Use `/gsd:research-phase` before planning Phase 6.
 
-## Session Continuity
+## Phase 3 Status
 
-**Last session:** 2026-02-02 19:40 UTC
-**Stopped at:** Completed 03-07-PLAN.md (Settings Configuration)
-**Resume file:** None
-
-**For Next Session:**
-1. Phase 3 - Web UI: Upload + Status (COMPLETE - 7/7 plans done)
-   - All web UI plans completed: templates, routes, API, JavaScript, settings
-   - Ready for Phase 4: Timestamp Review & Override
-2. Consider end-to-end testing or integration verification for Phase 3
+**Plans:** 7/7 plans have PLAN.md, 6/7 have SUMMARY.md
+**Remaining:** 03-06 Human Verification (checkpoint plan)
+**Testing:** Extensively tested in sessions outside GSD workflow
+**Ready:** Pending verification summary, then Phase 4
 
 **Context to Preserve:**
 - Phase 1 (COMPLETE): Established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue, integration tests)
@@ -244,7 +251,8 @@ None
   - Lazy loading: files loaded only when bucket expanded (performance optimization)
   - Multi-select: shift-click for range selection (selectedFiles Set)
   - Thumbnail sizes: compact (100px), medium (150px), large (200px) presets
-  - Duplicate groups: side-by-side comparison with recommended file highlighted
+  - Duplicate groups: horizontal scroll layout, largest file gets "Recommended" badge
+  - loadDuplicates() fetches /api/jobs/:id/duplicates and renders groups
   - Placeholder: app/static/img/placeholder.svg for missing thumbnails
   - API integration: /api/jobs/:id/files?confidence={level}, /api/jobs/:id/duplicates
 - Settings API:
@@ -258,14 +266,26 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 19:39 UTC
-**Stopped at:** Completed 03-05-PLAN.md (Results Display with Buckets)
+**Last session:** 2026-02-02
+**Stopped at:** Phase 3 verification (03-06-PLAN.md)
 **Resume file:** None
 
+**Work Done Outside GSD Tracking:**
+Several sessions occurred without GSD resume, resulting in significant testing and bug fixes:
+- Pause/resume job control - tested and working
+- Worker health check endpoint added
+- Progress polling reliability fixes
+- Session resume on page refresh verified
+- UI improvements and polish
+- Duplicate groups rendering added (results.js)
+- Commit: `80039e4 feat: pause/resume fixes, worker health check, UI improvements`
+
 **For Next Session:**
-1. Continue Phase 3 - Web Interface: Upload + Status
-   - Next: 03-06 or later plans for integration and additional UI features
-   - Later: Wire resultsHandler into progress completion, add CSS classes for results UI
+1. Complete Phase 3 verification (03-06-SUMMARY.md)
+2. Begin Phase 4: Timestamp Review & Override
+   - Review queue for low-confidence timestamps
+   - Side-by-side timestamp source comparison
+   - Manual timestamp entry
 
 ---
 

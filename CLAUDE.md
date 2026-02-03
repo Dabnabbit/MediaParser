@@ -32,6 +32,21 @@ cd /home/dab/Projects/MediaParser
 .venv/bin/huey_consumer huey_config.huey -w 2 -k thread
 ```
 
+## Environment
+- **Platform:** WSL2 (Ubuntu) - migrated from Windows
+- **Target:** Linux-native, will be Dockerized
+- **Python:** 3.11+ with venv at `.venv/`
+
 ## Current Development Focus
-- Pause/Resume functionality for job processing
-- Debug logging to `/tmp/job_debug.log`
+- Phase 3 complete: Web UI with upload, progress, results, settings
+- Pause/Resume functionality verified working
+- Ready for Phase 4: Timestamp Review & Override
+
+## Recent Session Work (outside GSD tracking)
+The following was tested and fixed in sessions not tracked by GSD:
+- Pause/resume job control - fully working
+- Worker health check endpoint
+- Progress polling and UI updates
+- Session resume on page refresh
+- Various UI improvements and bug fixes
+- Commit: `80039e4 feat: pause/resume fixes, worker health check, UI improvements`

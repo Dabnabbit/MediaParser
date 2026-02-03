@@ -42,12 +42,10 @@
 ## External Binaries
 
 **ExifTool:**
-- Binary: `/mnt/d/Work/Scripts/MediaParser/exiftool.exe`
-- Type: PE32+ executable (Windows x86-64)
+- Binary: `/usr/bin/exiftool` (system-installed on WSL2/Linux)
 - Purpose: Command-line utility for reading and writing file metadata
-- License: See `exiftool_files/readme_windows.txt`
 - Source: https://exiftool.org/
-- Wrapper: Strawberry Perl with launcher by Oliver Betz
+- Install: `sudo apt install libimage-exiftool-perl`
 
 ## Configuration
 

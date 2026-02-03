@@ -88,6 +88,9 @@ class File(db.Model):
     # Thumbnail
     thumbnail_path: Mapped[Optional[str]] = mapped_column(String(500))  # Relative path to thumbnail
 
+    # Processing status
+    processing_error: Mapped[Optional[str]] = mapped_column(Text)  # Error message if processing failed
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

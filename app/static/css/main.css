@@ -688,6 +688,49 @@ body {
     color: var(--color-low);
 }
 
+.confidence-duplicates {
+    background-color: #e0e7ff;
+    color: #4f46e5;
+}
+
+.confidence-failed {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+/* Failed file list */
+.failed-file {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.failed-file:last-child {
+    border-bottom: none;
+}
+
+.failed-file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.failed-file-info .filename {
+    font-weight: 500;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.failed-file-info .error-message {
+    font-size: 0.8rem;
+    color: var(--color-failed);
+    margin-top: 2px;
+    word-break: break-word;
+}
+
 .bucket-count {
     color: var(--color-text-muted);
     font-size: 0.85rem;
@@ -804,12 +847,126 @@ body {
 }
 
 /* ========================================
-   Duplicate Groups
+   Duplicate Groups (content inside bucket)
    ======================================== */
-.duplicates-container {
-    margin-top: var(--spacing-lg);
-    padding-top: var(--spacing-lg);
-    border-top: 1px solid var(--color-border);
+.duplicate-group {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+    overflow: hidden;
+}
+
+.duplicate-group-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--color-background);
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    user-select: none;
+}
+
+.duplicate-group-header:hover {
+    background: var(--color-surface);
+}
+
+.group-toggle-icon {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    transition: transform 0.2s ease;
+}
+
+.duplicate-group[data-expanded="true"] .group-toggle-icon {
+    transform: rotate(90deg);
+}
+
+.duplicate-group[data-expanded="false"] .duplicate-files-grid {
+    display: none;
+}
+
+.duplicate-group[data-expanded="false"] .duplicate-group-header {
+    border-bottom: none;
+}
+
+.group-title {
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.group-count {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+.group-hash {
+    margin-left: auto;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.duplicate-files-grid {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    overflow-x: auto;
+}
+
+.duplicate-file {
+    flex: 0 0 150px;
+    position: relative;
+    background: var(--color-background);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    text-align: center;
+}
+
+.duplicate-file.recommended {
+    border-color: var(--color-success);
+    background: rgba(34, 197, 94, 0.05);
+}
+
+.duplicate-file img {
+    width: 100%;
+    height: 100px;
+    object-fit: contain;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-xs);
+}
+
+.duplicate-file-info {
+    text-align: left;
+}
+
+.duplicate-file-info .filename {
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-text);
+}
+
+.duplicate-file-info .file-meta {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+}
+
+.recommended-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: var(--color-success);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
 }
 
 /* ========================================

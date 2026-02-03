@@ -22,6 +22,7 @@ class ResultsHandler {
         this.highCount = document.getElementById('high-count');
         this.mediumCount = document.getElementById('medium-count');
         this.lowCount = document.getElementById('low-count');
+        this.duplicatesCount = document.getElementById('duplicates-count');
 
         this.highGrid = document.getElementById('high-grid');
         this.mediumGrid = document.getElementById('medium-grid');
@@ -29,6 +30,11 @@ class ResultsHandler {
 
         this.duplicatesContainer = document.getElementById('duplicates-container');
         this.duplicatesList = document.getElementById('duplicates-list');
+        this.duplicatesLoaded = false;
+
+        this.failedContainer = document.getElementById('failed-container');
+        this.failedList = document.getElementById('failed-list');
+        this.failedCount = document.getElementById('failed-count');
 
         this.initEventListeners();
     }
@@ -44,32 +50,37 @@ class ResultsHandler {
         this.expandedBucket = null;
         this.bucketPages = { high: 1, medium: 1, low: 1 };
         this.bucketTotals = { high: {}, medium: {}, low: {} };
+        this.duplicatesLoaded = false;
 
-        // Hide all buckets
-        ['high', 'medium', 'low'].forEach(level => {
+        // Hide all buckets including duplicates and failed
+        ['high', 'medium', 'low', 'duplicates', 'failed'].forEach(level => {
             const bucket = document.querySelector(`[data-bucket="${level}"]`);
-            const grid = document.getElementById(`${level}-grid`);
             if (bucket) {
                 bucket.style.display = 'none';
                 bucket.dataset.expanded = 'false';
             }
-            if (grid) {
-                grid.innerHTML = '';
-            }
         });
+
+        // Clear grids
+        ['high', 'medium', 'low'].forEach(level => {
+            const grid = document.getElementById(`${level}-grid`);
+            if (grid) grid.innerHTML = '';
+        });
+
+        // Clear duplicates and failed lists
+        if (this.duplicatesList) {
+            this.duplicatesList.innerHTML = '';
+        }
+        if (this.failedList) {
+            this.failedList.innerHTML = '';
+        }
 
         // Reset counts
         if (this.highCount) this.highCount.textContent = '0 files';
         if (this.mediumCount) this.mediumCount.textContent = '0 files';
         if (this.lowCount) this.lowCount.textContent = '0 files';
-
-        // Hide duplicates
-        if (this.duplicatesContainer) {
-            this.duplicatesContainer.style.display = 'none';
-        }
-        if (this.duplicatesList) {
-            this.duplicatesList.innerHTML = '';
-        }
+        if (this.duplicatesCount) this.duplicatesCount.textContent = '0 groups';
+        if (this.failedCount) this.failedCount.textContent = '0 files';
     }
 
     initEventListeners() {
@@ -104,15 +115,160 @@ class ResultsHandler {
             medium: data.summary.confidence_counts?.medium || 0,
             low: data.summary.confidence_counts?.low || 0,
             none: data.summary.confidence_counts?.none || 0,
-            duplicates: data.summary.duplicate_groups || 0
-        } : { high: 0, medium: 0, low: 0, none: 0, duplicates: 0 };
+            duplicates: data.summary.duplicate_groups || 0,
+            failed: data.summary.failed_count || 0
+        } : { high: 0, medium: 0, low: 0, none: 0, duplicates: 0, failed: 0 };
 
-        // Update bucket counts and visibility
+        // Update bucket counts and visibility (including duplicates)
         this.updateBucketCounts();
+    }
 
-        // Show duplicates section if any
-        if (this.summary.duplicates > 0 && this.duplicatesContainer) {
-            this.duplicatesContainer.style.display = 'block';
+    /**
+     * Load and render duplicate groups
+     */
+    async loadDuplicates() {
+        if (!this.duplicatesList) return;
+
+        this.duplicatesList.innerHTML = '<div class="loading">Loading duplicates...</div>';
+
+        try {
+            const response = await fetch(`/api/jobs/${this.jobId}/duplicates`);
+            if (!response.ok) throw new Error('Failed to load duplicates');
+
+            const data = await response.json();
+
+            this.duplicatesList.innerHTML = '';
+
+            if (data.duplicate_groups && data.duplicate_groups.length > 0) {
+                data.duplicate_groups.forEach((group, groupIndex) => {
+                    this.renderDuplicateGroup(group, groupIndex);
+                });
+            } else {
+                this.duplicatesList.innerHTML = '<div class="empty">No duplicates found</div>';
+            }
+        } catch (error) {
+            console.error('Error loading duplicates:', error);
+            this.duplicatesList.innerHTML = '<div class="error">Failed to load duplicates</div>';
+        }
+    }
+
+    /**
+     * Render a single duplicate group
+     */
+    renderDuplicateGroup(group, groupIndex) {
+        const groupEl = document.createElement('div');
+        groupEl.className = 'duplicate-group';
+        groupEl.dataset.expanded = 'false';
+
+        const header = document.createElement('div');
+        header.className = 'duplicate-group-header';
+        header.innerHTML = `
+            <span class="group-toggle-icon">▶</span>
+            <span class="group-title">Group ${groupIndex + 1}</span>
+            <span class="group-count">${group.files.length} identical files</span>
+            <span class="group-hash" title="${group.hash}">SHA256: ${group.hash.substring(0, 12)}...</span>
+        `;
+
+        // Toggle group on header click
+        header.addEventListener('click', () => {
+            const isExpanded = groupEl.dataset.expanded === 'true';
+            groupEl.dataset.expanded = isExpanded ? 'false' : 'true';
+        });
+
+        groupEl.appendChild(header);
+
+        const filesGrid = document.createElement('div');
+        filesGrid.className = 'duplicate-files-grid';
+
+        // Sort by file size descending (largest first as "recommended")
+        const sortedFiles = [...group.files].sort((a, b) =>
+            (b.file_size_bytes || 0) - (a.file_size_bytes || 0)
+        );
+
+        sortedFiles.forEach((file, fileIndex) => {
+            const fileEl = document.createElement('div');
+            fileEl.className = 'duplicate-file';
+            if (fileIndex === 0) {
+                fileEl.classList.add('recommended');
+            }
+
+            const imgSrc = file.thumbnail_path
+                ? `/${file.thumbnail_path}`
+                : '/static/img/placeholder.svg';
+
+            const fileSize = this.formatFileSize(file.file_size_bytes);
+            const timestamp = this.formatTimestamp(file.detected_timestamp);
+
+            fileEl.innerHTML = `
+                ${fileIndex === 0 ? '<span class="recommended-badge">Recommended</span>' : ''}
+                <img src="${imgSrc}"
+                     alt="${file.original_filename}"
+                     loading="lazy"
+                     onerror="this.src='/static/img/placeholder.svg'">
+                <div class="duplicate-file-info">
+                    <div class="filename" title="${file.original_filename}">${file.original_filename}</div>
+                    <div class="file-meta">${fileSize} • ${timestamp}</div>
+                </div>
+            `;
+
+            filesGrid.appendChild(fileEl);
+        });
+
+        groupEl.appendChild(filesGrid);
+        this.duplicatesList.appendChild(groupEl);
+    }
+
+    /**
+     * Format file size in human-readable format
+     */
+    formatFileSize(bytes) {
+        if (!bytes) return 'Unknown size';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let size = bytes;
+        let unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+        return `${size.toFixed(1)} ${units[unitIndex]}`;
+    }
+
+    /**
+     * Load and render failed files
+     */
+    async loadFailed() {
+        if (!this.failedList) return;
+
+        this.failedList.innerHTML = '<div class="loading">Loading failed files...</div>';
+
+        try {
+            const response = await fetch(`/api/jobs/${this.jobId}/failed`);
+            if (!response.ok) throw new Error('Failed to load failed files');
+
+            const data = await response.json();
+
+            this.failedList.innerHTML = '';
+
+            if (data.files && data.files.length > 0) {
+                data.files.forEach(file => {
+                    const fileEl = document.createElement('div');
+                    fileEl.className = 'failed-file';
+
+                    fileEl.innerHTML = `
+                        <div class="failed-file-info">
+                            <div class="filename" title="${file.original_filename}">${file.original_filename}</div>
+                            <div class="error-message">${file.processing_error || 'Unknown error'}</div>
+                        </div>
+                    `;
+
+                    this.failedList.appendChild(fileEl);
+                });
+            } else {
+                this.failedList.innerHTML = '<div class="empty">No failed files</div>';
+            }
+        } catch (error) {
+            console.error('Error loading failed files:', error);
+            this.failedList.innerHTML = '<div class="error">Failed to load failed files</div>';
         }
     }
 
@@ -122,11 +278,15 @@ class ResultsHandler {
         if (this.highCount) this.highCount.textContent = `${this.summary.high} files`;
         if (this.mediumCount) this.mediumCount.textContent = `${this.summary.medium} files`;
         if (this.lowCount) this.lowCount.textContent = `${lowTotal} files`;
+        if (this.duplicatesCount) this.duplicatesCount.textContent = `${this.summary.duplicates} groups`;
+        if (this.failedCount) this.failedCount.textContent = `${this.summary.failed} files`;
 
         // Show/hide buckets based on count
         this.toggleBucketVisibility('high', this.summary.high > 0);
         this.toggleBucketVisibility('medium', this.summary.medium > 0);
         this.toggleBucketVisibility('low', lowTotal > 0);
+        this.toggleBucketVisibility('duplicates', this.summary.duplicates > 0);
+        this.toggleBucketVisibility('failed', this.summary.failed > 0);
     }
 
     toggleBucketVisibility(level, visible) {
@@ -141,16 +301,14 @@ class ResultsHandler {
      */
     async toggleBucket(level) {
         const bucket = document.querySelector(`[data-bucket="${level}"]`);
-        const grid = document.getElementById(`${level}-grid`);
-
-        if (!bucket || !grid) return;
+        if (!bucket) return;
 
         const isExpanded = bucket.dataset.expanded === 'true';
 
         // If clicking currently expanded bucket, collapse it
         if (isExpanded) {
             bucket.dataset.expanded = 'false';
-            grid.innerHTML = '';
+            this.clearBucketContent(level);
             this.expandedBucket = null;
             return;
         }
@@ -158,16 +316,37 @@ class ResultsHandler {
         // Collapse any currently expanded bucket
         if (this.expandedBucket) {
             const prevBucket = document.querySelector(`[data-bucket="${this.expandedBucket}"]`);
-            const prevGrid = document.getElementById(`${this.expandedBucket}-grid`);
             if (prevBucket) prevBucket.dataset.expanded = 'false';
-            if (prevGrid) prevGrid.innerHTML = '';
+            this.clearBucketContent(this.expandedBucket);
         }
 
-        // Expand new bucket and load first page
+        // Expand new bucket and load content
         bucket.dataset.expanded = 'true';
         this.expandedBucket = level;
-        this.bucketPages[level] = 1;
-        await this.loadBucketPage(level, 1);
+
+        if (level === 'duplicates') {
+            await this.loadDuplicates();
+        } else if (level === 'failed') {
+            await this.loadFailed();
+        } else {
+            this.bucketPages[level] = 1;
+            await this.loadBucketPage(level, 1);
+        }
+    }
+
+    /**
+     * Clear content from a bucket
+     */
+    clearBucketContent(level) {
+        if (level === 'duplicates') {
+            if (this.duplicatesList) this.duplicatesList.innerHTML = '';
+            this.duplicatesLoaded = false;
+        } else if (level === 'failed') {
+            if (this.failedList) this.failedList.innerHTML = '';
+        } else {
+            const grid = document.getElementById(`${level}-grid`);
+            if (grid) grid.innerHTML = '';
+        }
     }
 
     /**

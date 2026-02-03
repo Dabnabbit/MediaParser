@@ -187,12 +187,34 @@
                 <div class="thumbnail-grid thumb-medium" id="low-grid" data-grid="low"></div>
             </div>
         </div>
-    </div>
 
-    <!-- Duplicate Groups -->
-    <div class="duplicates-container" id="duplicates-container" style="display: none;">
-        <h3 class="subsection-title">Duplicate Groups</h3>
-        <div id="duplicates-list"></div>
+        <!-- Duplicate Groups Bucket -->
+        <div class="bucket" data-bucket="duplicates" data-expanded="false" id="duplicates-container" style="display: none;">
+            <div class="bucket-header" data-bucket-toggle="duplicates">
+                <div class="bucket-title">
+                    <span class="confidence-badge confidence-duplicates">DUPLICATES</span>
+                    <span class="bucket-count" id="duplicates-count">0 groups</span>
+                </div>
+                <span class="bucket-toggle-icon">▼</span>
+            </div>
+            <div class="bucket-content" id="duplicates-content">
+                <div id="duplicates-list"></div>
+            </div>
+        </div>
+
+        <!-- Failed Files Bucket -->
+        <div class="bucket" data-bucket="failed" data-expanded="false" id="failed-container" style="display: none;">
+            <div class="bucket-header" data-bucket-toggle="failed">
+                <div class="bucket-title">
+                    <span class="confidence-badge confidence-failed">FAILED</span>
+                    <span class="bucket-count" id="failed-count">0 files</span>
+                </div>
+                <span class="bucket-toggle-icon">▼</span>
+            </div>
+            <div class="bucket-content" id="failed-content">
+                <div id="failed-list"></div>
+            </div>
+        </div>
     </div>
 </section>
 {% endblock %}

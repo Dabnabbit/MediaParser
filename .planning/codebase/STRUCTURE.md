@@ -1,32 +1,94 @@
 # Codebase Structure
 
 **Analysis Date:** 2026-02-02
+**Updated:** 2026-02-02 (WSL migration, Flask app structure)
+
+> **Note:** Structure significantly expanded with Flask web application (Phases 1-3).
+> Original CLI script preserved as `PhotoTimeFixer.py` for reference.
 
 ## Directory Layout
 
 ```
-/mnt/d/Work/Scripts/MediaParser/
+/home/dab/Projects/MediaParser/
 ├── .git/                      # Git repository metadata
 ├── .planning/                 # GSD planning and analysis documents
-│   └── codebase/             # This documentation directory
-├── PhotoTimeFixer.py         # Main application entry point
-├── exiftool.exe              # Bundled exiftool binary for Windows
-├── exiftool_files/           # Bundled Perl/exiftool support libraries
-├── TestImages/               # Test image samples (ignored in .gitignore)
-├── old/                      # Previous versions and experimental code
-│   ├── PhotoTimeFixer.py     # Earlier version (archived)
-│   └── minimal_test.py       # Test harness for batch processing
-├── .gitignore                # Git ignore rules
-├── .gitattributes            # Git LFS or attribute rules
-└── __pycache__/              # Python bytecode cache (ignored)
+├── .venv/                     # Python virtual environment
+├── app/                       # Flask application package
+│   ├── __init__.py           # App factory (create_app)
+│   ├── models.py             # SQLAlchemy models (File, Job, Duplicate, etc.)
+│   ├── lib/                  # Library modules
+│   │   ├── confidence.py     # Timestamp confidence scoring
+│   │   ├── hashing.py        # SHA256 and perceptual hashing
+│   │   ├── metadata.py       # EXIF extraction
+│   │   ├── processing.py     # Single file processing pipeline
+│   │   ├── thumbnail.py      # Thumbnail generation
+│   │   └── timestamp.py      # Datetime parsing from filenames
+│   ├── routes/               # Flask blueprints
+│   │   ├── api.py            # Progress and current-job endpoints
+│   │   ├── jobs.py           # Job management endpoints
+│   │   ├── settings.py       # Settings API
+│   │   └── upload.py         # File upload endpoints
+│   ├── static/               # Frontend assets
+│   │   ├── css/main.css      # Styles
+│   │   ├── js/               # JavaScript modules
+│   │   │   ├── upload.js     # Upload handling
+│   │   │   ├── progress.js   # Progress polling
+│   │   │   ├── results.js    # Results display
+│   │   │   └── settings.js   # Settings panel
+│   │   └── img/              # Static images
+│   ├── templates/            # Jinja2 templates
+│   └── tasks.py              # Huey background tasks
+├── instance/                  # Instance-specific data (not committed)
+│   ├── mediaparser.db        # SQLite database
+│   └── huey_queue.db         # Huey task queue
+├── storage/                   # File storage directories
+│   ├── uploads/              # Uploaded files (job subdirectories)
+│   ├── processing/           # Files being processed
+│   └── output/               # Processed output
+├── config.py                  # Configuration classes
+├── huey_config.py            # Huey task queue configuration
+├── run.py                    # Flask application entry point
+├── PhotoTimeFixer.py         # Original CLI script (reference)
+├── old/                      # Archived code
+└── tests/                    # Test suite
 ```
 
 ## Directory Purposes
 
 **Root Directory:**
-- Purpose: Project root containing main application and configuration
-- Contains: Primary application file, bundled tools, test data
-- Key files: `PhotoTimeFixer.py`
+- Purpose: Project root with Flask app configuration
+- Key files: `run.py` (entry), `config.py` (configuration), `huey_config.py` (task queue)
+
+**app/:**
+- Purpose: Flask application package
+- Key patterns: App factory (`create_app()`), blueprints for routes
+- Models: SQLAlchemy 2.x with Mapped[] type hints
+
+**app/lib/:**
+- Purpose: Reusable library modules extracted from original CLI
+- Contains: timestamp, metadata, hashing, confidence, processing, thumbnail
+- Pattern: Functions accept `default_tz` parameter, return UTC datetimes
+
+**app/routes/:**
+- Purpose: Flask blueprints organized by feature
+- Contains: api.py, jobs.py, settings.py, upload.py
+- Pattern: JSON API responses, state validation
+
+**storage/:**
+- Purpose: File storage with job-based organization
+- Contains: uploads/job_{id}/, processing/, output/
+- Created: Automatically on app startup
+
+**instance/:**
+- Purpose: Instance-specific data (databases)
+- Contains: mediaparser.db (SQLite), huey_queue.db (task queue)
+- Committed: No (gitignored)
+
+---
+
+## Legacy Reference (Original CLI)
+
+The following documents the original `PhotoTimeFixer.py` structure for reference:
 
 **exiftool_files/:**
 - Purpose: Bundled Perl libraries and modules for exiftool binary
@@ -173,18 +235,26 @@
 
 ## Code Organization Principles
 
-**Current State:**
-- **Monolithic structure**: All code in single file `PhotoTimeFixer.py`
-- **Linear execution**: Sequential processing within `Main()` function
-- **Global configuration**: Module-level constants define behavior
-- **No modules/classes**: Functional programming style with helper functions
+**Current State (Flask App):**
+- **Modular structure**: Flask app factory pattern with blueprints
+- **Library extraction**: Core logic in `app/lib/` modules
+- **Background processing**: Huey task queue with ThreadPoolExecutor
+- **Type safety**: SQLAlchemy 2.x with Mapped[] annotations
 
 **Implications for New Code:**
-- New features should be added as functions in `PhotoTimeFixer.py`
-- Avoid creating new Python files unless modularization becomes necessary
-- Keep new code at module level or within `Main()` function as appropriate
-- Follow existing naming conventions for consistency
+- Routes: Add blueprints in `app/routes/`, register in `app/__init__.py`
+- Library logic: Add modules in `app/lib/`, import where needed
+- Models: Add to `app/models.py` with Mapped[] type hints
+- Frontend: JS modules in `app/static/js/`, follow handler class pattern
+- Tasks: Add to `app/tasks.py` with `get_app()` pattern for Flask context
+
+**Key Patterns:**
+- Use `pathlib.Path` for all file paths
+- Return dicts from worker threads (main thread commits to DB)
+- All datetime handling uses UTC internally with configurable display timezone
+- Config via environment variables (see `config.py`)
 
 ---
 
 *Structure analysis: 2026-02-02*
+*Updated for Flask app: 2026-02-02*
