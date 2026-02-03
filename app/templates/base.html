@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}MediaParser{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/examination.css') }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -28,6 +29,7 @@
     <script src="{{ url_for('static', filename='js/filters.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/results.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/selection.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/examination.js') }}" defer></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
