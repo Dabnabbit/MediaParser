@@ -102,6 +102,19 @@ Plans:
 
 **Requirements:** TIME-02, TIME-03, TIME-04, TIME-05, WEB-01
 
+**Plans:** 9 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Database models (Tag, File extensions) and review API endpoints
+- [ ] 04-02-PLAN.md — Unified grid HTML structure and filter chips CSS/JS
+- [ ] 04-03-PLAN.md — Results handler refactor for unified grid with lazy loading
+- [ ] 04-04-PLAN.md — Multi-select with shift/ctrl-click and selection toolbar
+- [ ] 04-05-PLAN.md — Examination view modal with native dialog element
+- [ ] 04-06-PLAN.md — Timestamp source comparison and manual entry with Chrono
+- [ ] 04-07-PLAN.md — Review workflow (confirm, auto-confirm HIGH, unreview)
+- [ ] 04-08-PLAN.md — Tagging UI with autocomplete in toolbar and examination
+- [ ] 04-09-PLAN.md — Human verification of complete review workflow
+
 **Success Criteria:**
 1. Files flagged as low-confidence appear in dedicated review queue
 2. User sees thumbnail grid of processed files (not just list)
@@ -177,7 +190,7 @@ Plans:
 | 1 - Foundation Architecture | ✓ Complete | 4 | 100% |
 | 2 - Background Workers + Core Processing | ✓ Complete | 3 | 100% |
 | 3 - Web UI - Upload + Status | ✓ Complete | 5 | 100% |
-| 4 - Review Queues - Timestamps | Pending | 5 | 0% |
+| 4 - Review Queues - Timestamps | In Progress | 5 | 0% |
 | 5 - Duplicate Detection - Exact | Pending | 4 | 0% |
 | 6 - Duplicate Detection - Perceptual | Pending | 2 | 0% |
 | 7 - Output Generation + Tagging | Pending | 8 | 0% |
@@ -186,4 +199,4 @@ Plans:
 
 ---
 
-*Last updated: 2026-02-02*
+*Last updated: 2026-02-03*
