@@ -151,7 +151,7 @@ class ResultsHandler {
     /**
      * Show results for a completed job (called from progressHandler)
      */
-    showResults(jobId, data) {
+    async showResults(jobId, data) {
         this.jobId = jobId;
         if (this.resultsContainer) {
             this.resultsContainer.style.display = 'block';
@@ -163,18 +163,49 @@ class ResultsHandler {
                 high: data.summary.confidence_counts?.high || 0,
                 medium: data.summary.confidence_counts?.medium || 0,
                 low: (data.summary.confidence_counts?.low || 0) + (data.summary.confidence_counts?.none || 0),
-                reviewed: 0, // Will be fetched from summary endpoint
+                reviewed: data.summary.reviewed_count || 0,
                 duplicates: data.summary.duplicate_groups || 0,
                 failed: data.summary.failed_count || 0,
                 total: data.progress_total || 0
             });
         }
 
+        // Auto-confirm HIGH confidence files (one-time operation per job)
+        await this.autoConfirmHighConfidence();
+
         // Load initial files
         this.loadFiles();
 
         // Load full summary for accurate counts
         this.loadSummary();
+    }
+
+    /**
+     * Auto-confirm HIGH confidence files on first job view
+     */
+    async autoConfirmHighConfidence() {
+        // Check if already auto-confirmed for this job
+        const autoConfirmKey = `autoConfirmed_${this.jobId}`;
+        if (localStorage.getItem(autoConfirmKey)) {
+            return; // Already done
+        }
+
+        try {
+            // Call backend endpoint to auto-confirm HIGH confidence files
+            const response = await fetch(`/api/jobs/${this.jobId}/auto-confirm-high`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log(`Auto-confirmed ${result.confirmed_count} HIGH confidence files`);
+
+                // Mark as done
+                localStorage.setItem(autoConfirmKey, 'true');
+            }
+        } catch (error) {
+            console.warn('Auto-confirm failed (non-critical):', error);
+        }
     }
 
     /**

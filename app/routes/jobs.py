@@ -387,6 +387,50 @@ def get_job_failed_files(job_id):
     }), 200
 
 
+@jobs_bp.route('/api/jobs/<int:job_id>/auto-confirm-high', methods=['POST'])
+def auto_confirm_high_confidence(job_id):
+    """
+    Auto-confirm all HIGH confidence files that haven't been reviewed yet.
+    Sets final_timestamp = detected_timestamp for these files.
+
+    Args:
+        job_id: ID of the job
+
+    Returns:
+        JSON with count of confirmed files
+    """
+    job = db.session.get(Job, job_id)
+
+    if job is None:
+        return jsonify({'error': f'Job {job_id} not found'}), 404
+
+    # Find HIGH confidence files without review
+    files_to_confirm = File.query.join(File.jobs).filter(
+        Job.id == job_id,
+        File.confidence == ConfidenceLevel.HIGH,
+        File.reviewed_at.is_(None),
+        File.detected_timestamp.isnot(None)
+    ).all()
+
+    confirmed_count = 0
+    now = datetime.now(timezone.utc)
+
+    for file in files_to_confirm:
+        file.final_timestamp = file.detected_timestamp
+        file.reviewed_at = now
+        confirmed_count += 1
+
+    if confirmed_count > 0:
+        db.session.commit()
+        logger.info(f"Auto-confirmed {confirmed_count} HIGH confidence files for job {job_id}")
+
+    return jsonify({
+        'job_id': job_id,
+        'confirmed_count': confirmed_count,
+        'success': True
+    }), 200
+
+
 @jobs_bp.route('/api/jobs/<int:job_id>/summary', methods=['GET'])
 def get_job_summary(job_id):
     """
