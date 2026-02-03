@@ -385,3 +385,60 @@ def get_job_failed_files(job_id):
         'pages': pagination.pages,
         'per_page': per_page
     }), 200
+
+
+@jobs_bp.route('/api/jobs/<int:job_id>/summary', methods=['GET'])
+def get_job_summary(job_id):
+    """
+    Get summary counts for a job (for filter chips).
+
+    Args:
+        job_id: ID of the job
+
+    Returns:
+        JSON with counts for each filter category
+    """
+    job = db.session.get(Job, job_id)
+
+    if job is None:
+        return jsonify({'error': f'Job {job_id} not found'}), 404
+
+    # Base query for job files (excluding discarded by default)
+    base_query = File.query.join(File.jobs).filter(
+        Job.id == job_id,
+        File.discarded == False
+    )
+
+    # Count by confidence level
+    high_count = base_query.filter(File.confidence == ConfidenceLevel.HIGH).count()
+    medium_count = base_query.filter(File.confidence == ConfidenceLevel.MEDIUM).count()
+    low_count = base_query.filter(File.confidence == ConfidenceLevel.LOW).count()
+    none_count = base_query.filter(File.confidence == ConfidenceLevel.NONE).count()
+
+    # Reviewed count
+    reviewed_count = base_query.filter(File.reviewed_at.isnot(None)).count()
+
+    # Duplicates count (files in duplicate groups)
+    duplicates_count = base_query.filter(File.duplicate_group_id.isnot(None)).count()
+
+    # Failed count (including discarded files since failures should be visible)
+    failed_query = File.query.join(File.jobs).filter(
+        Job.id == job_id,
+        File.processing_error.isnot(None)
+    )
+    failed_count = failed_query.count()
+
+    # Total count (non-discarded files)
+    total_count = base_query.count()
+
+    return jsonify({
+        'job_id': job_id,
+        'high': high_count,
+        'medium': medium_count,
+        'low': low_count,
+        'none': none_count,
+        'reviewed': reviewed_count,
+        'duplicates': duplicates_count,
+        'failed': failed_count,
+        'total': total_count
+    }), 200
