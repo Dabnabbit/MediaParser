@@ -1,0 +1,143 @@
+/**
+ * Timestamp Source Display Styles
+ *
+ * Styles for timestamp sources in examination view.
+ * Includes source list, selection state, and manual entry.
+ */
+
+/* ============================================
+   SOURCE LIST
+   ============================================ */
+
+.timestamp-sources {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.timestamp-source {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.timestamp-source:hover {
+    border-color: var(--accent-color);
+    background: var(--bg-hover);
+}
+
+.timestamp-source.selected {
+    border-color: var(--accent-color);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.timestamp-source.recommended {
+    border-left: 3px solid var(--success-color);
+}
+
+.source-radio {
+    padding-top: 2px;
+}
+
+.source-radio input[type="radio"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.source-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.source-info label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.source-label {
+    font-size: 0.9rem;
+}
+
+.source-time {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-family: monospace;
+}
+
+/* ============================================
+   RECOMMENDED BADGE
+   ============================================ */
+
+.recommended-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    background: var(--success-color);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-radius: 3px;
+}
+
+/* ============================================
+   MANUAL ENTRY
+   ============================================ */
+
+.timestamp-source.manual {
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px dashed var(--border-color);
+}
+
+.manual-input-group {
+    margin-top: var(--spacing-xs);
+}
+
+.manual-input-group .form-input-sm {
+    width: 100%;
+    padding: 6px 10px;
+    font-size: 0.9rem;
+}
+
+.date-preview {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--success-color);
+    min-height: 1.2em;
+}
+
+.date-preview.error {
+    color: var(--error-color);
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+
+.no-sources {
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: var(--spacing-sm);
+    text-align: center;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+}
+
+/* ============================================
+   WEIGHT TOOLTIP (optional enhancement)
+   ============================================ */
+
+.timestamp-source[title]::after {
+    /* Could add visual weight indicator here */
+}
