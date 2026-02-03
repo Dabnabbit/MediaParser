@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-03 14:31 UTC
+**Last Updated:** 2026-02-03 14:36 UTC
 
 ## Environment
 
@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 4 of 7 - Review Queues: Timestamps
-**Plan:** 1 of ~6 (04-01 complete)
+**Plan:** 3 of ~6 (04-03 complete)
 **Status:** In progress
-**Last activity:** 2026-02-03 - Completed 04-01-PLAN.md (Review API Models and Endpoints)
-**Progress:** `[█████████████████░░░] 46%` (16/~35 plans complete)
+**Last activity:** 2026-02-03 - Completed 04-03-PLAN.md (Results Handler Integration)
+**Progress:** `[██████████████████░░] 51%` (18/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,8 +36,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 16 plans in ~38.6 minutes (avg 2.4 min/plan) - Phase 1+2+3+4 (partial)
-**Plan Success Rate:** 100% (16/16 completed successfully)
+**Velocity:** 18 plans in ~42.6 minutes (avg 2.4 min/plan) - Phase 1+2+3+4 (partial)
+**Plan Success Rate:** 100% (18/18 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 3/7 (Phase 1, 2, 3 complete, Phase 4 in progress)
 
@@ -116,6 +116,9 @@
 | Tag normalization in app code | 2026-02-03 | SQLite func.lower() in unique constraint causes issues; enforce at app level | 04-01: Tag model |
 | Duplicate group as field | 2026-02-03 | Use duplicate_group_id field on File rather than separate association table | 04-01: Model design |
 | Usage count caching | 2026-02-03 | Cache tag usage_count to avoid expensive COUNT queries on autocomplete | 04-01: Tag performance |
+| Delegate grid clicks to selection.js | 2026-02-03 | results.js renders grid but selection.js handles all clicks to avoid conflicts | 04-03: Event handling |
+| IntersectionObserver for lazy loading | 2026-02-03 | 100px rootMargin preloads offscreen images for smooth scrolling | 04-03: Performance |
+| PAGE_SIZE 100 for grid view | 2026-02-03 | Larger page size for unified grid (was 50 for accordion buckets) | 04-03: UX improvement |
 
 ### Active TODOs
 
@@ -143,8 +146,8 @@
 
 **Phase 4 - Review Queues: Timestamps (IN PROGRESS):**
 - [x] 04-01: Review API Models and Endpoints (COMPLETE)
-- [ ] 04-02: Unified Grid with Filter Chips
-- [ ] 04-03: Results handler integration
+- [x] 04-02: Unified Grid with Filter Chips (COMPLETE)
+- [x] 04-03: Results handler integration (COMPLETE)
 - [ ] 04-04: Timestamp review detail panel
 - [ ] 04-05: Manual timestamp override
 - [ ] 04-06: Session state and navigation
@@ -259,14 +262,15 @@ None
   - localStorage for session resume (preserves job ID across page reloads)
   - Client-side extension filtering: jpg, jpeg, png, gif, heic, mp4, mov, avi, mkv
 - Results display patterns:
-  - Accordion buckets: only one confidence level expanded at a time (expandedBucket state)
-  - Lazy loading: files loaded only when bucket expanded (performance optimization)
-  - Multi-select: shift-click for range selection (selectedFiles Set)
+  - Unified grid: single grid view with filter chips (replaced accordion buckets)
+  - Lazy loading: IntersectionObserver with 100px rootMargin for thumbnail preloading
   - Thumbnail sizes: compact (100px), medium (150px), large (200px) presets
-  - Duplicate groups: horizontal scroll layout, largest file gets "Recommended" badge
-  - loadDuplicates() fetches /api/jobs/:id/duplicates and renders groups
+  - Badges: left side for type info (confidence, video), right side for status (reviewed, failed)
+  - Filter integration: filterChange custom event triggers grid reload
+  - Click handling: delegated to selection.js (results.js does NOT handle clicks)
+  - Pagination: prev/next controls for jobs with >100 files
   - Placeholder: app/static/img/placeholder.svg for missing thumbnails
-  - API integration: /api/jobs/:id/files?confidence={level}, /api/jobs/:id/duplicates
+  - API integration: /api/jobs/:id/files with filter/sort params, /api/jobs/:id/summary for counts
 - Settings API:
   - GET /api/settings returns current settings and defaults (output_directory, timezone)
   - POST /api/settings validates and persists settings with comprehensive error handling
@@ -278,18 +282,18 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-03 14:31 UTC
-**Stopped at:** Completed 04-01-PLAN.md (Review API Models and Endpoints)
+**Last session:** 2026-02-03 14:36 UTC
+**Stopped at:** Completed 04-03-PLAN.md (Results Handler Integration)
 **Resume file:** None
 
 **For Next Session:**
-1. Continue Phase 4: Execute 04-02-PLAN.md (Unified Grid with Filter Chips)
-2. Review API is now complete:
-   - File model extended with reviewed_at, final_timestamp, discarded, duplicate_group_id
-   - Tag model exists with many-to-many to File
-   - 10 review/tagging API endpoints functional
-   - Jobs files endpoint extended with filters and sorts
-   - Summary endpoint returns filter chip counts
+1. Continue Phase 4: Execute 04-04-PLAN.md (Timestamp Review Detail Panel)
+2. Unified grid now complete:
+   - results.js refactored from accordion to unified grid
+   - IntersectionObserver for lazy loading thumbnails
+   - Filter integration via filterChange custom events
+   - Badges for confidence, video, reviewed, failed
+   - Click handling delegated to selection.js (04-04)
 
 ---
 
