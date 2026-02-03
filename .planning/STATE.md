@@ -13,15 +13,15 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 3 - Web UI: Upload + Status (Verification pending)
+**Current Focus:** Phase 4 - Review Queues: Timestamps (Ready to plan)
 
 ## Current Position
 
-**Phase:** 3 of 7 - Web UI: Upload + Status
-**Plan:** 07 of ~7 (estimated)
-**Status:** In progress
-**Last activity:** 2026-02-02 - Completed 03-07-PLAN.md (Settings Configuration)
-**Progress:** `[███████████░░░░░░░░░] 48%` (2/7 phases complete, 7/7 plans in Phase 3)
+**Phase:** 4 of 7 - Review Queues: Timestamps
+**Plan:** 0 of ~? (not yet planned)
+**Status:** Ready to plan
+**Last activity:** 2026-02-02 - Completed Phase 3 (Web UI: Upload + Status)
+**Progress:** `[████████████████░░░░] 43%` (3/7 phases complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -164,12 +164,13 @@ None
 
 **Recommendation:** Use `/gsd:research-phase` before planning Phase 6.
 
-## Phase 3 Status
+## Completed Requirements (Phase 3)
 
-**Plans:** 7/7 plans have PLAN.md, 6/7 have SUMMARY.md
-**Remaining:** 03-06 Human Verification (checkpoint plan)
-**Testing:** Extensively tested in sessions outside GSD workflow
-**Ready:** Pending verification summary, then Phase 4
+- ✓ WEB-02: Drag-drop file upload
+- ✓ WEB-03: Folder picker and server path import
+- ✓ WEB-04: Real-time progress with pause/resume
+- ✓ WEB-05: Settings configuration (output directory)
+- ✓ WEB-06: Results display with confidence buckets
 
 **Context to Preserve:**
 - Phase 1 (COMPLETE): Established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue, integration tests)
@@ -267,25 +268,16 @@ None
 ## Session Continuity
 
 **Last session:** 2026-02-02
-**Stopped at:** Phase 3 verification (03-06-PLAN.md)
+**Stopped at:** Phase 3 complete, ready for Phase 4 planning
 **Resume file:** None
 
-**Work Done Outside GSD Tracking:**
-Several sessions occurred without GSD resume, resulting in significant testing and bug fixes:
-- Pause/resume job control - tested and working
-- Worker health check endpoint added
-- Progress polling reliability fixes
-- Session resume on page refresh verified
-- UI improvements and polish
-- Duplicate groups rendering added (results.js)
-- Commit: `80039e4 feat: pause/resume fixes, worker health check, UI improvements`
-
 **For Next Session:**
-1. Complete Phase 3 verification (03-06-SUMMARY.md)
-2. Begin Phase 4: Timestamp Review & Override
+1. Plan Phase 4: Timestamp Review & Override
    - Review queue for low-confidence timestamps
    - Side-by-side timestamp source comparison
    - Manual timestamp entry
+   - User decision recording
+2. Use `/gsd:discuss-phase 4` to gather context first, or `/gsd:plan-phase 4` to plan directly
 
 ---
 
