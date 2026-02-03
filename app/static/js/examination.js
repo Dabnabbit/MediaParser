@@ -63,6 +63,15 @@ class ExaminationHandler {
                     this.next();
                     e.preventDefault();
                     break;
+                case 'Enter':
+                    if (e.ctrlKey || e.metaKey) {
+                        // Ctrl+Enter = Confirm & Next
+                        if (!this.currentFile?.reviewed_at) {
+                            this.confirmAndNext();
+                            e.preventDefault();
+                        }
+                    }
+                    break;
             }
         });
 
@@ -237,9 +246,21 @@ class ExaminationHandler {
         // Get selected timestamp from timestamp handler
         const selectedTimestamp = window.timestampHandler?.getSelectedTimestamp();
 
-        if (!selectedTimestamp) {
-            alert('Please select a timestamp first');
+        // For files without timestamp sources, allow confirming with detected_timestamp
+        const timestampToSave = selectedTimestamp || {
+            value: this.currentFile.detected_timestamp,
+            source: this.currentFile.timestamp_source || 'detected'
+        };
+
+        if (!timestampToSave?.value) {
+            alert('Please select or enter a timestamp first');
             return;
+        }
+
+        // Disable button during save
+        if (this.elements.confirmBtn) {
+            this.elements.confirmBtn.disabled = true;
+            this.elements.confirmBtn.textContent = 'Saving...';
         }
 
         try {
@@ -248,57 +269,144 @@ class ExaminationHandler {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    final_timestamp: selectedTimestamp.value,
-                    source: selectedTimestamp.source
+                    final_timestamp: timestampToSave.value,
+                    source: timestampToSave.source
                 })
             });
 
-            if (!response.ok) throw new Error('Failed to save review');
-
-            // Mark as reviewed in local data
-            this.currentFile.reviewed_at = new Date().toISOString();
-
-            // Update grid item if visible
-            this.updateGridItem(this.currentFile.id, { reviewed_at: this.currentFile.reviewed_at });
-
-            // Move to next file
-            if (this.currentIndex < this.files.length - 1) {
-                this.next();
-            } else {
-                // No more files - close or show completion message
-                alert('All files in selection reviewed!');
-                this.close();
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to save review');
             }
+
+            const updatedFile = await response.json();
+
+            // Update local file data
+            this.currentFile.reviewed_at = updatedFile.reviewed_at;
+            this.currentFile.final_timestamp = updatedFile.final_timestamp;
+
+            // Update files array
+            const fileInList = this.files.find(f => f.id === this.currentFile.id);
+            if (fileInList) {
+                fileInList.reviewed_at = updatedFile.reviewed_at;
+                fileInList.final_timestamp = updatedFile.final_timestamp;
+            }
+
+            // Update grid and counts
+            this.updateGridItem(this.currentFile.id, {
+                reviewed_at: updatedFile.reviewed_at,
+                final_timestamp: updatedFile.final_timestamp
+            });
+            this.refreshFilterCounts();
+
+            // Move to next unreviewed file or next file
+            this.moveToNextUnreviewed();
 
         } catch (error) {
             console.error('Error saving review:', error);
-            alert('Failed to save review. Please try again.');
+            alert(`Failed to save review: ${error.message}`);
+        } finally {
+            if (this.elements.confirmBtn) {
+                this.elements.confirmBtn.disabled = false;
+                this.elements.confirmBtn.textContent = 'Confirm & Next';
+            }
+        }
+    }
+
+    moveToNextUnreviewed() {
+        // Find next unreviewed file after current index
+        for (let i = this.currentIndex + 1; i < this.files.length; i++) {
+            if (!this.files[i].reviewed_at) {
+                this.currentIndex = i;
+                this.loadCurrentFile();
+                return;
+            }
+        }
+
+        // No more unreviewed files after current - check before
+        for (let i = 0; i < this.currentIndex; i++) {
+            if (!this.files[i].reviewed_at) {
+                this.currentIndex = i;
+                this.loadCurrentFile();
+                return;
+            }
+        }
+
+        // All files reviewed
+        this.showAllReviewedMessage();
+    }
+
+    showAllReviewedMessage() {
+        // Show completion message in examination view
+        const unreviewedCount = this.files.filter(f => !f.reviewed_at).length;
+
+        if (unreviewedCount === 0) {
+            // All done!
+            const proceed = confirm(
+                'All files in this selection have been reviewed!\n\n' +
+                'Would you like to close the review and return to the grid?'
+            );
+            if (proceed) {
+                this.close();
+
+                // Optionally prompt for output generation
+                window.dispatchEvent(new CustomEvent('allFilesReviewed'));
+            }
+        } else {
+            // Just move to next
+            this.next();
+        }
+    }
+
+    refreshFilterCounts() {
+        // Trigger a count refresh
+        if (window.resultsHandler) {
+            window.resultsHandler.loadSummary();
         }
     }
 
     async unreviewFile() {
         if (!this.currentFile) return;
 
+        if (this.elements.unreviewBtn) {
+            this.elements.unreviewBtn.disabled = true;
+            this.elements.unreviewBtn.textContent = 'Removing...';
+        }
+
         try {
             const response = await fetch(`/api/files/${this.currentFile.id}/review`, {
                 method: 'DELETE'
             });
 
-            if (!response.ok) throw new Error('Failed to unreview');
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to unreview');
+            }
 
             // Clear reviewed state
             this.currentFile.reviewed_at = null;
             this.currentFile.final_timestamp = null;
 
+            // Update files array
+            const fileInList = this.files.find(f => f.id === this.currentFile.id);
+            if (fileInList) {
+                fileInList.reviewed_at = null;
+                fileInList.final_timestamp = null;
+            }
+
             // Update UI
             this.render();
-
-            // Update grid item
-            this.updateGridItem(this.currentFile.id, { reviewed_at: null });
+            this.updateGridItem(this.currentFile.id, { reviewed_at: null, final_timestamp: null });
+            this.refreshFilterCounts();
 
         } catch (error) {
             console.error('Error unreviewing:', error);
-            alert('Failed to unreview. Please try again.');
+            alert(`Failed to unreview: ${error.message}`);
+        } finally {
+            if (this.elements.unreviewBtn) {
+                this.elements.unreviewBtn.disabled = false;
+                this.elements.unreviewBtn.textContent = 'Unreview';
+            }
         }
     }
 
