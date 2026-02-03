@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-03 14:36 UTC
+**Last Updated:** 2026-02-03 14:37 UTC
 
 ## Environment
 
@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 4 of 7 - Review Queues: Timestamps
-**Plan:** 3 of ~6 (04-03 complete)
+**Plan:** 4 of ~6 (04-04 complete)
 **Status:** In progress
-**Last activity:** 2026-02-03 - Completed 04-03-PLAN.md (Results Handler Integration)
-**Progress:** `[██████████████████░░] 51%` (18/~35 plans complete)
+**Last activity:** 2026-02-03 - Completed 04-04-PLAN.md (Multi-select and Selection Toolbar)
+**Progress:** `[███████████████████░] 54%` (19/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,8 +36,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 18 plans in ~42.6 minutes (avg 2.4 min/plan) - Phase 1+2+3+4 (partial)
-**Plan Success Rate:** 100% (18/18 completed successfully)
+**Velocity:** 19 plans in ~45.6 minutes (avg 2.4 min/plan) - Phase 1+2+3+4 (partial)
+**Plan Success Rate:** 100% (19/19 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 3/7 (Phase 1, 2, 3 complete, Phase 4 in progress)
 
@@ -119,6 +119,9 @@
 | Delegate grid clicks to selection.js | 2026-02-03 | results.js renders grid but selection.js handles all clicks to avoid conflicts | 04-03: Event handling |
 | IntersectionObserver for lazy loading | 2026-02-03 | 100px rootMargin preloads offscreen images for smooth scrolling | 04-03: Performance |
 | PAGE_SIZE 100 for grid view | 2026-02-03 | Larger page size for unified grid (was 50 for accordion buckets) | 04-03: UX improvement |
+| SelectionHandler owns grid clicks | 2026-02-03 | Prevents conflicts between results.js and selection.js - single source of truth | 04-04: Event handling |
+| Duplicate group auto-selection | 2026-02-03 | Clicking duplicate file selects all files with same hash for bulk operations | 04-04: Duplicate workflow |
+| Selection state sync | 2026-02-03 | Keep selectedFiles Set in sync between handlers for consistency | 04-04: State management |
 
 ### Active TODOs
 
@@ -148,9 +151,9 @@
 - [x] 04-01: Review API Models and Endpoints (COMPLETE)
 - [x] 04-02: Unified Grid with Filter Chips (COMPLETE)
 - [x] 04-03: Results handler integration (COMPLETE)
-- [ ] 04-04: Timestamp review detail panel
-- [ ] 04-05: Manual timestamp override
-- [ ] 04-06: Session state and navigation
+- [x] 04-04: Multi-select and Selection Toolbar (COMPLETE)
+- [ ] 04-05: Timestamp review detail panel
+- [ ] 04-06: Manual timestamp override
 
 ### Known Blockers
 
@@ -271,6 +274,16 @@ None
   - Pagination: prev/next controls for jobs with >100 files
   - Placeholder: app/static/img/placeholder.svg for missing thumbnails
   - API integration: /api/jobs/:id/files with filter/sort params, /api/jobs/:id/summary for counts
+- Selection patterns (04-04):
+  - app/static/js/selection.js: SelectionHandler class for multi-select
+  - Owns all #unified-grid click handling (event delegation)
+  - selectedIds Set tracks selected file IDs
+  - Shift-click for range selection, Ctrl/Cmd-click for toggle
+  - Keyboard shortcuts: Escape (clear), Delete (discard), Ctrl+A (select all), Enter (examine)
+  - Duplicate group auto-selection on click
+  - Selection toolbar: sticky bar with count, quick tag input, duplicate actions
+  - Custom events: fileExamine, filesDiscard for downstream handlers
+  - Syncs with resultsHandler.selectedFiles
 - Settings API:
   - GET /api/settings returns current settings and defaults (output_directory, timezone)
   - POST /api/settings validates and persists settings with comprehensive error handling
@@ -282,18 +295,19 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-03 14:36 UTC
-**Stopped at:** Completed 04-03-PLAN.md (Results Handler Integration)
+**Last session:** 2026-02-03 14:37 UTC
+**Stopped at:** Completed 04-04-PLAN.md (Multi-select and Selection Toolbar)
 **Resume file:** None
 
 **For Next Session:**
-1. Continue Phase 4: Execute 04-04-PLAN.md (Timestamp Review Detail Panel)
-2. Unified grid now complete:
-   - results.js refactored from accordion to unified grid
-   - IntersectionObserver for lazy loading thumbnails
-   - Filter integration via filterChange custom events
-   - Badges for confidence, video, reviewed, failed
-   - Click handling delegated to selection.js (04-04)
+1. Continue Phase 4: Execute 04-05-PLAN.md (Timestamp review detail panel)
+2. Multi-select and selection toolbar complete:
+   - SelectionHandler class owns all grid click handling
+   - Shift-click range, Ctrl/Cmd-click toggle, click to select
+   - Keyboard shortcuts: Escape, Delete, Ctrl+A, Enter
+   - Duplicate group auto-selection
+   - Selection toolbar with count, quick tag, duplicate actions
+   - Syncs selection state with resultsHandler
 
 ---
 
