@@ -114,6 +114,16 @@ class ExaminationHandler {
         if (this.elements.image) {
             this.elements.image.src = '';
         }
+
+        // Reset timestamp handler
+        if (window.timestampHandler) {
+            window.timestampHandler.reset();
+        }
+
+        // Reset tags handler
+        if (window.tagsHandler) {
+            window.tagsHandler.reset();
+        }
     }
 
     previous() {
