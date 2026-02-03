@@ -117,12 +117,29 @@ class FilterHandler {
             }
         });
 
-        // Hide chips with zero count
+        // Hide chips with zero count (except 'reviewed' which shows progress)
         this.chips.forEach(chip => {
             const filter = chip.dataset.filter;
             const count = this.counts[filter] || 0;
-            chip.style.display = count > 0 ? '' : 'none';
+
+            // Always show reviewed chip if there are files to review
+            if (filter === 'reviewed') {
+                chip.style.display = (this.counts.total || 0) > 0 ? '' : 'none';
+            } else {
+                chip.style.display = count > 0 ? '' : 'none';
+            }
         });
+
+        // Update clear filters button
+        const hasActiveFilters = this.activeFilters.size > 0;
+        if (this.clearButton) {
+            this.clearButton.style.display = hasActiveFilters ? '' : 'none';
+        }
+
+        // Emit counts updated event for other components
+        window.dispatchEvent(new CustomEvent('filterCountsUpdated', {
+            detail: this.counts
+        }));
     }
 
     getActiveFilters() {
