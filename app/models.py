@@ -45,6 +45,11 @@ job_files = db.Table('job_files',
     db.Column('file_id', Integer, ForeignKey('files.id'), primary_key=True)
 )
 
+file_tags = db.Table('file_tags',
+    db.Column('file_id', Integer, ForeignKey('files.id'), primary_key=True),
+    db.Column('tag_id', Integer, ForeignKey('tags.id'), primary_key=True)
+)
+
 
 # ============================================================================
 # Models
@@ -81,6 +86,12 @@ class File(db.Model):
         nullable=False
     )
     timestamp_candidates: Mapped[Optional[str]] = mapped_column(Text)  # JSON array of all detected timestamps with sources
+
+    # Review tracking
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)  # When user confirmed timestamp decision
+    final_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime)  # User-confirmed timestamp (may differ from detected_timestamp)
+    discarded: Mapped[bool] = mapped_column(default=False, nullable=False)  # True if file excluded from output
+    duplicate_group_id: Mapped[Optional[str]] = mapped_column(String(64), index=True)  # Set to file_hash when part of duplicate group
 
     # Output
     output_path: Mapped[Optional[str]] = mapped_column(String(500))  # Final output location
@@ -119,6 +130,10 @@ class File(db.Model):
     )
     user_decisions: Mapped[List["UserDecision"]] = relationship(
         back_populates="file"
+    )
+    tags: Mapped[List["Tag"]] = relationship(
+        secondary=file_tags,
+        back_populates="files"
     )
 
     # Indexes
@@ -278,6 +293,41 @@ class Setting(db.Model):
 
     def __repr__(self):
         return f"<Setting {self.key}: {self.value}>"
+
+
+class Tag(db.Model):
+    """Tags for organizing files."""
+    __tablename__ = 'tags'
+
+    # Primary key
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # Tag name (normalized to lowercase, unique)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+
+    # Cached count for autocomplete sorting
+    usage_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Timestamp
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+
+    # Relationships
+    files: Mapped[List["File"]] = relationship(
+        secondary=file_tags,
+        back_populates="tags"
+    )
+
+    # Indexes
+    __table_args__ = (
+        Index('ix_tags_name', 'name'),
+    )
+
+    def __repr__(self):
+        return f"<Tag {self.id}: {self.name}>"
 
 
 # ============================================================================
