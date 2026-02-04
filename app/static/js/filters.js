@@ -104,12 +104,14 @@ class FilterHandler {
         // Toggle between grid view and duplicates view
         const resultsGrid = document.getElementById('unified-grid');
         const gridControls = document.getElementById('grid-controls');
+        const positionSlider = document.getElementById('position-slider');
         const duplicatesContainer = document.getElementById('duplicate-groups-container');
 
         if (mode === 'duplicates') {
-            // Show duplicates container, hide grid and controls
+            // Show duplicates container, hide grid, controls, and slider
             if (resultsGrid) resultsGrid.style.display = 'none';
             if (gridControls) gridControls.style.display = 'none';
+            if (positionSlider) positionSlider.style.display = 'none';
             if (duplicatesContainer) duplicatesContainer.style.display = 'block';
 
             // Load duplicate groups if handler is available
@@ -121,6 +123,12 @@ class FilterHandler {
             if (resultsGrid) resultsGrid.style.display = '';
             if (gridControls) gridControls.style.display = '';
             if (duplicatesContainer) duplicatesContainer.style.display = 'none';
+
+            // Restore slider visibility based on file count
+            // (positionSlider.setTotal controls visibility: show if files > windowSize)
+            if (window.positionSlider && window.positionSlider.totalFiles > 0) {
+                window.positionSlider.setTotal(window.positionSlider.totalFiles);
+            }
         }
 
         this.updateStyles();
