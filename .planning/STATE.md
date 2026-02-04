@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-03 14:50 UTC
+**Last Updated:** 2026-02-04 00:08 UTC
 
 ## Environment
 
@@ -13,15 +13,15 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 4 - Review Queues: Timestamps (In progress)
+**Current Focus:** Phase 5 - Duplicate Detection (Exact) (In progress)
 
 ## Current Position
 
-**Phase:** 4 of 7 - Review Queues: Timestamps
-**Plan:** 7 of ~8 (04-07 complete)
+**Phase:** 5 of 7 - Duplicate Detection (Exact)
+**Plan:** 2 of ~3 (In progress)
 **Status:** In progress
-**Last activity:** 2026-02-03 - Completed 04-07-PLAN.md (Review Workflow)
-**Progress:** `[██████████████████████░] 63%` (22/~35 plans complete)
+**Last activity:** 2026-02-04 - Completed 05-02-PLAN.md (Comparison View HTML & CSS)
+**Progress:** `[███████████████████████████░] 80%` (28/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,10 +36,10 @@
 
 ## Performance Metrics
 
-**Velocity:** 22 plans in ~53 minutes (avg 2.4 min/plan) - Phase 1+2+3+4 (partial)
-**Plan Success Rate:** 100% (22/22 completed successfully)
+**Velocity:** 27 plans in ~59 minutes (avg 2.2 min/plan) - Phase 1+2+3+4 complete, Phase 5 started
+**Plan Success Rate:** 100% (27/27 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
-**Phases Complete:** 3/7 (Phase 1, 2, 3 complete, Phase 4 in progress)
+**Phases Complete:** 4/7 (Phase 1, 2, 3, 4 complete, Phase 5 in progress)
 
 ## Accumulated Context
 
@@ -129,6 +129,15 @@
 | Fallback to detected_timestamp on confirm | 2026-02-03 | Allows confirming files even without explicit timestamp selection | 04-07: Review workflow |
 | localStorage for one-time auto-confirm | 2026-02-03 | Prevents re-confirming HIGH files on page refresh | 04-07: Auto-confirm |
 | Reviewed chip always visible | 2026-02-03 | Shows review progress even when zero files reviewed | 04-07: Filter counts |
+| Light/Dark/System theme toggle | 2026-02-03 | CSS variables with data-theme attribute, localStorage persistence, early load to prevent flash | 04-09: Settings |
+| Recommended source text color | 2026-02-03 | Green text color instead of badge for cleaner visual hierarchy | 04-09: Timestamp display |
+| Backend timestamp grouping | 2026-02-03 | Backend groups timestamps by value, calculates composite scores, returns curated options (earliest + highest-scored + deviants) | 04-09: Timestamp selection |
+| Earliest date selection | 2026-02-03 | Backend selects earliest valid date; weight used for confidence scoring not selection; user confirmed this approach | 04-09: Timestamp algorithm |
+| On-demand image dimensions | 2026-02-03 | Extract width/height via get_image_dimensions() in API call, not stored in DB | 04-09: File details |
+| Resolution-first quality scoring | 2026-02-04 | Score = resolution * 1M + file_size ensures resolution dominates, size is tiebreaker | 05-01: Duplicate quality metrics |
+| CSS Grid for duplicate comparison | 2026-02-04 | auto-fit columns (200-300px) provide responsive 1-3 column layout without manual breakpoints | 05-02: Comparison cards |
+| Radio buttons for duplicate selection | 2026-02-04 | Mutual exclusivity enforces "keep one file per group" business logic | 05-02: Selection controls |
+| Native dialog for duplicate confirmation | 2026-02-04 | Built-in focus trap and backdrop, consistent with examination modal pattern | 05-02: Confirmation modal |
 
 ### Active TODOs
 
@@ -327,20 +336,74 @@ None
   - Timezone: validation via ZoneInfo
   - Collapsible UI panel: hidden by default to reduce visual clutter
   - Reset button: loads defaults from current_app.config
+- Theme system (04-09):
+  - app/static/js/theme.js: ThemeManager for light/dark/system themes
+  - Loads in <head> without defer to prevent flash of wrong theme
+  - localStorage persistence with 'theme-preference' key
+  - CSS variables in :root with [data-theme="dark"] overrides
+  - @media (prefers-color-scheme: dark) for system preference detection
+  - Theme select in settings panel, changes apply immediately
+  - Color aliases for component compatibility: --bg-primary, --bg-hover, --border-color, --text-secondary, --accent-color
 
 ## Session Continuity
 
-**Last session:** 2026-02-03 14:50 UTC
-**Stopped at:** Completed 04-07-PLAN.md (Review Workflow)
+**Last session:** 2026-02-04
+**Stopped at:** Completed 05-02-PLAN.md (Duplicate Comparison View HTML & CSS)
 **Resume file:** None
 
+**Phase 4 Execution Status:**
+- ✓ 04-01: Review API Models and Endpoints
+- ✓ 04-02: Unified Grid with Filter Chips
+- ✓ 04-03: Results Handler Integration
+- ✓ 04-04: Multi-select and Selection Toolbar
+- ✓ 04-05: Examination Modal View
+- ✓ 04-06: Timestamp Source Comparison
+- ✓ 04-07: Review Workflow
+- ✓ 04-08: Tagging UI
+- ✓ 04-09: Human Verification (COMPLETE)
+
+**Phase 5 Execution Status (Duplicate Detection - Exact):**
+- ✓ 05-01: Quality Metrics API (COMPLETE)
+- ✓ 05-02: Duplicate Comparison View HTML & CSS (COMPLETE)
+- [ ] 05-03: Duplicate Comparison JavaScript (Next)
+- [ ] 05-04: Resolution Handler
+- [ ] 05-09: Human Verification
+
+**Session Work Completed (2026-02-03 afternoon):**
+- **Mode-based workflow** (major refactor):
+  - Replaced visibility toggles with mutually exclusive modes
+  - Modes: Duplicates → Unreviewed → Reviewed → Discarded → Failed
+  - Auto-selects Duplicates mode after processing (if any exist)
+  - Confidence filters (H/M/L) work within each mode
+  - Backend: `/api/jobs/:id/files?mode=X` filtering
+  - Frontend: Mode selector UI with counts
+- **Discard functionality**:
+  - Single file: POST `/api/files/:id/discard`, DELETE to undiscard
+  - Bulk: POST `/api/files/bulk/discard`
+  - Discard clears reviewed_at (mutually exclusive states)
+  - Confirmation dialogs for both toolbar and examination view
+  - Discarded files sorted to end, visible in Discarded mode
+- **Status pills in examination view**:
+  - Shows confidence, reviewed, discarded, duplicate status below image
+  - Color-coded badges for quick visual identification
+- **Grid updates**:
+  - Files auto-remove from grid when they no longer match current mode
+  - Discarded badge (trash icon) on thumbnails
+
+**Deferred to Phase 5:**
+- Visual duplicate grouping (side-by-side comparison)
+- Quality metrics comparison (resolution, file size)
+- Bulk duplicate resolution ("keep largest", "keep earliest")
+
 **For Next Session:**
-1. Continue Phase 4: Execute remaining plan (04-06 - Timestamp source comparison)
-2. Review workflow complete:
-   - Confirm & Next saves timestamp and advances to next unreviewed
-   - HIGH confidence auto-confirmation on job complete
-   - Filter counts update in real-time
-   - Ctrl+Enter keyboard shortcut
+1. `/clear` and start fresh
+2. `/gsd:plan-phase 5` - Plan duplicate detection and resolution UI
+3. Focus on visual grouping and comparison workflow
+
+**Resume commands:**
+- `/gsd:resume-work` - Full context restoration
+- `/gsd:plan-phase 5` - Start Phase 5 planning
+- `/gsd:progress` - Shows status and routes to next action
 
 ---
 
