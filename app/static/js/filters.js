@@ -102,12 +102,14 @@ class FilterHandler {
         this.currentMode = mode;
 
         // Toggle between grid view and duplicates view
-        const resultsGrid = document.getElementById('results-grid');
+        const resultsGrid = document.getElementById('unified-grid');
+        const gridControls = document.getElementById('grid-controls');
         const duplicatesContainer = document.getElementById('duplicate-groups-container');
 
         if (mode === 'duplicates') {
-            // Show duplicates container, hide grid
+            // Show duplicates container, hide grid and controls
             if (resultsGrid) resultsGrid.style.display = 'none';
+            if (gridControls) gridControls.style.display = 'none';
             if (duplicatesContainer) duplicatesContainer.style.display = 'block';
 
             // Load duplicate groups if handler is available
@@ -115,8 +117,9 @@ class FilterHandler {
                 window.duplicatesHandler.loadGroups(window.resultsHandler.jobId);
             }
         } else {
-            // Show grid, hide duplicates container
-            if (resultsGrid) resultsGrid.style.display = 'grid';
+            // Show grid and controls, hide duplicates container
+            if (resultsGrid) resultsGrid.style.display = '';
+            if (gridControls) gridControls.style.display = '';
             if (duplicatesContainer) duplicatesContainer.style.display = 'none';
         }
 

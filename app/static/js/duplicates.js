@@ -65,7 +65,7 @@ class DuplicatesHandler {
             if (!response.ok) throw new Error('Failed to load duplicate groups');
 
             const data = await response.json();
-            this.groups = data.groups || [];
+            this.groups = data.duplicate_groups || [];
 
             // Initialize selections with recommended file for each group
             this.groups.forEach(group => {
@@ -189,20 +189,21 @@ class DuplicatesHandler {
         const metrics = document.createElement('div');
         metrics.className = 'quality-metrics';
 
-        const resolution = file.quality_metrics?.resolution_mp
-            ? `${file.quality_metrics.width}×${file.quality_metrics.height} (${file.quality_metrics.resolution_mp}MP)`
+        // Quality metrics are merged directly into file object from API
+        const resolution = file.resolution_mp
+            ? `${file.width}×${file.height} (${file.resolution_mp.toFixed(1)}MP)`
             : 'Unknown';
 
-        const fileSize = file.quality_metrics?.file_size_bytes
-            ? this.formatFileSize(file.quality_metrics.file_size_bytes)
+        const fileSize = file.file_size_bytes
+            ? this.formatFileSize(file.file_size_bytes)
             : 'Unknown';
 
-        const format = file.quality_metrics?.mime_type
-            ? file.quality_metrics.mime_type.toUpperCase()
+        const format = file.format
+            ? file.format.toUpperCase()
             : 'Unknown';
 
-        const timestamp = file.quality_metrics?.detected_timestamp
-            ? this.formatDate(file.quality_metrics.detected_timestamp)
+        const timestamp = file.detected_timestamp
+            ? this.formatDate(file.detected_timestamp)
             : 'Unknown';
 
         metrics.innerHTML = `
