@@ -336,6 +336,23 @@ class DuplicatesHandler {
                 this.hide();
             }
         });
+
+        // Resolve All button
+        this.resolveAllBtn?.addEventListener('click', () => {
+            this.confirmAllGroups();
+        });
+
+        // Modal confirmation buttons
+        const confirmExecuteBtn = document.getElementById('confirm-execute');
+        const confirmCancelBtn = document.getElementById('confirm-cancel');
+
+        confirmExecuteBtn?.addEventListener('click', () => {
+            this.executeDuplicateResolution();
+        });
+
+        confirmCancelBtn?.addEventListener('click', () => {
+            this.cancelConfirmation();
+        });
     }
 
     /**
@@ -595,6 +612,106 @@ class DuplicatesHandler {
     isVisible() {
         if (!this.container) return false;
         return this.container.style.display !== 'none';
+    }
+
+    /**
+     * Confirm all group selections with summary modal
+     * Shows modal with keep/discard counts before executing
+     */
+    confirmAllGroups() {
+        // Validate all groups are resolved
+        const unresolvedGroups = this.getUnresolvedGroups();
+        if (unresolvedGroups.length > 0) {
+            alert(`Please resolve all groups first (${unresolvedGroups.length} remaining)`);
+            return;
+        }
+
+        // Get resolution summary
+        const summary = this.getResolutionSummary();
+
+        // Show modal with counts
+        const modal = document.getElementById('duplicate-confirm-modal');
+        const groupCountEl = document.getElementById('confirm-group-count');
+        const keepCountEl = document.getElementById('confirm-keep-count');
+        const discardCountEl = document.getElementById('confirm-discard-count');
+
+        if (groupCountEl) groupCountEl.textContent = summary.groupCount;
+        if (keepCountEl) keepCountEl.textContent = summary.keepFileIds.length;
+        if (discardCountEl) discardCountEl.textContent = summary.discardFileIds.length;
+
+        if (modal) {
+            modal.showModal();
+        }
+    }
+
+    /**
+     * Execute duplicate resolution after confirmation
+     * Calls bulk discard API, closes modal, refreshes counts
+     */
+    async executeDuplicateResolution() {
+        const summary = this.getResolutionSummary();
+
+        if (summary.discardFileIds.length === 0) {
+            this.cancelConfirmation();
+            return;
+        }
+
+        try {
+            // Call bulk discard API
+            const response = await fetch('/api/files/bulk/discard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    file_ids: summary.discardFileIds,
+                    reason: 'duplicate_resolution'
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to discard files');
+            }
+
+            // Close modal
+            this.cancelConfirmation();
+
+            // Clear resolved groups from UI
+            this.groups.forEach(group => {
+                if (this.groupSelections.has(group.hash)) {
+                    const card = document.querySelector(`.duplicate-group-card[data-group-hash="${group.hash}"]`);
+                    if (card) {
+                        card.remove();
+                    }
+                }
+            });
+
+            // Clear groups array and selections
+            this.groups = [];
+            this.groupSelections.clear();
+            this.updateSummary();
+
+            // Refresh filter counts
+            if (window.resultsHandler) {
+                window.resultsHandler.loadSummary();
+            }
+
+            // Dispatch event for mode switching if needed
+            window.dispatchEvent(new CustomEvent('duplicatesResolved'));
+
+        } catch (error) {
+            console.error('Error executing duplicate resolution:', error);
+            alert(`Failed to execute duplicate resolution: ${error.message}`);
+        }
+    }
+
+    /**
+     * Cancel confirmation modal
+     */
+    cancelConfirmation() {
+        const modal = document.getElementById('duplicate-confirm-modal');
+        if (modal) {
+            modal.close();
+        }
     }
 }
 
