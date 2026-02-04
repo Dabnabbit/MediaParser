@@ -1,52 +1,76 @@
 /**
- * Filter Handler
+ * Filter Handler - Mode-Based Workflow
  *
- * Manages filter chip state for the unified grid.
- * Filter chips are additive - selecting HIGH and MEDIUM shows both.
- * Empty selection shows all files (no filtering).
+ * Modes are mutually exclusive workflow stages:
+ * - duplicates: Files in duplicate groups (resolve first)
+ * - unreviewed: Files needing timestamp review
+ * - reviewed: Reviewed files (verification)
+ * - discarded: Discarded files (recovery)
+ * - failed: Files that failed processing
+ *
+ * Confidence filters (HIGH/MEDIUM/LOW) are toggleable within each mode.
  */
 
 class FilterHandler {
     constructor() {
-        this.activeFilters = new Set();
+        // Current mode (mutually exclusive)
+        this.currentMode = 'unreviewed';
+
+        // Confidence visibility toggles (all ON by default)
+        this.visibleConfidence = new Set(['high', 'medium', 'low']);
+
+        // Counts for display
         this.counts = {
+            duplicates: 0,
+            unreviewed: 0,
+            reviewed: 0,
+            discards: 0,
+            failed: 0,
             high: 0,
             medium: 0,
             low: 0,
-            reviewed: 0,
-            duplicates: 0,
-            failed: 0,
+            none: 0,
             total: 0
         };
-
-        // Cache DOM elements
-        this.filterBar = document.getElementById('filter-bar');
-        this.clearButton = document.getElementById('clear-filters');
-        this.chips = document.querySelectorAll('.filter-chip');
 
         // Sort state
         this.sortField = 'detected_timestamp';
         this.sortOrder = 'asc';
 
+        // Cache DOM elements
+        this.filterBar = document.getElementById('filter-bar');
+        this.modeChips = document.querySelectorAll('.mode-chip');
+        this.confidenceChips = document.querySelectorAll('.confidence-filters .filter-chip');
+
         this.initEventListeners();
         this.loadState();
+        this.updateStyles();
     }
 
     initEventListeners() {
-        // Filter chip clicks
-        this.chips.forEach(chip => {
+        // Listen for duplicate group resolutions to refresh counts
+        window.addEventListener('duplicateGroupResolved', () => {
+            // Refresh filter counts after duplicate resolution
+            if (window.resultsHandler) {
+                window.resultsHandler.loadSummary();
+            }
+        });
+
+        // Mode chip clicks (mutually exclusive)
+        this.modeChips.forEach(chip => {
             chip.addEventListener('click', (e) => {
-                const filter = chip.dataset.filter;
-                this.toggleFilter(filter);
+                const mode = chip.dataset.mode;
+                this.setMode(mode);
             });
         });
 
-        // Clear filters button
-        if (this.clearButton) {
-            this.clearButton.addEventListener('click', () => {
-                this.clearFilters();
+        // Confidence filter clicks (toggleable)
+        this.confidenceChips.forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                const filter = chip.dataset.filter;
+                this.toggleConfidence(filter);
             });
-        }
+        });
 
         // Sort select
         const sortSelect = document.getElementById('sort-select');
@@ -72,105 +96,99 @@ class FilterHandler {
         }
     }
 
-    toggleFilter(filterName) {
-        if (this.activeFilters.has(filterName)) {
-            this.activeFilters.delete(filterName);
+    setMode(mode) {
+        if (this.currentMode === mode) return;
+
+        this.currentMode = mode;
+
+        // Toggle between grid view and duplicates view
+        const resultsGrid = document.getElementById('results-grid');
+        const duplicatesContainer = document.getElementById('duplicate-groups-container');
+
+        if (mode === 'duplicates') {
+            // Show duplicates container, hide grid
+            if (resultsGrid) resultsGrid.style.display = 'none';
+            if (duplicatesContainer) duplicatesContainer.style.display = 'block';
+
+            // Load duplicate groups if handler is available
+            if (window.duplicatesHandler && window.resultsHandler?.jobId) {
+                window.duplicatesHandler.loadGroups(window.resultsHandler.jobId);
+            }
         } else {
-            this.activeFilters.add(filterName);
+            // Show grid, hide duplicates container
+            if (resultsGrid) resultsGrid.style.display = 'grid';
+            if (duplicatesContainer) duplicatesContainer.style.display = 'none';
         }
-        this.updateChipStyles();
-        this.updateClearButton();
+
+        this.updateStyles();
         this.saveState();
         this.emitChange();
     }
 
-    clearFilters() {
-        this.activeFilters.clear();
-        this.updateChipStyles();
-        this.updateClearButton();
+    toggleConfidence(level) {
+        if (this.visibleConfidence.has(level)) {
+            // Don't allow hiding all confidence levels
+            if (this.visibleConfidence.size > 1) {
+                this.visibleConfidence.delete(level);
+            }
+        } else {
+            this.visibleConfidence.add(level);
+        }
+        this.updateStyles();
         this.saveState();
         this.emitChange();
     }
 
-    updateChipStyles() {
-        this.chips.forEach(chip => {
-            const filter = chip.dataset.filter;
-            const isActive = this.activeFilters.has(filter);
+    updateStyles() {
+        // Update mode chips
+        this.modeChips.forEach(chip => {
+            const isActive = chip.dataset.mode === this.currentMode;
+            chip.classList.toggle('active', isActive);
+        });
+
+        // Update confidence chips
+        this.confidenceChips.forEach(chip => {
+            const isActive = this.visibleConfidence.has(chip.dataset.filter);
             chip.classList.toggle('active', isActive);
         });
     }
 
-    updateClearButton() {
-        if (this.clearButton) {
-            this.clearButton.style.display = this.activeFilters.size > 0 ? '' : 'none';
-        }
-    }
-
-    updateCounts(newCounts) {
-        this.counts = { ...this.counts, ...newCounts };
+    updateCounts(counts) {
+        this.counts = { ...this.counts, ...counts };
 
         // Update count displays
         Object.keys(this.counts).forEach(key => {
             const countEl = document.querySelector(`[data-count="${key}"]`);
             if (countEl) {
-                countEl.textContent = this.counts[key];
+                countEl.textContent = this.counts[key] || 0;
             }
         });
 
-        // Hide chips with zero count (except 'reviewed' which shows progress)
-        this.chips.forEach(chip => {
-            const filter = chip.dataset.filter;
-            const count = this.counts[filter] || 0;
-
-            // Always show reviewed chip if there are files to review
-            if (filter === 'reviewed') {
-                chip.style.display = (this.counts.total || 0) > 0 ? '' : 'none';
-            } else {
-                chip.style.display = count > 0 ? '' : 'none';
-            }
-        });
-
-        // Update clear filters button
-        const hasActiveFilters = this.activeFilters.size > 0;
-        if (this.clearButton) {
-            this.clearButton.style.display = hasActiveFilters ? '' : 'none';
+        // Highlight duplicates mode if there are unresolved duplicates
+        const dupChip = document.querySelector('[data-mode="duplicates"]');
+        if (dupChip) {
+            dupChip.classList.toggle('has-items', this.counts.duplicates > 0);
         }
 
         // Emit counts updated event for other components
         window.dispatchEvent(new CustomEvent('filterCountsUpdated', {
-            detail: this.counts
+            detail: { counts: this.counts, mode: this.currentMode }
         }));
-    }
-
-    getActiveFilters() {
-        return Array.from(this.activeFilters);
     }
 
     getQueryParams() {
         const params = new URLSearchParams();
 
-        // Confidence filters (high, medium, low)
-        const confidenceFilters = this.getActiveFilters().filter(
-            f => ['high', 'medium', 'low'].includes(f)
-        );
-        if (confidenceFilters.length > 0) {
-            params.set('confidence', confidenceFilters.join(','));
-        }
+        // Mode determines the base filter
+        params.set('mode', this.currentMode);
 
-        // Reviewed filter
-        if (this.activeFilters.has('reviewed')) {
-            params.set('reviewed', 'true');
+        // Confidence levels that are visible
+        const visibleLevels = Array.from(this.visibleConfidence);
+        // Include 'none' with 'low' since they're both uncertain timestamps
+        if (visibleLevels.includes('low')) {
+            visibleLevels.push('none');
         }
-
-        // Duplicates filter
-        if (this.activeFilters.has('duplicates')) {
-            params.set('has_duplicates', 'true');
-        }
-
-        // Failed filter - handled separately (different endpoint or param)
-        if (this.activeFilters.has('failed')) {
-            params.set('failed', 'true');
-        }
+        params.set('confidence', visibleLevels.join(','));
 
         // Sort
         params.set('sort', this.sortField);
@@ -179,9 +197,18 @@ class FilterHandler {
         return params;
     }
 
+    getCurrentMode() {
+        return this.currentMode;
+    }
+
+    getVisibleConfidence() {
+        return Array.from(this.visibleConfidence);
+    }
+
     saveState() {
         const state = {
-            filters: this.getActiveFilters(),
+            mode: this.currentMode,
+            confidence: Array.from(this.visibleConfidence),
             sortField: this.sortField,
             sortOrder: this.sortOrder
         };
@@ -197,13 +224,22 @@ class FilterHandler {
             const saved = localStorage.getItem('filterState');
             if (saved) {
                 const state = JSON.parse(saved);
-                state.filters?.forEach(f => this.activeFilters.add(f));
+
+                // Load mode (default to unreviewed)
+                if (state.mode) {
+                    this.currentMode = state.mode;
+                }
+
+                // Load confidence visibility
+                if (state.confidence && Array.isArray(state.confidence)) {
+                    this.visibleConfidence = new Set(state.confidence);
+                }
+
                 this.sortField = state.sortField || 'detected_timestamp';
                 this.sortOrder = state.sortOrder || 'asc';
 
                 // Update UI to match loaded state
-                this.updateChipStyles();
-                this.updateClearButton();
+                this.updateStyles();
 
                 const sortSelect = document.getElementById('sort-select');
                 if (sortSelect) sortSelect.value = this.sortField;
@@ -223,7 +259,8 @@ class FilterHandler {
         // Dispatch custom event for results handler to listen to
         window.dispatchEvent(new CustomEvent('filterChange', {
             detail: {
-                filters: this.getActiveFilters(),
+                mode: this.currentMode,
+                confidence: Array.from(this.visibleConfidence),
                 queryParams: this.getQueryParams(),
                 sortField: this.sortField,
                 sortOrder: this.sortOrder
@@ -232,11 +269,126 @@ class FilterHandler {
     }
 
     reset() {
-        this.activeFilters.clear();
-        this.counts = { high: 0, medium: 0, low: 0, reviewed: 0, duplicates: 0, failed: 0, total: 0 };
-        this.updateChipStyles();
-        this.updateClearButton();
-        this.chips.forEach(chip => chip.style.display = '');
+        this.currentMode = 'unreviewed';
+        this.visibleConfidence = new Set(['high', 'medium', 'low']);
+        this.counts = {
+            duplicates: 0, unreviewed: 0, reviewed: 0, discards: 0, failed: 0,
+            high: 0, medium: 0, low: 0, none: 0, total: 0
+        };
+        this.updateStyles();
+    }
+
+    /**
+     * Auto-select the appropriate mode based on job state.
+     * Called when a job completes or when resuming.
+     */
+    autoSelectMode() {
+        // If there are duplicates, force duplicates mode first
+        if (this.counts.duplicates > 0) {
+            this.setMode('duplicates');
+            return 'duplicates';
+        }
+        // Otherwise, go to unreviewed
+        if (this.counts.unreviewed > 0) {
+            this.setMode('unreviewed');
+            return 'unreviewed';
+        }
+        // All done? Show reviewed
+        this.setMode('reviewed');
+        return 'reviewed';
+    }
+}
+
+/**
+ * Bulk Actions Dropdown Handler
+ */
+class BulkActionsHandler {
+    constructor() {
+        this.dropdown = document.getElementById('bulk-actions-dropdown');
+        this.trigger = document.getElementById('bulk-actions-trigger');
+        this.menu = document.getElementById('bulk-actions-menu');
+
+        this.initEventListeners();
+    }
+
+    initEventListeners() {
+        // Toggle dropdown
+        this.trigger?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.dropdown?.classList.toggle('open');
+            this.updateCounts();
+        });
+
+        // Close on outside click
+        document.addEventListener('click', (e) => {
+            if (!this.dropdown?.contains(e.target)) {
+                this.dropdown?.classList.remove('open');
+            }
+        });
+
+        // Handle menu item clicks
+        this.menu?.querySelectorAll('.bulk-menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const action = item.dataset.action;
+                const scope = item.dataset.scope;
+                const level = item.dataset.level;
+
+                this.executeBulkAction(action, scope, level);
+                this.dropdown?.classList.remove('open');
+            });
+        });
+
+        // Update counts when filter counts update
+        window.addEventListener('filterCountsUpdated', () => {
+            this.updateCounts();
+        });
+
+        // Listen for duplicate resolution completion
+        window.addEventListener('duplicatesResolved', () => {
+            // Auto-switch mode if no duplicates remain
+            if (window.filterHandler) {
+                window.filterHandler.autoSelectMode();
+            }
+        });
+    }
+
+    updateCounts() {
+        const counts = window.filterHandler?.counts || {};
+
+        // Update filtered count (based on current mode)
+        const filteredCountEl = document.getElementById('bulk-filtered-count');
+        if (filteredCountEl) {
+            const mode = window.filterHandler?.currentMode || 'unreviewed';
+            filteredCountEl.textContent = counts[mode] || counts.total || 0;
+        }
+
+        // Update confidence counts in menu
+        ['high', 'medium', 'low', 'none'].forEach(level => {
+            const countEl = document.querySelector(`[data-bulk-count="${level}"]`);
+            if (countEl) {
+                countEl.textContent = counts[level] || 0;
+            }
+        });
+    }
+
+    async executeBulkAction(action, scope, level) {
+        const jobId = window.resultsHandler?.jobId;
+        if (!jobId) return;
+
+        // Delegate to selection handler's bulk review method
+        if (window.selectionHandler) {
+            const options = {};
+
+            if (scope === 'confidence' && level) {
+                options.confidence_level = level;
+                options.count = window.filterHandler?.counts?.[level] || 0;
+            } else if (scope === 'filtered') {
+                const mode = window.filterHandler?.currentMode || 'unreviewed';
+                options.count = window.filterHandler?.counts?.[mode] || 0;
+            }
+
+            await window.selectionHandler.bulkReview(action, scope, options);
+        }
     }
 }
 
@@ -244,7 +396,9 @@ class FilterHandler {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
         window.filterHandler = new FilterHandler();
+        window.bulkActionsHandler = new BulkActionsHandler();
     });
 } else {
     window.filterHandler = new FilterHandler();
+    window.bulkActionsHandler = new BulkActionsHandler();
 }
