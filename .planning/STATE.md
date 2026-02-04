@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-04 00:08 UTC
+**Last Updated:** 2026-02-04 00:14 UTC
 
 ## Environment
 
@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 5 of 7 - Duplicate Detection (Exact)
-**Plan:** 2 of ~3 (In progress)
+**Plan:** 3 of ~3 (In progress)
 **Status:** In progress
-**Last activity:** 2026-02-04 - Completed 05-02-PLAN.md (Comparison View HTML & CSS)
-**Progress:** `[███████████████████████████░] 80%` (28/~35 plans complete)
+**Last activity:** 2026-02-04 - Completed 05-03-PLAN.md (Duplicate Comparison JavaScript)
+**Progress:** `[███████████████████████████░] 83%` (29/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -138,6 +138,9 @@
 | CSS Grid for duplicate comparison | 2026-02-04 | auto-fit columns (200-300px) provide responsive 1-3 column layout without manual breakpoints | 05-02: Comparison cards |
 | Radio buttons for duplicate selection | 2026-02-04 | Mutual exclusivity enforces "keep one file per group" business logic | 05-02: Selection controls |
 | Native dialog for duplicate confirmation | 2026-02-04 | Built-in focus trap and backdrop, consistent with examination modal pattern | 05-02: Confirmation modal |
+| Pre-select recommended file | 2026-02-04 | Initialize groupSelections Map with recommended_id on load for faster workflow | 05-03: Duplicate UX |
+| Map-based selection tracking | 2026-02-04 | Map<groupHash, fileId> for O(1) lookups and clear state management | 05-03: JavaScript patterns |
+| Per-group confirm vs bulk | 2026-02-04 | Allow incremental resolution to prevent mistakes with large duplicate sets | 05-03: Resolution workflow |
 
 ### Active TODOs
 
@@ -348,11 +351,23 @@ None
   - @media (prefers-color-scheme: dark) for system preference detection
   - Theme select in settings panel, changes apply immediately
   - Color aliases for component compatibility: --bg-primary, --bg-hover, --border-color, --text-secondary, --accent-color
+- Duplicate comparison UI (05-03):
+  - app/static/js/duplicates.js: DuplicatesHandler class for group comparison
+  - Fetches groups from /api/jobs/:id/duplicates with quality metrics
+  - IntersectionObserver lazy loading pattern (same as results.js)
+  - Map-based selection state: groupHash → selectedFileId
+  - Pre-selects recommended file based on quality metrics
+  - Radio buttons scoped per group (name="keep-{hash}")
+  - Real-time KEEP/DISCARD badge updates on selection
+  - Per-group actions: Keep All, Confirm Selection
+  - Event delegation for radios and buttons
+  - Integration: shows on duplicates mode, hides on other modes
+  - Quality metrics display: resolution, file size, format, timestamp
 
 ## Session Continuity
 
 **Last session:** 2026-02-04
-**Stopped at:** Completed 05-01-PLAN.md (Quality Metrics & Recommendations API)
+**Stopped at:** Completed 05-03-PLAN.md (Duplicate Comparison JavaScript)
 **Resume file:** None
 
 **Phase 4 Execution Status:**
@@ -369,8 +384,8 @@ None
 **Phase 5 Execution Status (Duplicate Detection - Exact):**
 - ✓ 05-01: Quality Metrics API (COMPLETE)
 - ✓ 05-02: Duplicate Comparison View HTML & CSS (COMPLETE)
-- [ ] 05-03: Duplicate Comparison JavaScript (Next)
-- [ ] 05-04: Resolution Handler
+- ✓ 05-03: Duplicate Comparison JavaScript (COMPLETE)
+- [ ] 05-04: Resolution Handler (Next)
 - [ ] 05-09: Human Verification
 
 **Session Work Completed (2026-02-03 afternoon):**
