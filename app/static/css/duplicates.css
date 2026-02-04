@@ -1,0 +1,543 @@
+/**
+ * Duplicates Comparison View Styles
+ *
+ * Styles for duplicate group comparison cards with side-by-side file layout,
+ * quality metrics, and radio button selection.
+ */
+
+/* ============================================
+   DUPLICATE GROUPS CONTAINER
+   ============================================ */
+
+.duplicate-groups-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+/* Duplicates Header */
+.duplicates-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: var(--spacing-md);
+}
+
+.duplicates-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.duplicates-summary {
+    display: flex;
+    gap: var(--spacing-md);
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.duplicates-summary span {
+    display: inline-flex;
+    gap: var(--spacing-xs);
+}
+
+.duplicates-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+/* ============================================
+   DUPLICATE GROUP CARD
+   ============================================ */
+
+.duplicate-group-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s ease;
+}
+
+.duplicate-group-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   GROUP HEADER
+   ============================================ */
+
+.group-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.group-info {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.group-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.group-count {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.group-hash {
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+.group-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.group-status.unresolved {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--color-paused);
+}
+
+.group-status.resolved {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--color-completed);
+}
+
+.recommended-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--success-color);
+    color: white;
+}
+
+/* ============================================
+   FILES COMPARISON GRID
+   ============================================ */
+
+.files-comparison {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    max-width: 100%;
+}
+
+@media (min-width: 768px) {
+    .files-comparison {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 300px));
+    }
+}
+
+.file-option {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.file-option:hover {
+    border-color: var(--accent-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.file-option.recommended {
+    border-color: var(--success-color);
+    border-width: 3px;
+}
+
+.file-option.selected {
+    background: rgba(59, 130, 246, 0.05);
+    border-color: var(--accent-color);
+    border-width: 3px;
+}
+
+/* ============================================
+   FILE PREVIEW
+   ============================================ */
+
+.file-preview {
+    position: relative;
+    aspect-ratio: 1;
+    background: var(--bg-primary);
+    overflow: hidden;
+}
+
+.file-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.file-preview .recommended-indicator {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: var(--success-color);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: var(--border-radius-sm);
+    text-transform: uppercase;
+}
+
+/* ============================================
+   FILE INFO AND METRICS
+   ============================================ */
+
+.file-info {
+    padding: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.file-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.quality-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    gap: var(--spacing-sm);
+}
+
+.metric .label {
+    color: var(--text-secondary);
+    min-width: 80px;
+}
+
+.metric .value {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+}
+
+.resolution-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 6px;
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-color);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Dark mode resolution badge */
+[data-theme="dark"] .resolution-badge {
+    background: rgba(96, 165, 250, 0.2);
+    color: var(--accent-color);
+}
+
+/* ============================================
+   SELECTION CONTROLS
+   ============================================ */
+
+.keep-selection {
+    padding: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.keep-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+    border-radius: var(--border-radius-sm);
+    transition: background-color 0.2s ease;
+}
+
+.keep-label:hover {
+    background: var(--bg-hover);
+}
+
+.keep-label input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.keep-label span {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.status-badge.keep {
+    background: var(--success-color);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-badge.discard {
+    background: var(--error-color);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* ============================================
+   GROUP ACTIONS
+   ============================================ */
+
+.group-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.btn-confirm-group {
+    padding: 0.5rem 1rem;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-confirm-group:hover:not(:disabled) {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.btn-confirm-group:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-keep-all {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-keep-all:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-color);
+}
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+@media (max-width: 768px) {
+    .duplicates-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+
+    .duplicates-summary {
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .files-comparison {
+        grid-template-columns: 1fr;
+    }
+
+    .group-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+
+    .group-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+
+    .group-actions {
+        justify-content: stretch;
+    }
+
+    .group-actions .btn {
+        flex: 1;
+    }
+}
+
+/* ============================================
+   CONFIRMATION MODAL
+   ============================================ */
+
+#duplicate-confirm-modal {
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 0;
+    max-width: 500px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+#duplicate-confirm-modal::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    padding: var(--spacing-lg);
+}
+
+.modal-content h2 {
+    margin: 0 0 var(--spacing-md);
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.confirmation-summary {
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-md);
+}
+
+.confirmation-summary p {
+    margin: 0 0 var(--spacing-sm);
+}
+
+.confirmation-stats {
+    list-style: none;
+    padding: 0;
+    margin: var(--spacing-md) 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.confirmation-stats li {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 0.95rem;
+}
+
+.keep-icon {
+    color: var(--success-color);
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.discard-icon {
+    color: var(--error-color);
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.confirmation-warning {
+    padding: var(--spacing-sm);
+    background: rgba(245, 158, 11, 0.15);
+    border-left: 3px solid var(--color-paused);
+    border-radius: var(--border-radius-sm);
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin: var(--spacing-md) 0 0;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.modal-actions .btn {
+    padding: 0.6rem 1.2rem;
+}
+
+.btn-danger {
+    background: var(--error-color);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+/* ============================================
+   DARK MODE SUPPORT
+   ============================================ */
+
+[data-theme="dark"] .duplicate-group-card {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .duplicate-group-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .file-option:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] #duplicate-confirm-modal {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
