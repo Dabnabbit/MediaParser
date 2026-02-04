@@ -30,6 +30,10 @@ def get_file_detail(file_id):
     Returns:
         JSON with complete file details
     """
+    from app.lib.metadata import get_image_dimensions
+    from app.lib.confidence import build_timestamp_options
+    from pathlib import Path
+
     file = db.session.get(File, file_id)
 
     if file is None:
@@ -37,28 +41,56 @@ def get_file_detail(file_id):
 
     # Parse timestamp_candidates JSON
     timestamp_candidates = None
+    timestamp_options = []
     if file.timestamp_candidates:
         try:
             timestamp_candidates = json.loads(file.timestamp_candidates)
+            # Convert to tuples for build_timestamp_options
+            candidates_tuples = []
+            for c in timestamp_candidates:
+                ts = c.get('timestamp') or c.get('value')
+                if ts:
+                    try:
+                        # Handle ISO format with Z suffix
+                        if isinstance(ts, str):
+                            ts = ts.replace('Z', '+00:00')
+                        dt = datetime.fromisoformat(ts)
+                        candidates_tuples.append((dt, c.get('source', 'unknown')))
+                    except (ValueError, TypeError):
+                        pass
+            timestamp_options = build_timestamp_options(candidates_tuples)
         except json.JSONDecodeError:
             timestamp_candidates = None
+
+    # Extract dimensions on-demand (not stored in DB)
+    width, height = None, None
+    if file.storage_path:
+        try:
+            width, height = get_image_dimensions(Path(file.storage_path))
+        except Exception:
+            pass  # Non-fatal, just won't have dimensions
 
     return jsonify({
         'id': file.id,
         'original_filename': file.original_filename,
+        'original_path': file.original_path,
+        'storage_path': file.storage_path,
         'detected_timestamp': file.detected_timestamp.isoformat() if file.detected_timestamp else None,
         'final_timestamp': file.final_timestamp.isoformat() if file.final_timestamp else None,
         'timestamp_source': file.timestamp_source,
         'confidence': file.confidence.value,
         'reviewed_at': file.reviewed_at.isoformat() if file.reviewed_at else None,
         'timestamp_candidates': timestamp_candidates,
+        'timestamp_options': timestamp_options,
         'tags': [{'id': t.id, 'name': t.name} for t in file.tags],
         'file_size_bytes': file.file_size_bytes,
         'mime_type': file.mime_type,
         'thumbnail_path': file.thumbnail_path,
         'file_hash': file.file_hash_sha256,
         'discarded': file.discarded,
-        'duplicate_group_id': file.duplicate_group_id
+        'duplicate_group_id': file.duplicate_group_id,
+        'width': width,
+        'height': height
     }), 200
 
 
@@ -361,10 +393,85 @@ def bulk_add_tags():
     }), 200
 
 
+@review_bp.route('/api/files/<int:file_id>/discard', methods=['POST'])
+def discard_file(file_id):
+    """
+    Discard a single file (exclude from output).
+
+    Discarding clears any review status since they are mutually exclusive states.
+
+    Args:
+        file_id: ID of the file
+
+    Returns:
+        JSON with updated file object
+    """
+    file = db.session.get(File, file_id)
+
+    if file is None:
+        return jsonify({'error': f'File {file_id} not found'}), 404
+
+    # Discard clears review (mutually exclusive)
+    file.discarded = True
+    file.reviewed_at = None
+    file.final_timestamp = None
+    db.session.commit()
+
+    logger.info(f"File {file_id} discarded")
+
+    return jsonify({
+        'id': file.id,
+        'original_filename': file.original_filename,
+        'detected_timestamp': file.detected_timestamp.isoformat() if file.detected_timestamp else None,
+        'final_timestamp': None,
+        'timestamp_source': file.timestamp_source,
+        'confidence': file.confidence.value,
+        'reviewed_at': None,
+        'discarded': True,
+        'duplicate_group_id': file.duplicate_group_id
+    }), 200
+
+
+@review_bp.route('/api/files/<int:file_id>/discard', methods=['DELETE'])
+def undiscard_file(file_id):
+    """
+    Undiscard a file (return to pending review state).
+
+    Args:
+        file_id: ID of the file
+
+    Returns:
+        JSON with updated file object
+    """
+    file = db.session.get(File, file_id)
+
+    if file is None:
+        return jsonify({'error': f'File {file_id} not found'}), 404
+
+    file.discarded = False
+    db.session.commit()
+
+    logger.info(f"File {file_id} undiscarded")
+
+    return jsonify({
+        'id': file.id,
+        'original_filename': file.original_filename,
+        'detected_timestamp': file.detected_timestamp.isoformat() if file.detected_timestamp else None,
+        'final_timestamp': file.final_timestamp.isoformat() if file.final_timestamp else None,
+        'timestamp_source': file.timestamp_source,
+        'confidence': file.confidence.value,
+        'reviewed_at': file.reviewed_at.isoformat() if file.reviewed_at else None,
+        'discarded': False,
+        'duplicate_group_id': file.duplicate_group_id
+    }), 200
+
+
 @review_bp.route('/api/files/bulk/discard', methods=['POST'])
 def bulk_discard():
     """
     Bulk discard files (exclude from output).
+
+    Discarding clears any review status since they are mutually exclusive states.
 
     Request body:
         { file_ids: [1, 2, 3] }
@@ -387,7 +494,10 @@ def bulk_discard():
         if file is None:
             continue
 
+        # Discard clears review (mutually exclusive)
         file.discarded = True
+        file.reviewed_at = None
+        file.final_timestamp = None
         success_count += 1
 
     db.session.commit()
@@ -437,4 +547,55 @@ def bulk_not_duplicate():
     return jsonify({
         'success': True,
         'files_updated': success_count
+    }), 200
+
+
+@review_bp.route('/api/duplicates/groups/<group_hash>/keep-all', methods=['POST'])
+def keep_all_duplicates(group_hash):
+    """
+    Mark all files in a duplicate group as "not duplicates" (remove from group).
+
+    This endpoint is used when the user determines that files flagged as duplicates
+    are actually unique and should all be kept.
+
+    Args:
+        group_hash: The duplicate_group_id hash
+
+    Returns:
+        JSON with success status and affected file count
+    """
+    # Query all non-discarded files in this duplicate group
+    files = File.query.filter_by(
+        duplicate_group_id=group_hash,
+        discarded=False
+    ).all()
+
+    if not files:
+        return jsonify({'error': 'No files found in this duplicate group'}), 404
+
+    affected_count = len(files)
+
+    # Clear duplicate_group_id from all files
+    for file in files:
+        file.duplicate_group_id = None
+
+        # Create UserDecision record for audit trail
+        decision = UserDecision(
+            file_id=file.id,
+            decision_type='keep_all_duplicates',
+            decision_value=json.dumps({
+                'group_hash': group_hash,
+                'action': 'keep_all',
+                'reason': 'User determined files are not duplicates'
+            })
+        )
+        db.session.add(decision)
+
+    db.session.commit()
+
+    logger.info(f"Kept all {affected_count} files from duplicate group {group_hash}")
+
+    return jsonify({
+        'success': True,
+        'affected_count': affected_count
     }), 200
