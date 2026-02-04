@@ -13,6 +13,7 @@ import logging
 from app import db
 from app.models import Job, File, Duplicate, JobStatus, ConfidenceLevel
 from app.tasks import enqueue_import_job
+from app.lib.duplicates import recommend_best_duplicate, get_quality_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -139,24 +140,24 @@ def control_job(job_id):
 @jobs_bp.route('/api/jobs/<int:job_id>/files', methods=['GET'])
 def get_job_files(job_id):
     """
-    Get files associated with a job with extended filtering and sorting.
+    Get files associated with a job with mode-based filtering.
 
     Args:
         job_id: ID of the job
 
     Query params:
+        - mode: Workflow mode (duplicates, unreviewed, reviewed, discarded, failed)
         - confidence: Filter by confidence level(s) (high,medium,low,none - comma-separated)
-        - reviewed: Filter by review status (true/false/any)
-        - has_duplicates: Filter files in duplicate groups (true/false)
-        - discarded: Filter by discarded status (true/false, default false to hide discarded)
         - sort: Sort field (detected_timestamp, original_timestamp, filename, file_size)
         - order: Sort order (asc, desc) - default asc
-        - page: Page number (default: 1)
-        - per_page: Results per page (default: 50, max: 200)
+        - offset: Start position for window (preferred over page)
+        - limit: Window size (default: 50, max: 200)
+        - page: Page number (legacy, use offset instead)
+        - per_page: Results per page (legacy, use limit instead)
         - group_by: Group results by field (confidence)
 
     Returns:
-        JSON with paginated file list
+        JSON with file list (offset mode returns offset/limit/total, page mode returns page/per_page/pages/total)
     """
     job = db.session.get(Job, job_id)
 
@@ -164,24 +165,66 @@ def get_job_files(job_id):
         return jsonify({'error': f'Job {job_id} not found'}), 404
 
     # Parse query parameters
+    mode = request.args.get('mode', 'unreviewed').lower()
     confidence_filter = request.args.get('confidence', '').lower()
-    reviewed_filter = request.args.get('reviewed', '').lower()
-    has_duplicates_filter = request.args.get('has_duplicates', '').lower()
-    discarded_filter = request.args.get('discarded', 'false').lower()
     sort_field = request.args.get('sort', 'detected_timestamp').lower()
     sort_order = request.args.get('order', 'asc').lower()
-    page = max(1, int(request.args.get('page', 1)))
-    per_page = min(200, max(1, int(request.args.get('per_page', 50))))
     group_by = request.args.get('group_by', '')
 
-    # Build query
+    # Support both offset/limit (preferred) and page/per_page (legacy)
+    offset = request.args.get('offset', type=int)
+    limit = request.args.get('limit', type=int)
+    use_offset_mode = offset is not None
+
+    if use_offset_mode:
+        offset = max(0, offset)
+        limit = min(200, max(1, limit or 50))
+    else:
+        page = max(1, int(request.args.get('page', 1)))
+        per_page = min(200, max(1, int(request.args.get('per_page', 50))))
+
+    # Build base query
     query = db.session.query(File).join(
         Job.files
     ).filter(
         Job.id == job_id
     )
 
-    # Apply confidence filter (supports multiple values comma-separated)
+    # Apply mode-based filtering (mutually exclusive workflow states)
+    valid_modes = ['duplicates', 'unreviewed', 'reviewed', 'discarded', 'failed']
+    if mode not in valid_modes:
+        return jsonify({
+            'error': f'Invalid mode: {mode}',
+            'valid_modes': valid_modes
+        }), 400
+
+    if mode == 'duplicates':
+        # Files in duplicate groups that aren't discarded
+        query = query.filter(
+            File.duplicate_group_id.isnot(None),
+            File.discarded == False
+        )
+    elif mode == 'unreviewed':
+        # Files not yet reviewed, not discarded, not in duplicate groups
+        query = query.filter(
+            File.reviewed_at.is_(None),
+            File.discarded == False,
+            File.duplicate_group_id.is_(None)
+        )
+    elif mode == 'reviewed':
+        # Reviewed files (not discarded)
+        query = query.filter(
+            File.reviewed_at.isnot(None),
+            File.discarded == False
+        )
+    elif mode == 'discarded':
+        # Discarded files
+        query = query.filter(File.discarded == True)
+    elif mode == 'failed':
+        # Files with processing errors
+        query = query.filter(File.processing_error.isnot(None))
+
+    # Apply confidence filter within the mode
     if confidence_filter:
         confidence_values = [c.strip() for c in confidence_filter.split(',')]
         valid_levels = []
@@ -193,32 +236,10 @@ def get_job_files(job_id):
                     'error': f'Invalid confidence level: {conf_value}',
                     'allowed_values': ['high', 'medium', 'low', 'none']
                 }), 400
-        if len(valid_levels) == 1:
-            query = query.filter(File.confidence == valid_levels[0])
-        else:
+        if valid_levels:
             query = query.filter(File.confidence.in_(valid_levels))
 
-    # Apply reviewed filter
-    if reviewed_filter == 'true':
-        query = query.filter(File.reviewed_at.isnot(None))
-    elif reviewed_filter == 'false':
-        query = query.filter(File.reviewed_at.is_(None))
-    # 'any' or empty means no filter
-
-    # Apply has_duplicates filter
-    if has_duplicates_filter == 'true':
-        query = query.filter(File.duplicate_group_id.isnot(None))
-    elif has_duplicates_filter == 'false':
-        query = query.filter(File.duplicate_group_id.is_(None))
-
-    # Apply discarded filter (default: hide discarded)
-    if discarded_filter == 'false':
-        query = query.filter(File.discarded == False)
-    elif discarded_filter == 'true':
-        query = query.filter(File.discarded == True)
-    # 'any' shows all
-
-    # Apply sorting
+    # Apply sorting - discarded files always sort to end
     sort_mapping = {
         'detected_timestamp': File.detected_timestamp,
         'original_timestamp': File.created_at,  # Use created_at as proxy for original timestamp
@@ -226,10 +247,12 @@ def get_job_files(job_id):
         'file_size': File.file_size_bytes
     }
     sort_column = sort_mapping.get(sort_field, File.detected_timestamp)
+    # Primary sort: discarded=False first (0), discarded=True last (1)
+    # Secondary sort: user's chosen field
     if sort_order == 'desc':
-        query = query.order_by(sort_column.desc().nullslast())
+        query = query.order_by(File.discarded.asc(), sort_column.desc().nullslast())
     else:
-        query = query.order_by(sort_column.asc().nullsfirst())
+        query = query.order_by(File.discarded.asc(), sort_column.asc().nullsfirst())
 
     # Group by confidence if requested
     if group_by == 'confidence':
@@ -249,19 +272,68 @@ def get_job_files(job_id):
             'total_files': sum(len(files) for files in results.values())
         }), 200
 
-    # Paginate results
-    paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+    # Get total count for slider
+    total_count = query.count()
 
-    files_data = [_serialize_file_extended(f) for f in paginated.items]
+    # Calculate counts by confidence level within current mode's result set
+    mode_counts = {
+        'high': query.filter(File.confidence == ConfidenceLevel.HIGH).count(),
+        'medium': query.filter(File.confidence == ConfidenceLevel.MEDIUM).count(),
+        'low': query.filter(File.confidence == ConfidenceLevel.LOW).count(),
+        'none': query.filter(File.confidence == ConfidenceLevel.NONE).count(),
+    }
 
-    return jsonify({
-        'job_id': job_id,
-        'files': files_data,
-        'page': page,
-        'per_page': per_page,
-        'total': paginated.total,
-        'pages': paginated.pages
-    }), 200
+    # Calculate mode counts (for mode selector display)
+    base_query = File.query.join(File.jobs).filter(Job.id == job_id)
+    mode_totals = {
+        'duplicates': base_query.filter(
+            File.duplicate_group_id.isnot(None),
+            File.discarded == False
+        ).count(),
+        'unreviewed': base_query.filter(
+            File.reviewed_at.is_(None),
+            File.discarded == False,
+            File.duplicate_group_id.is_(None)
+        ).count(),
+        'reviewed': base_query.filter(
+            File.reviewed_at.isnot(None),
+            File.discarded == False
+        ).count(),
+        'discards': base_query.filter(File.discarded == True).count(),
+        'failed': base_query.filter(File.processing_error.isnot(None)).count(),
+        'total': base_query.count()
+    }
+
+    # Apply offset/limit or pagination
+    if use_offset_mode:
+        files = query.offset(offset).limit(limit).all()
+        files_data = [_serialize_file_extended(f) for f in files]
+
+        return jsonify({
+            'job_id': job_id,
+            'mode': mode,
+            'files': files_data,
+            'offset': offset,
+            'limit': limit,
+            'total': total_count,
+            'mode_counts': mode_counts,
+            'mode_totals': mode_totals
+        }), 200
+    else:
+        # Legacy pagination mode
+        paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+        files_data = [_serialize_file_extended(f) for f in paginated.items]
+
+        return jsonify({
+            'job_id': job_id,
+            'mode': mode,
+            'files': files_data,
+            'page': page,
+            'per_page': per_page,
+            'total': paginated.total,
+            'pages': paginated.pages,
+            'mode_totals': mode_totals
+        }), 200
 
 
 def _serialize_file_extended(f):
@@ -304,32 +376,54 @@ def get_job_duplicates(job_id):
     duplicate_groups = {}
 
     for file in job.files:
-        if not file.file_hash_sha256:
+        # Skip files without hash or discarded files
+        if not file.file_hash_sha256 or file.discarded:
             continue
 
         hash_key = file.file_hash_sha256
         if hash_key not in duplicate_groups:
             duplicate_groups[hash_key] = []
 
-        duplicate_groups[hash_key].append({
+        # Build file dict with basic info
+        file_dict = {
             'id': file.id,
             'original_filename': file.original_filename,
             'file_size_bytes': file.file_size_bytes,
             'detected_timestamp': file.detected_timestamp.isoformat() if file.detected_timestamp else None,
             'storage_path': file.storage_path,
             'thumbnail_path': file.thumbnail_path
-        })
+        }
 
-    # Convert to array format, only including groups with 2+ files (actual duplicates)
-    groups_array = [
-        {
+        # Get quality metrics and merge into file dict
+        metrics = get_quality_metrics(file)
+        file_dict.update(metrics)
+
+        duplicate_groups[hash_key].append(file_dict)
+
+    # Convert to array format with recommendations and aggregates
+    groups_array = []
+    for hash_key, files in duplicate_groups.items():
+        # Only include groups with 2+ files (actual duplicates)
+        if len(files) < 2:
+            continue
+
+        # Get recommendation for which file to keep
+        recommended_id = recommend_best_duplicate(files)
+
+        # Calculate group-level aggregates
+        total_size_bytes = sum(f.get('file_size_bytes', 0) for f in files)
+        resolutions = [f.get('resolution_mp') for f in files if f.get('resolution_mp') is not None]
+        best_resolution_mp = max(resolutions) if resolutions else None
+
+        groups_array.append({
             'hash': hash_key,
             'match_type': 'exact',
-            'files': files
-        }
-        for hash_key, files in duplicate_groups.items()
-        if len(files) > 1
-    ]
+            'file_count': len(files),
+            'files': files,
+            'recommended_id': recommended_id,
+            'total_size_bytes': total_size_bytes,
+            'best_resolution_mp': best_resolution_mp
+        })
 
     return jsonify({
         'job_id': job_id,
@@ -431,6 +525,171 @@ def auto_confirm_high_confidence(job_id):
     }), 200
 
 
+@jobs_bp.route('/api/jobs/<int:job_id>/bulk-review', methods=['POST'])
+def bulk_review(job_id):
+    """
+    Bulk review files with various scopes and actions.
+
+    Args:
+        job_id: ID of the job
+
+    Request body:
+        {
+            action: 'accept_review' | 'mark_reviewed' | 'clear_review',
+            scope: 'selection' | 'filtered' | 'confidence',
+            file_ids: [1, 2, 3] (for scope='selection'),
+            confidence_level: 'high' | 'medium' | 'low' | 'none' (for scope='confidence'),
+            filter_params: {...} (for scope='filtered')
+        }
+
+    Returns:
+        JSON with count of affected files
+    """
+    from sqlalchemy import or_
+
+    job = db.session.get(Job, job_id)
+
+    if job is None:
+        return jsonify({'error': f'Job {job_id} not found'}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+
+    action = data.get('action')
+    scope = data.get('scope')
+
+    valid_actions = ['accept_review', 'mark_reviewed', 'clear_review']
+    valid_scopes = ['selection', 'filtered', 'confidence']
+
+    if action not in valid_actions:
+        return jsonify({
+            'error': f'Invalid action: {action}',
+            'valid_actions': valid_actions
+        }), 400
+
+    if scope not in valid_scopes:
+        return jsonify({
+            'error': f'Invalid scope: {scope}',
+            'valid_scopes': valid_scopes
+        }), 400
+
+    # Build query based on scope
+    query = File.query.join(File.jobs).filter(
+        Job.id == job_id,
+        File.discarded == False
+    )
+
+    if scope == 'selection':
+        file_ids = data.get('file_ids', [])
+        if not file_ids:
+            return jsonify({'error': 'file_ids required for selection scope'}), 400
+        query = query.filter(File.id.in_(file_ids))
+
+    elif scope == 'confidence':
+        confidence_level = data.get('confidence_level')
+        if not confidence_level:
+            return jsonify({'error': 'confidence_level required for confidence scope'}), 400
+        try:
+            level = ConfidenceLevel(confidence_level)
+        except ValueError:
+            return jsonify({
+                'error': f'Invalid confidence level: {confidence_level}',
+                'valid_levels': ['high', 'medium', 'low', 'none']
+            }), 400
+        query = query.filter(File.confidence == level)
+
+    elif scope == 'filtered':
+        # Apply the same filters as the /api/jobs/:id/files endpoint
+        filter_params = data.get('filter_params', {})
+
+        # Confidence filter
+        confidence_filter = filter_params.get('confidence', '')
+        if confidence_filter:
+            confidence_values = [c.strip() for c in confidence_filter.split(',')]
+            valid_levels = []
+            for conf_value in confidence_values:
+                try:
+                    valid_levels.append(ConfidenceLevel(conf_value))
+                except ValueError:
+                    pass
+            if valid_levels:
+                query = query.filter(File.confidence.in_(valid_levels))
+
+        # Reviewed filter
+        reviewed_filter = filter_params.get('reviewed', '')
+        if reviewed_filter == 'include':
+            pass  # No filter needed - include all
+        elif reviewed_filter == 'exclude':
+            query = query.filter(File.reviewed_at.is_(None))
+
+        # Duplicates filter
+        has_duplicates = filter_params.get('has_duplicates', '')
+        if has_duplicates == 'include':
+            pass
+        elif has_duplicates == 'exclude':
+            query = query.filter(File.duplicate_group_id.is_(None))
+
+        # Failed filter
+        failed_filter = filter_params.get('failed', '')
+        if failed_filter == 'include':
+            pass
+        elif failed_filter == 'exclude':
+            query = query.filter(File.processing_error.is_(None))
+
+    # Get matching files
+    files = query.all()
+
+    if not files:
+        return jsonify({
+            'job_id': job_id,
+            'action': action,
+            'scope': scope,
+            'affected_count': 0,
+            'success': True
+        }), 200
+
+    now = datetime.now(timezone.utc)
+    affected_count = 0
+
+    for file in files:
+        if action == 'accept_review':
+            # Accept detected timestamp and mark as reviewed
+            # Skip files without detected_timestamp
+            if file.detected_timestamp:
+                file.final_timestamp = file.detected_timestamp
+                file.reviewed_at = now
+                affected_count += 1
+
+        elif action == 'mark_reviewed':
+            # Just mark as reviewed without changing timestamp
+            if not file.reviewed_at:
+                file.reviewed_at = now
+                # If no final_timestamp, use detected_timestamp
+                if not file.final_timestamp and file.detected_timestamp:
+                    file.final_timestamp = file.detected_timestamp
+                affected_count += 1
+
+        elif action == 'clear_review':
+            # Clear review status
+            if file.reviewed_at:
+                file.reviewed_at = None
+                file.final_timestamp = None
+                affected_count += 1
+
+    if affected_count > 0:
+        db.session.commit()
+        logger.info(f"Bulk {action} for job {job_id}: {affected_count} files affected")
+
+    return jsonify({
+        'job_id': job_id,
+        'action': action,
+        'scope': scope,
+        'affected_count': affected_count,
+        'success': True
+    }), 200
+
+
 @jobs_bp.route('/api/jobs/<int:job_id>/summary', methods=['GET'])
 def get_job_summary(job_id):
     """
@@ -447,42 +706,53 @@ def get_job_summary(job_id):
     if job is None:
         return jsonify({'error': f'Job {job_id} not found'}), 404
 
-    # Base query for job files (excluding discarded by default)
-    base_query = File.query.join(File.jobs).filter(
-        Job.id == job_id,
+    # Base query for all job files
+    base_query = File.query.join(File.jobs).filter(Job.id == job_id)
+
+    # Mode counts (for mode selector)
+    duplicates_count = base_query.filter(
+        File.duplicate_group_id.isnot(None),
         File.discarded == False
-    )
+    ).count()
 
-    # Count by confidence level
-    high_count = base_query.filter(File.confidence == ConfidenceLevel.HIGH).count()
-    medium_count = base_query.filter(File.confidence == ConfidenceLevel.MEDIUM).count()
-    low_count = base_query.filter(File.confidence == ConfidenceLevel.LOW).count()
-    none_count = base_query.filter(File.confidence == ConfidenceLevel.NONE).count()
+    unreviewed_count = base_query.filter(
+        File.reviewed_at.is_(None),
+        File.discarded == False,
+        File.duplicate_group_id.is_(None)
+    ).count()
 
-    # Reviewed count
-    reviewed_count = base_query.filter(File.reviewed_at.isnot(None)).count()
+    reviewed_count = base_query.filter(
+        File.reviewed_at.isnot(None),
+        File.discarded == False
+    ).count()
 
-    # Duplicates count (files in duplicate groups)
-    duplicates_count = base_query.filter(File.duplicate_group_id.isnot(None)).count()
+    discards_count = base_query.filter(File.discarded == True).count()
 
-    # Failed count (including discarded files since failures should be visible)
-    failed_query = File.query.join(File.jobs).filter(
-        Job.id == job_id,
-        File.processing_error.isnot(None)
-    )
-    failed_count = failed_query.count()
+    failed_count = base_query.filter(File.processing_error.isnot(None)).count()
 
-    # Total count (non-discarded files)
+    # Confidence counts (across non-discarded files)
+    non_discarded = base_query.filter(File.discarded == False)
+    high_count = non_discarded.filter(File.confidence == ConfidenceLevel.HIGH).count()
+    medium_count = non_discarded.filter(File.confidence == ConfidenceLevel.MEDIUM).count()
+    low_count = non_discarded.filter(File.confidence == ConfidenceLevel.LOW).count()
+    none_count = non_discarded.filter(File.confidence == ConfidenceLevel.NONE).count()
+
+    # Total count
     total_count = base_query.count()
 
     return jsonify({
         'job_id': job_id,
+        # Mode counts
+        'duplicates': duplicates_count,
+        'unreviewed': unreviewed_count,
+        'reviewed': reviewed_count,
+        'discards': discards_count,
+        'failed': failed_count,
+        # Confidence counts
         'high': high_count,
         'medium': medium_count,
         'low': low_count,
         'none': none_count,
-        'reviewed': reviewed_count,
-        'duplicates': duplicates_count,
-        'failed': failed_count,
+        # Total
         'total': total_count
     }), 200
