@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-04 00:14 UTC
+**Last Updated:** 2026-02-04 00:20 UTC
 
 ## Environment
 
@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 5 of 7 - Duplicate Detection (Exact)
-**Plan:** 3 of ~3 (In progress)
-**Status:** In progress
-**Last activity:** 2026-02-04 - Completed 05-03-PLAN.md (Duplicate Comparison JavaScript)
-**Progress:** `[███████████████████████████░] 83%` (29/~35 plans complete)
+**Plan:** 4 of ~4 (Phase complete)
+**Status:** Phase 5 complete
+**Last activity:** 2026-02-04 - Completed 05-04-PLAN.md (Duplicate Resolution Integration)
+**Progress:** `[████████████████████████████] 86%` (30/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,10 +36,10 @@
 
 ## Performance Metrics
 
-**Velocity:** 27 plans in ~59 minutes (avg 2.2 min/plan) - Phase 1+2+3+4 complete, Phase 5 started
-**Plan Success Rate:** 100% (27/27 completed successfully)
+**Velocity:** 30 plans in ~62 minutes (avg 2.1 min/plan) - Phase 1+2+3+4+5 complete
+**Plan Success Rate:** 100% (30/30 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
-**Phases Complete:** 4/7 (Phase 1, 2, 3, 4 complete, Phase 5 in progress)
+**Phases Complete:** 5/7 (Phase 1, 2, 3, 4, 5 complete)
 
 ## Accumulated Context
 
@@ -141,6 +141,10 @@
 | Pre-select recommended file | 2026-02-04 | Initialize groupSelections Map with recommended_id on load for faster workflow | 05-03: Duplicate UX |
 | Map-based selection tracking | 2026-02-04 | Map<groupHash, fileId> for O(1) lookups and clear state management | 05-03: JavaScript patterns |
 | Per-group confirm vs bulk | 2026-02-04 | Allow incremental resolution to prevent mistakes with large duplicate sets | 05-03: Resolution workflow |
+| Keep All preserves all files | 2026-02-04 | Removes duplicate_group_id from all files instead of keeping one; treats all as unique | 05-04: Keep All behavior |
+| Multi-stage confirmation for discards | 2026-02-04 | Modal shows group/keep/discard counts before executing bulk discard | 05-04: Bulk confirmation |
+| Mode-based view switching | 2026-02-04 | Duplicates mode hides grid and shows comparison; other modes reverse | 05-04: Mode integration |
+| Auto-switch to unreviewed mode | 2026-02-04 | When duplicates count reaches 0 after resolution, switch to unreviewed mode | 05-04: Mode transitions |
 
 ### Active TODOs
 
@@ -367,7 +371,7 @@ None
 ## Session Continuity
 
 **Last session:** 2026-02-04
-**Stopped at:** Completed 05-03-PLAN.md (Duplicate Comparison JavaScript)
+**Stopped at:** Completed 05-04-PLAN.md (Duplicate Resolution Integration)
 **Resume file:** None
 
 **Phase 4 Execution Status:**
@@ -385,8 +389,8 @@ None
 - ✓ 05-01: Quality Metrics API (COMPLETE)
 - ✓ 05-02: Duplicate Comparison View HTML & CSS (COMPLETE)
 - ✓ 05-03: Duplicate Comparison JavaScript (COMPLETE)
-- [ ] 05-04: Resolution Handler (Next)
-- [ ] 05-09: Human Verification
+- ✓ 05-04: Duplicate Resolution Integration (COMPLETE)
+- **PHASE 5 COMPLETE** - Ready for Phase 6 (Perceptual Duplicates) or Phase 7 (Export)
 
 **Session Work Completed (2026-02-03 afternoon):**
 - **Mode-based workflow** (major refactor):
