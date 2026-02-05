@@ -190,6 +190,8 @@ class PositionSliderHandler {
 
         // Enable/disable slider (always visible to prevent layout shift)
         if (this.slider) {
+            // Override inline display:none from HTML
+            this.slider.style.display = 'flex';
             const needsSlider = total > this.windowSize;
             this.slider.classList.toggle('slider-disabled', !needsSlider);
         }
