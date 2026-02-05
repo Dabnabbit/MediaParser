@@ -15,6 +15,7 @@ import logging
 from huey_config import huey
 from app.lib.processing import process_single_file
 from app.lib.thumbnail import generate_thumbnail
+from app.lib.perceptual import detect_perceptual_duplicates
 from app.models import Job, File, JobStatus, ConfidenceLevel
 
 logger = logging.getLogger(__name__)
@@ -360,6 +361,9 @@ def process_import_job(job_id: int) -> dict:
 
             # Detect and mark duplicate groups based on SHA256 hash
             _mark_duplicate_groups(db, job)
+
+            # Detect perceptual duplicates (near-matches via dHash comparison)
+            detect_perceptual_duplicates(job.files)
 
             # Finalize job - ensure progress reflects actual count
             job.status = JobStatus.COMPLETED
