@@ -1859,3 +1859,83 @@ body {
 .toast-error {
     background: rgba(220, 53, 69, 0.9);
 }
+
+/* ============================================
+   SIMILAR MODE UI ELEMENTS
+   ============================================ */
+
+/* Similar type badge in viewport details */
+.similar-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.similar-type-badge[data-type="burst"] {
+    background: var(--accent-color);
+    color: white;
+}
+
+.similar-type-badge[data-type="panorama"] {
+    background: var(--warning-color);
+    color: white;
+}
+
+.similar-type-badge[data-type="similar"] {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+}
+
+.similar-confidence {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    margin-left: 8px;
+}
+
+.vp-similar-meta {
+    display: flex;
+    align-items: center;
+    margin-top: 6px;
+}
+
+/* Mode warning toast */
+.mode-warning-toast {
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Similar badge in thumbnails and viewport */
+.vp-badge.similar,
+.thumb-badge.similar {
+    background: var(--accent-color);
+    color: white;
+}
+
+/* Mode chip warning state */
+.mode-chip.mode-chip--warned {
+    opacity: 0.7;
+}

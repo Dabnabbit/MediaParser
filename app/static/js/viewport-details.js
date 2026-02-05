@@ -62,6 +62,18 @@ class ViewportDetailsPanel {
                     </div>
                 </section>
 
+                <!-- Similar info (shown only in similar mode) -->
+                <section class="vp-detail-section vp-similar-info" id="vp-similar-section" style="display: none;">
+                    <h4>Similar Group</h4>
+                    <div class="vp-similar-context">
+                        <span id="vp-similar-position">1 of 3</span>
+                        <div class="vp-similar-meta">
+                            <span class="similar-type-badge" id="vp-similar-type">burst</span>
+                            <span class="similar-confidence" id="vp-similar-confidence">high confidence</span>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Timestamp section - populated by timestampHandler -->
                 <section class="vp-detail-section" id="vp-timestamp-section">
                     <h4>Timestamp</h4>
@@ -99,6 +111,10 @@ class ViewportDetailsPanel {
             duplicateSection: this.panel.querySelector('#vp-duplicate-section'),
             duplicatePosition: this.panel.querySelector('#vp-duplicate-position'),
             duplicateQuality: this.panel.querySelector('#vp-duplicate-quality'),
+            similarSection: this.panel.querySelector('#vp-similar-section'),
+            similarPosition: this.panel.querySelector('#vp-similar-position'),
+            similarType: this.panel.querySelector('#vp-similar-type'),
+            similarConfidence: this.panel.querySelector('#vp-similar-confidence'),
             actionsFooter: this.panel.querySelector('#vp-panel-actions'),
         };
     }
@@ -191,6 +207,7 @@ class ViewportDetailsPanel {
         this.elements.timestampContainer.innerHTML = '<p class="vp-placeholder">No timestamp data</p>';
         this.elements.tagsContainer.innerHTML = '<p class="vp-placeholder">No tags</p>';
         this.elements.duplicateSection.style.display = 'none';
+        this.elements.similarSection.style.display = 'none';
         this.elements.actionsFooter.innerHTML = '';
 
         // Reset handlers
@@ -258,6 +275,9 @@ class ViewportDetailsPanel {
         // Duplicate info (if in duplicates mode)
         this.renderDuplicateInfo(file);
 
+        // Similar info (if in similar mode)
+        this.renderSimilarInfo(file);
+
         // Action buttons (context-aware)
         this.renderActionButtons(file);
     }
@@ -285,6 +305,11 @@ class ViewportDetailsPanel {
         // Duplicate
         if (file.exact_group_id || file.is_duplicate) {
             badges.push('<span class="vp-badge duplicate">Duplicate</span>');
+        }
+
+        // Similar
+        if (file.similar_group_id || file.is_similar) {
+            badges.push('<span class="vp-badge similar">Similar</span>');
         }
 
         this.elements.statusBadges.innerHTML = badges.join('');
@@ -333,6 +358,38 @@ class ViewportDetailsPanel {
     }
 
     /**
+     * Render similar group information
+     */
+    renderSimilarInfo(file) {
+        const section = this.elements.similarSection;
+        const isSimilarMode = this.currentMode === 'similar';
+        const isSimilar = file.similar_group_id || file.is_similar;
+
+        if (!isSimilarMode || !isSimilar) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = '';
+
+        // Get position info from viewport controller
+        const vpState = window.selectionHandler?.viewportController?.getState();
+        if (vpState) {
+            this.elements.similarPosition.textContent =
+                `${vpState.currentIndex + 1} of ${vpState.total} in group`;
+        }
+
+        // Group type badge
+        const groupType = file.similar_group_type || 'similar';
+        this.elements.similarType.textContent = groupType;
+        this.elements.similarType.setAttribute('data-type', groupType);
+
+        // Confidence
+        const confidence = file.similar_confidence || 'medium';
+        this.elements.similarConfidence.textContent = `${confidence} confidence`;
+    }
+
+    /**
      * Render context-aware action buttons
      */
     renderActionButtons(file) {
@@ -340,6 +397,7 @@ class ViewportDetailsPanel {
         const isReviewed = !!file.reviewed_at;
         const isDiscarded = !!file.discarded;
         const isDuplicate = file.exact_group_id || file.is_duplicate;
+        const isSimilar = file.similar_group_id || file.is_similar;
         const mode = this.currentMode;
 
         let html = '';
@@ -353,6 +411,31 @@ class ViewportDetailsPanel {
                     </button>
                     <button class="btn btn-secondary vp-action" id="vp-not-duplicate">
                         Not a Duplicate
+                    </button>
+                    <div class="vp-action-divider"></div>
+                    <button class="btn btn-danger vp-action" id="vp-discard">
+                        Discard
+                    </button>
+                `;
+            } else {
+                html += `
+                    <button class="btn btn-secondary vp-action" id="vp-undiscard">
+                        Restore
+                    </button>
+                `;
+            }
+        } else if (mode === 'similar' && isSimilar) {
+            // Similar mode actions
+            if (!isDiscarded) {
+                html += `
+                    <button class="btn btn-success vp-action" id="vp-keep-similar">
+                        Keep This, Discard Others
+                    </button>
+                    <button class="btn btn-secondary vp-action" id="vp-keep-all-similar">
+                        Keep All
+                    </button>
+                    <button class="btn btn-secondary vp-action" id="vp-not-similar">
+                        Not Similar
                     </button>
                     <div class="vp-action-divider"></div>
                     <button class="btn btn-danger vp-action" id="vp-discard">
@@ -424,6 +507,9 @@ class ViewportDetailsPanel {
         footer.querySelector('#vp-undiscard')?.addEventListener('click', () => this.undiscardFile());
         footer.querySelector('#vp-keep-duplicate')?.addEventListener('click', () => this.keepDuplicate());
         footer.querySelector('#vp-not-duplicate')?.addEventListener('click', () => this.markNotDuplicate());
+        footer.querySelector('#vp-keep-similar')?.addEventListener('click', () => this.keepSimilar());
+        footer.querySelector('#vp-keep-all-similar')?.addEventListener('click', () => this.keepAllSimilar());
+        footer.querySelector('#vp-not-similar')?.addEventListener('click', () => this.markNotSimilar());
     }
 
     // ==========================================
@@ -675,6 +761,168 @@ class ViewportDetailsPanel {
             if (btn) {
                 btn.disabled = false;
                 btn.textContent = 'Not a Duplicate';
+            }
+        }
+    }
+
+    async keepSimilar() {
+        if (!this.currentFile) return;
+
+        const viewportController = window.selectionHandler?.viewportController;
+        if (!viewportController) return;
+
+        // Get similar group context
+        const groupId = this.currentFile.similar_group_id;
+        if (!groupId) {
+            console.warn('No similar_group_id found on file');
+            return;
+        }
+
+        // Get all files in the navigation set (the similar group)
+        const allIds = viewportController.navigationFiles;
+        const currentId = this.currentFile.id;
+        const othersToDiscard = allIds.filter(id => id !== currentId);
+
+        if (othersToDiscard.length === 0) {
+            // Only one file, nothing to discard
+            this.exitViewportAndRefresh();
+            return;
+        }
+
+        const confirmMsg = `Keep "${this.currentFile.original_filename}" and discard ${othersToDiscard.length} other file(s)?`;
+        if (!confirm(confirmMsg)) return;
+
+        const btn = this.elements.actionsFooter.querySelector('#vp-keep-similar');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Keeping...';
+        }
+
+        try {
+            // Use similar group resolution endpoint
+            const response = await fetch(`/api/similar-groups/${groupId}/resolve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    keep_file_ids: [currentId]
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to resolve similar group');
+
+            const result = await response.json();
+            console.log('Similar group resolved:', result);
+
+            // Exit viewport and refresh
+            this.exitViewportAndRefresh();
+
+        } catch (error) {
+            console.error('Error keeping similar file:', error);
+            alert(`Failed to resolve similar group: ${error.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Keep This, Discard Others';
+            }
+        }
+    }
+
+    async keepAllSimilar() {
+        if (!this.currentFile) return;
+
+        const groupId = this.currentFile.similar_group_id;
+        if (!groupId) {
+            console.warn('No similar_group_id found on file');
+            return;
+        }
+
+        if (!confirm('Keep all files in this similar group?')) return;
+
+        const btn = this.elements.actionsFooter.querySelector('#vp-keep-all-similar');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Keeping All...';
+        }
+
+        try {
+            const response = await fetch(`/api/similar-groups/${groupId}/keep-all`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) throw new Error('Failed to keep all similar files');
+
+            const result = await response.json();
+            console.log('All similar files kept:', result);
+
+            // Exit viewport and refresh
+            this.exitViewportAndRefresh();
+
+        } catch (error) {
+            console.error('Error keeping all similar files:', error);
+            alert(`Failed to keep all: ${error.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Keep All';
+            }
+        }
+    }
+
+    async markNotSimilar() {
+        if (!this.currentFile) return;
+
+        const filename = this.currentFile.original_filename;
+        if (!confirm(`Remove "${filename}" from the similar group?`)) return;
+
+        const btn = this.elements.actionsFooter.querySelector('#vp-not-similar');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Removing...';
+        }
+
+        try {
+            const response = await fetch('/api/files/bulk/not-similar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_ids: [this.currentFile.id] })
+            });
+
+            if (!response.ok) throw new Error('Failed to remove from similar group');
+
+            // Update navigation - remove this file from the set
+            const viewportController = window.selectionHandler?.viewportController;
+            if (viewportController) {
+                const newNavFiles = viewportController.navigationFiles.filter(
+                    id => id !== this.currentFile.id
+                );
+
+                if (newNavFiles.length === 0) {
+                    // No more similar files to review
+                    this.exitViewportAndRefresh();
+                } else if (newNavFiles.length === 1) {
+                    // Only one file left - it's no longer similar
+                    // Remove its similar status too
+                    await fetch('/api/files/bulk/not-similar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ file_ids: newNavFiles })
+                    });
+                    this.exitViewportAndRefresh();
+                } else {
+                    // Continue with remaining files
+                    viewportController.updateNavigationSet(newNavFiles);
+                }
+            }
+
+            window.resultsHandler?.loadSummary();
+
+        } catch (error) {
+            console.error('Error removing from similar group:', error);
+            alert(`Failed to remove from similar group: ${error.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Not Similar';
             }
         }
     }
