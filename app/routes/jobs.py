@@ -191,7 +191,7 @@ def get_job_files(job_id):
     )
 
     # Apply mode-based filtering (mutually exclusive workflow states)
-    valid_modes = ['duplicates', 'unreviewed', 'reviewed', 'discarded', 'failed']
+    valid_modes = ['duplicates', 'similar', 'unreviewed', 'reviewed', 'discarded', 'failed']
     if mode not in valid_modes:
         return jsonify({
             'error': f'Invalid mode: {mode}',
@@ -204,12 +204,19 @@ def get_job_files(job_id):
             File.exact_group_id.isnot(None),
             File.discarded == False
         )
+    elif mode == 'similar':
+        # Files in similar groups that aren't discarded
+        query = query.filter(
+            File.similar_group_id.isnot(None),
+            File.discarded == False
+        )
     elif mode == 'unreviewed':
-        # Files not yet reviewed, not discarded, not in duplicate groups
+        # Files not yet reviewed, not discarded, not in duplicate or similar groups
         query = query.filter(
             File.reviewed_at.is_(None),
             File.discarded == False,
-            File.exact_group_id.is_(None)
+            File.exact_group_id.is_(None),
+            File.similar_group_id.is_(None)
         )
     elif mode == 'reviewed':
         # Reviewed files (not discarded)
@@ -290,10 +297,15 @@ def get_job_files(job_id):
             File.exact_group_id.isnot(None),
             File.discarded == False
         ).count(),
+        'similar': base_query.filter(
+            File.similar_group_id.isnot(None),
+            File.discarded == False
+        ).count(),
         'unreviewed': base_query.filter(
             File.reviewed_at.is_(None),
             File.discarded == False,
-            File.exact_group_id.is_(None)
+            File.exact_group_id.is_(None),
+            File.similar_group_id.is_(None)
         ).count(),
         'reviewed': base_query.filter(
             File.reviewed_at.isnot(None),
@@ -352,6 +364,7 @@ def _serialize_file_extended(f):
         'mime_type': f.mime_type,
         'reviewed_at': f.reviewed_at.isoformat() if f.reviewed_at else None,
         'is_duplicate': f.exact_group_id is not None,
+        'is_similar': f.similar_group_id is not None,
         'discarded': f.discarded
     }
 
@@ -359,13 +372,13 @@ def _serialize_file_extended(f):
 @jobs_bp.route('/api/jobs/<int:job_id>/duplicates', methods=['GET'])
 def get_job_duplicates(job_id):
     """
-    Get duplicate groups for files in a job.
+    Get duplicate groups for files in a job (both SHA256 and perceptual exact matches).
 
     Args:
         job_id: ID of the job
 
     Returns:
-        JSON with array of duplicate groups
+        JSON with array of duplicate groups with match_type and confidence
     """
     job = db.session.get(Job, job_id)
 
@@ -374,7 +387,7 @@ def get_job_duplicates(job_id):
 
     # Group files in THIS job by SHA256 hash to find exact duplicates
     # Only considers files within the current job, not across all jobs
-    duplicate_groups = {}
+    sha256_groups = {}
 
     for file in job.files:
         # Skip files without hash or discarded files
@@ -382,8 +395,8 @@ def get_job_duplicates(job_id):
             continue
 
         hash_key = file.file_hash_sha256
-        if hash_key not in duplicate_groups:
-            duplicate_groups[hash_key] = []
+        if hash_key not in sha256_groups:
+            sha256_groups[hash_key] = []
 
         # Build file dict with basic info
         file_dict = {
@@ -399,11 +412,11 @@ def get_job_duplicates(job_id):
         metrics = get_quality_metrics(file)
         file_dict.update(metrics)
 
-        duplicate_groups[hash_key].append(file_dict)
+        sha256_groups[hash_key].append(file_dict)
 
-    # Convert to array format with recommendations and aggregates
+    # Convert SHA256 groups to array format
     groups_array = []
-    for hash_key, files in duplicate_groups.items():
+    for hash_key, files in sha256_groups.items():
         # Only include groups with 2+ files (actual duplicates)
         if len(files) < 2:
             continue
@@ -418,7 +431,66 @@ def get_job_duplicates(job_id):
 
         groups_array.append({
             'hash': hash_key,
-            'match_type': 'exact',
+            'match_type': 'sha256',
+            'confidence': 'high',
+            'file_count': len(files),
+            'files': files,
+            'recommended_id': recommended_id,
+            'total_size_bytes': total_size_bytes,
+            'best_resolution_mp': best_resolution_mp
+        })
+
+    # Now get perceptual-only exact groups (files with exact_group_id that weren't captured by SHA256)
+    perceptual_files = File.query.join(File.jobs).filter(
+        Job.id == job_id,
+        File.exact_group_id.isnot(None),
+        File.discarded == False
+    ).all()
+
+    perceptual_groups = {}
+    for file in perceptual_files:
+        group_id = file.exact_group_id
+        # Skip if this group was already captured by SHA256 grouping
+        if group_id in sha256_groups:
+            continue
+
+        if group_id not in perceptual_groups:
+            perceptual_groups[group_id] = []
+
+        # Build file dict with basic info
+        file_dict = {
+            'id': file.id,
+            'original_filename': file.original_filename,
+            'file_size_bytes': file.file_size_bytes,
+            'detected_timestamp': file.detected_timestamp.isoformat() if file.detected_timestamp else None,
+            'storage_path': file.storage_path,
+            'thumbnail_path': file.thumbnail_path
+        }
+
+        # Get quality metrics and merge into file dict
+        metrics = get_quality_metrics(file)
+        file_dict.update(metrics)
+
+        perceptual_groups[group_id].append(file_dict)
+
+    # Add perceptual-only groups to results
+    for group_id, files in perceptual_groups.items():
+        if len(files) < 2:
+            continue
+
+        # Get recommendation for which file to keep
+        file_objs = [f for f in perceptual_files if f.exact_group_id == group_id]
+        recommended_id = recommend_best_duplicate(file_objs)
+
+        # Calculate group-level aggregates
+        total_size_bytes = sum(f.get('file_size_bytes', 0) for f in files)
+        resolutions = [f.get('resolution_mp') for f in files if f.get('resolution_mp') is not None]
+        best_resolution_mp = max(resolutions) if resolutions else None
+
+        groups_array.append({
+            'hash': group_id,
+            'match_type': 'perceptual',
+            'confidence': 'high',
             'file_count': len(files),
             'files': files,
             'recommended_id': recommended_id,
@@ -432,6 +504,70 @@ def get_job_duplicates(job_id):
         'group_count': len(groups_array),
         'total_duplicates': sum(len(g['files']) for g in groups_array)
     }), 200
+
+
+@jobs_bp.route('/api/jobs/<int:job_id>/similar-groups', methods=['GET'])
+def get_similar_groups(job_id):
+    """
+    Return similar file groups (burst, panorama, perceptual matches).
+
+    Args:
+        job_id: ID of the job
+
+    Returns:
+        JSON with array of similar groups with type, confidence, and quality metrics
+    """
+    job = db.session.get(Job, job_id)
+
+    if not job:
+        return jsonify({'error': 'Job not found'}), 404
+
+    # Get all non-discarded files with similar_group_id
+    files = File.query.join(File.jobs).filter(
+        Job.id == job_id,
+        File.similar_group_id.isnot(None),
+        File.discarded == False
+    ).all()
+
+    # Group by similar_group_id
+    groups = {}
+    for f in files:
+        gid = f.similar_group_id
+        if gid not in groups:
+            groups[gid] = {
+                'group_id': gid,
+                'group_type': f.similar_group_type or 'similar',
+                'confidence': f.similar_group_confidence or 'medium',
+                'files': [],
+                'recommended_id': None
+            }
+
+        # Build file dict with extended info
+        file_dict = {
+            'id': f.id,
+            'original_filename': f.original_filename,
+            'file_size_bytes': f.file_size_bytes,
+            'detected_timestamp': f.detected_timestamp.isoformat() if f.detected_timestamp else None,
+            'storage_path': f.storage_path,
+            'thumbnail_path': f.thumbnail_path
+        }
+
+        # Get quality metrics and merge into file dict
+        metrics = get_quality_metrics(f)
+        file_dict.update(metrics)
+
+        groups[gid]['files'].append(file_dict)
+
+    # Filter to groups with 2+ files, add recommendations
+    result = []
+    for gid, group in groups.items():
+        if len(group['files']) >= 2:
+            # Get file objects for recommendation
+            group_file_objs = [f for f in files if f.similar_group_id == gid]
+            group['recommended_id'] = recommend_best_duplicate(group_file_objs)
+            result.append(group)
+
+    return jsonify({'similar_groups': result}), 200
 
 
 @jobs_bp.route('/api/jobs/<int:job_id>/failed', methods=['GET'])
@@ -716,6 +852,20 @@ def get_job_summary(job_id):
         File.discarded == False
     ).count()
 
+    # Exact duplicate groups count
+    exact_groups = db.session.query(File.exact_group_id).filter(
+        File.job_id == job_id,
+        File.exact_group_id.isnot(None),
+        File.discarded == False
+    ).distinct().count()
+
+    # Similar groups count
+    similar_groups = db.session.query(File.similar_group_id).filter(
+        File.job_id == job_id,
+        File.similar_group_id.isnot(None),
+        File.discarded == False
+    ).distinct().count()
+
     unreviewed_count = base_query.filter(
         File.reviewed_at.is_(None),
         File.discarded == False,
@@ -745,6 +895,8 @@ def get_job_summary(job_id):
         'job_id': job_id,
         # Mode counts
         'duplicates': duplicates_count,
+        'exact_duplicate_groups': exact_groups,
+        'similar_groups': similar_groups,
         'unreviewed': unreviewed_count,
         'reviewed': reviewed_count,
         'discards': discards_count,
