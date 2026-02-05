@@ -53,9 +53,17 @@ class PositionSliderHandler {
     recalculateWindowSize() {
         if (!this.grid || !this.gridContainer) return;
 
-        // Use the grid's actual dimensions, not the container
-        const gridHeight = this.grid.clientHeight;
-        const gridWidth = this.grid.clientWidth;
+        // Get computed padding (grid has padding: 8px for shadow overflow)
+        const computedStyle = getComputedStyle(this.grid);
+        const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
+        const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+        const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+        const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+
+        // Use content width/height (clientWidth/Height minus padding)
+        // CSS Grid calculates columns based on content area, not padding box
+        const gridWidth = this.grid.clientWidth - paddingLeft - paddingRight;
+        const gridHeight = this.grid.clientHeight - paddingTop - paddingBottom;
 
         // Get thumbnail size from grid class
         const sizeClass = this.grid.className.match(/thumb-(compact|medium|large)/);
