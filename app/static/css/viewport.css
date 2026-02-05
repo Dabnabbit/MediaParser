@@ -237,6 +237,13 @@ body.viewport-active {
     box-shadow: none;
 }
 
+/* Override similar-group selected state in viewport mode */
+.thumbnail-grid.viewport-mode .thumbnail.similar-group.selected {
+    /* Keep similar color, ignore selection styling */
+    border-color: var(--similar-color);
+    box-shadow: none;
+}
+
 /* ============================================
    VIEWPORT NAVIGATION HINTS
    ============================================ */
