@@ -1607,8 +1607,6 @@ body {
    ============================================ */
 
 .grid-with-slider {
-    display: flex;
-    gap: var(--spacing-md);
     position: relative;
     /* Fill available viewport height, accounting for header/controls */
     height: calc(100vh - 280px);
@@ -1616,35 +1614,39 @@ body {
 }
 
 .grid-with-slider .thumbnail-grid {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
+    height: 100%;
     /* Allow shadows to extend beyond grid edges */
     overflow: visible;
-    /* Padding to accommodate duplicate shadows on edges */
-    padding: 8px;
+    /* Padding to accommodate duplicate shadows on edges, plus right padding for scrubber */
+    padding: 8px 44px 8px 8px;
     margin: -8px;
+    margin-right: 0;
     /* Grid fills container, items align to top */
     align-content: start;
 }
 
 .position-slider {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
     width: 36px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--spacing-xs);
-    flex-shrink: 0;
     padding: var(--spacing-xs);
-    background: var(--color-gray-100);
+    background: var(--bg-primary, #fff);
+    background: linear-gradient(to right, transparent, var(--bg-primary, #fff) 8px);
     border-radius: var(--border-radius);
-    /* Stretch to fill grid height */
-    align-self: stretch;
     transition: opacity 0.2s ease;
+    z-index: 10;
 }
 
-/* Disabled state - visible but inactive to prevent layout shift */
+/* Disabled state - hidden when not needed */
 .position-slider.slider-disabled {
-    opacity: 0.3;
+    opacity: 0;
     pointer-events: none;
 }
 
