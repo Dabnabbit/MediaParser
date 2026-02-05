@@ -82,8 +82,15 @@ def cluster_by_timestamp(files, threshold_seconds=CLUSTER_WINDOW_SECONDS) -> Lis
     if len(timestamped_files) < 2:
         return []  # Need at least 2 files to form a cluster
 
+    # Normalize to naive UTC for comparison (handles mixed aware/naive timestamps)
+    def _naive_ts(f):
+        ts = f.detected_timestamp
+        if ts.tzinfo is not None:
+            return ts.replace(tzinfo=None) - ts.utcoffset()
+        return ts
+
     # Sort by timestamp (O(n log n))
-    sorted_files = sorted(timestamped_files, key=lambda f: f.detected_timestamp)
+    sorted_files = sorted(timestamped_files, key=_naive_ts)
 
     # Linear scan to build clusters (O(n))
     clusters = []
@@ -93,7 +100,7 @@ def cluster_by_timestamp(files, threshold_seconds=CLUSTER_WINDOW_SECONDS) -> Lis
         file_curr = sorted_files[i]
         file_prev = current_cluster[-1]
 
-        gap = (file_curr.detected_timestamp - file_prev.detected_timestamp).total_seconds()
+        gap = (_naive_ts(file_curr) - _naive_ts(file_prev)).total_seconds()
 
         if gap <= threshold_seconds:
             # Within threshold, add to current cluster

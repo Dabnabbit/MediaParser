@@ -1327,10 +1327,10 @@ body {
 }
 
 .thumb-badge.duplicate {
-    /* Color set inline by JS to match group */
+    /* Reads --duplicate-color set on parent .thumbnail.duplicate-group by JS */
+    background: var(--duplicate-color, hsl(45, 90%, 50%));
     color: #fff;
     text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-    /* Make duplicate badge clickable */
     pointer-events: auto;
     cursor: pointer;
     transition: transform 0.15s ease, filter 0.15s ease;
@@ -1561,6 +1561,33 @@ body {
 
 .thumbnail.duplicate-group.selected {
     /* Selection overrides duplicate color */
+    border-color: var(--color-primary);
+    box-shadow:
+        0 0 0 5px rgba(59, 130, 246, 0.4),
+        0 4px 16px rgba(59, 130, 246, 0.3);
+    z-index: 3;
+}
+
+.thumbnail.similar-group {
+    --similar-color: hsl(210, 75%, 50%);
+    --similar-color-light: hsla(210, 75%, 50%, 0.4);
+
+    border: 3px solid var(--similar-color);
+    box-shadow:
+        0 0 0 4px var(--similar-color-light),
+        0 2px 8px var(--similar-color-light);
+    position: relative;
+    z-index: 1;
+}
+
+.thumbnail.similar-group:hover {
+    box-shadow:
+        0 0 0 5px var(--similar-color-light),
+        0 4px 12px var(--similar-color-light);
+    z-index: 2;
+}
+
+.thumbnail.similar-group.selected {
     border-color: var(--color-primary);
     box-shadow:
         0 0 0 5px rgba(59, 130, 246, 0.4),
@@ -1931,8 +1958,18 @@ body {
 /* Similar badge in thumbnails and viewport */
 .vp-badge.similar,
 .thumb-badge.similar {
-    background: var(--accent-color);
-    color: white;
+    /* Reads --similar-color set on parent .thumbnail.similar-group by JS */
+    background: var(--similar-color, hsl(210, 75%, 50%));
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    pointer-events: auto;
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.thumb-badge.similar:hover {
+    transform: scale(1.3);
+    filter: brightness(1.1);
 }
 
 /* Mode chip warning state */

@@ -99,11 +99,17 @@ class Tile {
         tile.dataset.fileId = file.id;
         tile._tile = this;  // Store reference for reverse lookup
 
-        // Apply duplicate group color
-        if (file.is_duplicate && this.getGroupColor) {
-            const groupColor = this.getGroupColor(file.file_hash);
+        // Apply group colors as CSS custom properties (badges inherit via cascade)
+        const mode = Tile.getCurrentMode();
+        if (file.is_duplicate && mode !== 'similar' && this.getGroupColor) {
+            const groupColor = this.getGroupColor(file.exact_group_id);
             tile.style.setProperty('--duplicate-color', groupColor.solid);
             tile.style.setProperty('--duplicate-color-light', groupColor.light);
+        }
+        if (file.is_similar && file.similar_group_id && mode !== 'duplicates' && this.getGroupColor) {
+            const groupColor = this.getGroupColor(file.similar_group_id);
+            tile.style.setProperty('--similar-color', groupColor.solid);
+            tile.style.setProperty('--similar-color-light', groupColor.light);
         }
 
         // Build content
@@ -117,13 +123,16 @@ class Tile {
 
     /**
      * Build CSS class names for the tile
+     * Mode-aware: only applies group class relevant to current mode
      */
     buildClassName() {
         const { file } = this;
         const classes = ['thumbnail'];
+        const mode = Tile.getCurrentMode();
 
         if (this.selected) classes.push('selected');
-        if (file?.is_duplicate) classes.push('duplicate-group');
+        if (file?.is_duplicate && mode !== 'similar') classes.push('duplicate-group');
+        if (file?.is_similar && mode !== 'duplicates') classes.push('similar-group');
         if (file?.discarded) classes.push('discarded');
         if (file?.reviewed_at) classes.push('reviewed');
 
@@ -132,6 +141,7 @@ class Tile {
 
     /**
      * Build inner HTML for the tile
+     * Mode-aware: only renders badges relevant to current mode
      */
     buildInnerHTML() {
         const { file } = this;
@@ -143,16 +153,24 @@ class Tile {
         const isVideo = file.mime_type?.startsWith('video/');
         const isReviewed = !!file.reviewed_at;
         const isFailed = !!file.processing_error;
-        const isDuplicate = !!file.is_duplicate;
         const isDiscarded = !!file.discarded;
+        const mode = Tile.getCurrentMode();
 
-        // Duplicate badge with group color
+        // Duplicate badge — hidden in similar mode (not actionable yet/already resolved)
+        // Badge background comes from CSS var(--duplicate-color) set on parent tile
+        const showDuplicate = !!file.is_duplicate && mode !== 'similar';
         let duplicateBadge = '';
-        if (isDuplicate && this.getGroupColor) {
-            const groupColor = this.getGroupColor(file.file_hash);
-            duplicateBadge = `<span class="thumb-badge duplicate" style="background:${groupColor.solid}" title="Duplicate group">&#x29C9;</span>`;
-        } else if (isDuplicate) {
+        if (showDuplicate) {
             duplicateBadge = `<span class="thumb-badge duplicate" title="Duplicate group">&#x29C9;</span>`;
+        }
+
+        // Similar badge — hidden in duplicates mode (not actionable yet)
+        // Badge background comes from CSS var(--similar-color) set on parent tile
+        const showSimilar = !!file.is_similar && mode !== 'duplicates';
+        let similarBadge = '';
+        if (showSimilar) {
+            const typeLabel = file.similar_group_type || 'similar';
+            similarBadge = `<span class="thumb-badge similar" title="Similar group (${typeLabel})">&#x2248;</span>`;
         }
 
         return `
@@ -172,6 +190,7 @@ class Tile {
                     <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
                     ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
                     ${duplicateBadge}
+                    ${similarBadge}
                 </div>
             </div>
             <img class="tile-image"
@@ -445,22 +464,27 @@ class Tile {
         const badgesContainer = this.element.querySelector('.thumbnail-badges');
         if (!badgesContainer) return;
 
-        // Rebuild badges HTML
+        // Rebuild badges HTML (mode-aware)
         const file = this.file;
         const confidenceClass = `confidence-${file.confidence}`;
         const confidenceLabel = file.confidence?.charAt(0).toUpperCase() || '?';
         const isVideo = file.mime_type?.startsWith('video/');
         const isReviewed = !!file.reviewed_at;
         const isFailed = !!file.processing_error;
-        const isDuplicate = !!file.is_duplicate;
         const isDiscarded = !!file.discarded;
+        const mode = Tile.getCurrentMode();
 
+        const showDuplicate = !!file.is_duplicate && mode !== 'similar';
         let duplicateBadge = '';
-        if (isDuplicate && this.getGroupColor) {
-            const groupColor = this.getGroupColor(file.file_hash);
-            duplicateBadge = `<span class="thumb-badge duplicate" style="background:${groupColor.solid}" title="Duplicate group">&#x29C9;</span>`;
-        } else if (isDuplicate) {
+        if (showDuplicate) {
             duplicateBadge = `<span class="thumb-badge duplicate" title="Duplicate group">&#x29C9;</span>`;
+        }
+
+        const showSimilar = !!file.is_similar && mode !== 'duplicates';
+        let similarBadge = '';
+        if (showSimilar) {
+            const typeLabel = file.similar_group_type || 'similar';
+            similarBadge = `<span class="thumb-badge similar" title="Similar group (${typeLabel})">&#x2248;</span>`;
         }
 
         badgesContainer.innerHTML = `
@@ -479,15 +503,24 @@ class Tile {
                 <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
                 ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
                 ${duplicateBadge}
+                ${similarBadge}
             </div>
         `;
 
-        // Update duplicate group styling
-        this.element.classList.toggle('duplicate-group', isDuplicate);
-        if (isDuplicate && this.getGroupColor) {
-            const groupColor = this.getGroupColor(file.file_hash);
+        // Update duplicate group styling (mode-aware)
+        this.element.classList.toggle('duplicate-group', showDuplicate);
+        if (showDuplicate && this.getGroupColor) {
+            const groupColor = this.getGroupColor(file.exact_group_id);
             this.element.style.setProperty('--duplicate-color', groupColor.solid);
             this.element.style.setProperty('--duplicate-color-light', groupColor.light);
+        }
+
+        // Update similar group styling (mode-aware)
+        this.element.classList.toggle('similar-group', showSimilar);
+        if (showSimilar && file.similar_group_id && this.getGroupColor) {
+            const groupColor = this.getGroupColor(file.similar_group_id);
+            this.element.style.setProperty('--similar-color', groupColor.solid);
+            this.element.style.setProperty('--similar-color-light', groupColor.light);
         }
     }
 
@@ -556,6 +589,15 @@ class Tile {
     // ==========================================
     // Static Methods
     // ==========================================
+
+    /**
+     * Get current filter mode from the global filterHandler.
+     * Used to show only mode-relevant badges (e.g. hide similar badge in duplicates mode).
+     * @returns {string|null}
+     */
+    static getCurrentMode() {
+        return window.filterHandler?.getCurrentMode?.() || null;
+    }
 
     /**
      * Get Tile instance from a DOM element

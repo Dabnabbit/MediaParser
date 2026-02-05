@@ -79,7 +79,7 @@ class ProgressHandler {
 
         // Progress area: visible in uploading, processing, and complete states
         if (this.jobProgress) {
-            this.jobProgress.style.display = ['uploading', 'processing', 'complete'].includes(state) ? 'block' : 'none';
+            this.jobProgress.style.display = ['uploading', 'processing', 'complete', 'failed'].includes(state) ? 'block' : 'none';
         }
 
         // Status badge: hidden in idle state
@@ -100,7 +100,7 @@ class ProgressHandler {
 
         // Controls visibility
         if (this.jobControls) {
-            if (state === 'complete') {
+            if (state === 'complete' || state === 'failed') {
                 this.jobControls.style.display = 'flex';
                 if (this.pauseBtn) this.pauseBtn.style.display = 'none';
                 if (this.cancelBtn) {
@@ -168,6 +168,11 @@ class ProgressHandler {
                         return;
                     } else if (status === 'COMPLETED') {
                         this.startPolling(storedJobId);
+                        return;
+                    } else if (['FAILED', 'CANCELLED', 'HALTED'].includes(status)) {
+                        this.jobId = storedJobId;
+                        this.updateUI(data);
+                        this.setState('failed');
                         return;
                     } else {
                         localStorage.removeItem('currentJobId');
@@ -375,6 +380,8 @@ class ProgressHandler {
                     this.stopPolling();
                     if (status === 'COMPLETED') {
                         this.handleJobComplete(completedJobId, data);
+                    } else {
+                        this.setState('failed');
                     }
                 }
             } else {
@@ -504,7 +511,7 @@ class ProgressHandler {
     async handleCancelOrNew() {
         const state = this.jobSection?.dataset.state;
 
-        if (state === 'complete') {
+        if (state === 'complete' || state === 'failed') {
             // Job is done - this is "New" functionality
             if (!confirm('Start a new import? Current results will be cleared.')) {
                 return;

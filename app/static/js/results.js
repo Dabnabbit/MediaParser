@@ -285,12 +285,22 @@ class ResultsHandler {
         if (this.selectedFiles.has(file.id)) {
             thumb.classList.add('selected');
         }
-        if (file.is_duplicate) {
+
+        const mode = window.filterHandler?.getCurrentMode?.() || null;
+        const showDuplicate = !!file.is_duplicate && mode !== 'similar';
+        const showSimilar = !!file.is_similar && mode !== 'duplicates';
+
+        if (showDuplicate) {
             thumb.classList.add('duplicate-group');
-            // Generate consistent color from file hash for this duplicate group
-            const groupColor = this.getGroupColor(file.file_hash);
+            const groupColor = this.getGroupColor(file.exact_group_id);
             thumb.style.setProperty('--duplicate-color', groupColor.solid);
             thumb.style.setProperty('--duplicate-color-light', groupColor.light);
+        }
+        if (showSimilar) {
+            thumb.classList.add('similar-group');
+            const groupColor = this.getGroupColor(file.similar_group_id);
+            thumb.style.setProperty('--similar-color', groupColor.solid);
+            thumb.style.setProperty('--similar-color-light', groupColor.light);
         }
 
         const imgSrc = file.thumbnail_path ? `/${file.thumbnail_path}` : '/static/img/placeholder.svg';
@@ -299,17 +309,21 @@ class ResultsHandler {
         const isVideo = file.mime_type?.startsWith('video/');
         const isReviewed = !!file.reviewed_at;
         const isFailed = !!file.processing_error;
-        const isDuplicate = !!file.is_duplicate;
         const isDiscarded = !!file.discarded;
 
         const timestamp = file.final_timestamp || file.detected_timestamp;
         const dateStr = timestamp ? new Date(timestamp).toISOString().split('T')[0] : 'Unknown';
 
-        // Get duplicate badge with group color
+        // Badge background comes from CSS vars (--duplicate-color / --similar-color)
         let duplicateBadge = '';
-        if (isDuplicate) {
-            const groupColor = this.getGroupColor(file.file_hash);
-            duplicateBadge = `<span class="thumb-badge duplicate" style="background:${groupColor.solid}" title="Click to select duplicate group">&#x29C9;</span>`;
+        if (showDuplicate) {
+            duplicateBadge = `<span class="thumb-badge duplicate" title="Click to select duplicate group">&#x29C9;</span>`;
+        }
+
+        let similarBadge = '';
+        if (showSimilar) {
+            const typeLabel = file.similar_group_type || 'similar';
+            similarBadge = `<span class="thumb-badge similar" title="Similar group (${typeLabel})">&#x2248;</span>`;
         }
 
         thumb.innerHTML = `
@@ -329,6 +343,7 @@ class ResultsHandler {
                     <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
                     ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
                     ${duplicateBadge}
+                    ${similarBadge}
                 </div>
             </div>
             <img data-src="${imgSrc}"

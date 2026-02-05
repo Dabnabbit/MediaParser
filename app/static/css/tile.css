@@ -170,6 +170,19 @@
         0 4px 12px var(--duplicate-color-light);
 }
 
+/* Similar group styling */
+.media-tile.similar-group {
+    --similar-color: hsl(210, 75%, 50%);
+    --similar-color-light: hsla(210, 75%, 50%, 0.4);
+    border-color: var(--similar-color);
+}
+
+.media-tile.similar-group:hover {
+    box-shadow:
+        0 0 0 3px var(--similar-color-light),
+        0 4px 12px var(--similar-color-light);
+}
+
 /* Discarded state */
 .media-tile.discarded {
     opacity: 0.6;
@@ -268,6 +281,10 @@
     background: var(--duplicate-color, hsl(45, 90%, 50%));
     color: #000;
     text-shadow: none;
+}
+
+.tile-badge.similar {
+    background: var(--similar-color, hsl(210, 75%, 50%));
 }
 
 .tile-badge.media-video {

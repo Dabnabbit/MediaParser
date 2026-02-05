@@ -281,30 +281,30 @@ class SelectionHandler {
     }
 
     selectDuplicateGroup(file) {
-        // Select all files in the same duplicate group (same file_hash)
-        if (!file?.file_hash) return;
+        // Select all files in the same duplicate group (same exact_group_id)
+        if (!file?.exact_group_id) return;
 
         const visibleFiles = window.resultsHandler?.allFiles || [];
         visibleFiles.forEach(f => {
-            if (f.file_hash === file.file_hash) {
+            if (f.exact_group_id === file.exact_group_id) {
                 this.selectedIds.add(f.id);
             }
         });
     }
 
     selectEntireDuplicateGroup() {
-        // Get the hash(es) of currently selected files that are duplicates
+        // Get the exact_group_id(s) of currently selected files that are duplicates
         const visibleFiles = window.resultsHandler?.allFiles || [];
         const selectedFiles = visibleFiles.filter(f => this.selectedIds.has(f.id));
-        const groupHashes = new Set(
-            selectedFiles.filter(f => f.is_duplicate && f.file_hash).map(f => f.file_hash)
+        const groupIds = new Set(
+            selectedFiles.filter(f => f.is_duplicate && f.exact_group_id).map(f => f.exact_group_id)
         );
 
-        if (groupHashes.size === 0) return;
+        if (groupIds.size === 0) return;
 
-        // Select all files matching those hashes
+        // Select all files matching those group IDs
         visibleFiles.forEach(f => {
-            if (f.file_hash && groupHashes.has(f.file_hash)) {
+            if (f.exact_group_id && groupIds.has(f.exact_group_id)) {
                 this.selectedIds.add(f.id);
             }
         });
@@ -318,12 +318,12 @@ class SelectionHandler {
         const visibleFiles = window.resultsHandler?.allFiles || [];
         const file = visibleFiles.find(f => f.id === fileId);
 
-        if (!file?.file_hash) return;
+        if (!file?.exact_group_id) return;
 
-        // Clear current selection and select all files with same hash
+        // Clear current selection and select all files with same exact_group_id
         this.selectedIds.clear();
         visibleFiles.forEach(f => {
-            if (f.file_hash === file.file_hash) {
+            if (f.exact_group_id === file.exact_group_id) {
                 this.selectedIds.add(f.id);
             }
         });
@@ -415,12 +415,12 @@ class SelectionHandler {
         const hasDuplicates = selectedFiles.some(f => f.is_duplicate);
 
         // Check if there are unselected files in the same duplicate group(s)
-        const groupHashes = new Set(
-            selectedFiles.filter(f => f.is_duplicate && f.file_hash).map(f => f.file_hash)
+        const groupIds = new Set(
+            selectedFiles.filter(f => f.is_duplicate && f.exact_group_id).map(f => f.exact_group_id)
         );
         const hasUnselectedInGroup = visibleFiles.some(f =>
-            f.file_hash &&
-            groupHashes.has(f.file_hash) &&
+            f.exact_group_id &&
+            groupIds.has(f.exact_group_id) &&
             !this.selectedIds.has(f.id)
         );
 
@@ -489,7 +489,7 @@ class SelectionHandler {
             if (clickedFile?.is_duplicate) {
                 // Get all files in the same duplicate group
                 const groupFiles = visibleFiles.filter(f =>
-                    f.file_hash && f.file_hash === clickedFile.file_hash
+                    f.exact_group_id && f.exact_group_id === clickedFile.exact_group_id
                 );
                 if (groupFiles.length > 0) {
                     return groupFiles.map(f => f.id);
@@ -600,12 +600,12 @@ class SelectionHandler {
         // Get all files in duplicate groups for selected files
         const visibleFiles = window.resultsHandler?.allFiles || [];
         const selectedFiles = visibleFiles.filter(f => this.selectedIds.has(f.id));
-        const groupHashes = new Set(selectedFiles.filter(f => f.file_hash).map(f => f.file_hash));
+        const groupIds = new Set(selectedFiles.filter(f => f.exact_group_id).map(f => f.exact_group_id));
 
         // Find all files in those groups that are NOT selected
         const toDiscard = visibleFiles.filter(f =>
-            f.file_hash &&
-            groupHashes.has(f.file_hash) &&
+            f.exact_group_id &&
+            groupIds.has(f.exact_group_id) &&
             !this.selectedIds.has(f.id)
         ).map(f => f.id);
 

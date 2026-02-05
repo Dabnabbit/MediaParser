@@ -364,7 +364,10 @@ def _serialize_file_extended(f):
         'mime_type': f.mime_type,
         'reviewed_at': f.reviewed_at.isoformat() if f.reviewed_at else None,
         'is_duplicate': f.exact_group_id is not None,
+        'exact_group_id': f.exact_group_id,
         'is_similar': f.similar_group_id is not None,
+        'similar_group_id': f.similar_group_id,
+        'similar_group_type': f.similar_group_type,
         'discarded': f.discarded
     }
 
@@ -373,6 +376,10 @@ def _serialize_file_extended(f):
 def get_job_duplicates(job_id):
     """
     Get duplicate groups for files in a job (both SHA256 and perceptual exact matches).
+
+    Groups by exact_group_id — the canonical group key set by both SHA256 detection
+    and perceptual exact detection. Determines match_type per group by checking
+    whether all members share the same SHA256 hash.
 
     Args:
         job_id: ID of the job
@@ -385,18 +392,15 @@ def get_job_duplicates(job_id):
     if job is None:
         return jsonify({'error': f'Job {job_id} not found'}), 404
 
-    # Group files in THIS job by SHA256 hash to find exact duplicates
-    # Only considers files within the current job, not across all jobs
-    sha256_groups = {}
+    # Single-pass grouping by exact_group_id (covers both SHA256 and perceptual)
+    group_files = {}   # group_id -> [file_dict, ...]
+    group_objs = {}    # group_id -> [File, ...] (for recommend_best_duplicate)
 
     for file in job.files:
-        # Skip files without hash or discarded files
-        if not file.file_hash_sha256 or file.discarded:
+        if not file.exact_group_id or file.discarded:
             continue
 
-        hash_key = file.file_hash_sha256
-        if hash_key not in sha256_groups:
-            sha256_groups[hash_key] = []
+        gid = file.exact_group_id
 
         # Build file dict with basic info
         file_dict = {
@@ -412,74 +416,22 @@ def get_job_duplicates(job_id):
         metrics = get_quality_metrics(file)
         file_dict.update(metrics)
 
-        sha256_groups[hash_key].append(file_dict)
+        group_files.setdefault(gid, []).append(file_dict)
+        group_objs.setdefault(gid, []).append(file)
 
-    # Convert SHA256 groups to array format
+    # Build groups array (only groups with 2+ files)
     groups_array = []
-    for hash_key, files in sha256_groups.items():
-        # Only include groups with 2+ files (actual duplicates)
+    for gid, files in group_files.items():
         if len(files) < 2:
             continue
 
-        # Get recommendation for which file to keep
-        recommended_id = recommend_best_duplicate(files)
+        file_objs = group_objs[gid]
 
-        # Calculate group-level aggregates
-        total_size_bytes = sum(f.get('file_size_bytes', 0) for f in files)
-        resolutions = [f.get('resolution_mp') for f in files if f.get('resolution_mp') is not None]
-        best_resolution_mp = max(resolutions) if resolutions else None
-
-        groups_array.append({
-            'hash': hash_key,
-            'match_type': 'sha256',
-            'confidence': 'high',
-            'file_count': len(files),
-            'files': files,
-            'recommended_id': recommended_id,
-            'total_size_bytes': total_size_bytes,
-            'best_resolution_mp': best_resolution_mp
-        })
-
-    # Now get perceptual-only exact groups (files with exact_group_id that weren't captured by SHA256)
-    perceptual_files = File.query.join(File.jobs).filter(
-        Job.id == job_id,
-        File.exact_group_id.isnot(None),
-        File.discarded == False
-    ).all()
-
-    perceptual_groups = {}
-    for file in perceptual_files:
-        group_id = file.exact_group_id
-        # Skip if this group was already captured by SHA256 grouping
-        if group_id in sha256_groups:
-            continue
-
-        if group_id not in perceptual_groups:
-            perceptual_groups[group_id] = []
-
-        # Build file dict with basic info
-        file_dict = {
-            'id': file.id,
-            'original_filename': file.original_filename,
-            'file_size_bytes': file.file_size_bytes,
-            'detected_timestamp': file.detected_timestamp.isoformat() if file.detected_timestamp else None,
-            'storage_path': file.storage_path,
-            'thumbnail_path': file.thumbnail_path
-        }
-
-        # Get quality metrics and merge into file dict
-        metrics = get_quality_metrics(file)
-        file_dict.update(metrics)
-
-        perceptual_groups[group_id].append(file_dict)
-
-    # Add perceptual-only groups to results
-    for group_id, files in perceptual_groups.items():
-        if len(files) < 2:
-            continue
+        # Determine match_type: sha256 if all members share the same hash, else perceptual
+        sha256s = set(f.file_hash_sha256 for f in file_objs if f.file_hash_sha256)
+        match_type = 'sha256' if len(sha256s) == 1 else 'perceptual'
 
         # Get recommendation for which file to keep
-        file_objs = [f for f in perceptual_files if f.exact_group_id == group_id]
         recommended_id = recommend_best_duplicate(file_objs)
 
         # Calculate group-level aggregates
@@ -488,8 +440,8 @@ def get_job_duplicates(job_id):
         best_resolution_mp = max(resolutions) if resolutions else None
 
         groups_array.append({
-            'hash': group_id,
-            'match_type': 'perceptual',
+            'hash': gid,
+            'match_type': match_type,
             'confidence': 'high',
             'file_count': len(files),
             'files': files,
