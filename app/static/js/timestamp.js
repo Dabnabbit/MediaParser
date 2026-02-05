@@ -3,80 +3,53 @@
  *
  * Manages timestamp source display and selection in examination view.
  * Features:
- * - Displays all detected timestamp sources
- * - Shows system recommendation
- * - Allows source selection via click
+ * - Displays grouped timestamp options from backend
+ * - Shows confidence levels and source agreement
+ * - Highlights earliest and highest-scored options
  * - Manual entry with Chrono parsing
- * - PRE-FILLS manual entry with recommended timestamp (per CONTEXT.md)
  */
 
 class TimestampHandler {
     constructor() {
         this.container = document.getElementById('timestamp-sources-container');
         this.currentFile = null;
-        this.sources = [];
-        this.selectedSource = null;
+        this.options = [];  // Grouped options from backend
+        this.selectedTimestamp = null;
         this.manualTimestamp = null;
-        this.recommendedTimestamp = null;  // Store for pre-fill
+    }
 
-        // Weight labels for tooltips
-        this.weightLabels = {
-            'exif_datetime_original': { label: 'EXIF DateTimeOriginal', weight: 10 },
-            'exif_datetime_digitized': { label: 'EXIF DateTimeDigitized', weight: 8 },
-            'exif_datetime': { label: 'EXIF DateTime', weight: 6 },
-            'filename_pattern': { label: 'Filename Pattern', weight: 3 },
-            'filename_date': { label: 'Filename Date', weight: 2 },
-            'file_modified': { label: 'File Modified', weight: 1 },
-            'file_created': { label: 'File Created', weight: 1 },
-            'manual': { label: 'Manual Entry', weight: 0 }
-        };
+    /**
+     * Set the container element for rendering timestamps
+     * Used by ViewportDetailsPanel to specify its own container
+     * @param {HTMLElement} container
+     */
+    setContainer(container) {
+        this.container = container;
     }
 
     loadForFile(file) {
         this.currentFile = file;
-        this.selectedSource = null;
+        this.selectedTimestamp = null;
         this.manualTimestamp = null;
-        this.recommendedTimestamp = null;
 
-        // Parse timestamp_candidates from JSON string if needed
-        let candidates = file.timestamp_candidates;
-        if (typeof candidates === 'string') {
-            try {
-                candidates = JSON.parse(candidates);
-            } catch (e) {
-                candidates = [];
-            }
+        // Use pre-processed options from backend
+        this.options = file.timestamp_options || [];
+
+        // Pre-select the backend's selected option (earliest)
+        const selected = this.options.find(o => o.selected);
+        if (selected) {
+            this.selectedTimestamp = selected.timestamp;
+        } else if (file.detected_timestamp) {
+            this.selectedTimestamp = file.detected_timestamp;
         }
-
-        this.sources = candidates || [];
-
-        // Determine recommended timestamp for pre-fill
-        this.determineRecommendedTimestamp();
 
         this.render();
-    }
-
-    determineRecommendedTimestamp() {
-        // Sort sources by weight (highest first)
-        const sortedSources = [...this.sources].sort((a, b) => {
-            const weightA = this.weightLabels[a.source]?.weight || 0;
-            const weightB = this.weightLabels[b.source]?.weight || 0;
-            return weightB - weightA;
-        });
-
-        // Find recommended (highest weight with valid date)
-        const recommended = sortedSources.find(s => s.value);
-        if (recommended?.value) {
-            this.recommendedTimestamp = recommended.value;
-        } else if (this.currentFile?.detected_timestamp) {
-            this.recommendedTimestamp = this.currentFile.detected_timestamp;
-        }
     }
 
     render() {
         if (!this.container) return;
 
-        if (this.sources.length === 0 && !this.currentFile?.detected_timestamp) {
+        if (this.options.length === 0 && !this.currentFile?.detected_timestamp) {
             this.container.innerHTML = `
                 <p class="no-sources">No timestamp sources detected</p>
                 ${this.renderManualEntry()}
@@ -85,47 +58,49 @@ class TimestampHandler {
             return;
         }
 
-        // Sort sources by weight (highest first)
-        const sortedSources = [...this.sources].sort((a, b) => {
-            const weightA = this.weightLabels[a.source]?.weight || 0;
-            const weightB = this.weightLabels[b.source]?.weight || 0;
-            return weightB - weightA;
-        });
-
-        // Find recommended (highest weight with valid date)
-        const recommended = sortedSources.find(s => s.value) || sortedSources[0];
-
-        // Pre-select the recommended source
-        if (!this.selectedSource) {
-            this.selectedSource = recommended?.source;
-        }
-
-        // Render timeline visualization (simplified)
         let html = '<div class="timestamp-sources">';
 
-        sortedSources.forEach(source => {
-            const isSelected = this.selectedSource === source.source;
-            const isRecommended = source === recommended;
-            const labelInfo = this.weightLabels[source.source] || { label: source.source, weight: 0 };
-            const formattedDate = this.formatTimestamp(source.value);
+        this.options.forEach(option => {
+            const isSelected = this.selectedTimestamp === option.timestamp;
+            const formattedDate = this.formatTimestamp(option.timestamp);
+
+            // Build description badges
+            let badges = [];
+            if (option.is_earliest && option.is_highest_scored) {
+                badges.push('<span class="option-badge recommended">Recommended</span>');
+            } else {
+                if (option.is_earliest) {
+                    badges.push('<span class="option-badge earliest">Earliest</span>');
+                }
+                if (option.is_highest_scored) {
+                    badges.push('<span class="option-badge highest-scored">Most Reliable</span>');
+                }
+            }
+
+            // Source count indicator
+            const sourceInfo = option.source_count > 1
+                ? `${option.source_count} sources agree`
+                : '1 source';
 
             html += `
-                <div class="timestamp-source ${isSelected ? 'selected' : ''} ${isRecommended ? 'recommended' : ''}"
-                     data-source="${source.source}"
-                     data-value="${source.value || ''}"
-                     title="Weight: ${labelInfo.weight}">
+                <div class="timestamp-source ${isSelected ? 'selected' : ''} ${option.selected ? 'system-pick' : ''}"
+                     data-timestamp="${option.timestamp}"
+                     data-confidence="${option.confidence}">
                     <div class="source-radio">
                         <input type="radio" name="timestamp-source"
-                               id="ts-${source.source}"
+                               id="ts-${option.timestamp}"
                                ${isSelected ? 'checked' : ''}
-                               value="${source.source}">
+                               value="${option.timestamp}">
                     </div>
                     <div class="source-info">
-                        <label for="ts-${source.source}">
-                            ${isRecommended ? '<span class="recommended-badge">Recommended</span>' : ''}
-                            <span class="source-label">${labelInfo.label}</span>
+                        <label for="ts-${option.timestamp}">
+                            <span class="source-time-primary">${formattedDate}</span>
+                            ${badges.join('')}
                         </label>
-                        <time class="source-time">${formattedDate}</time>
+                        <span class="source-meta">
+                            <span class="confidence-badge confidence-${option.confidence}">${option.confidence.toUpperCase()}</span>
+                            <span class="source-count">${sourceInfo}</span>
+                        </span>
                     </div>
                 </div>
             `;
@@ -141,16 +116,14 @@ class TimestampHandler {
     }
 
     renderManualEntry() {
-        const isManualSelected = this.selectedSource === 'manual';
+        const isManualSelected = this.selectedTimestamp === 'manual';
 
-        // PRE-FILL with recommended timestamp (per CONTEXT.md)
-        // Format the recommended timestamp for the input field
+        // Pre-fill with selected timestamp for editing
         let prefilledValue = '';
-        if (this.recommendedTimestamp) {
+        if (this.selectedTimestamp && this.selectedTimestamp !== 'manual') {
             try {
-                const date = new Date(this.recommendedTimestamp);
+                const date = new Date(this.selectedTimestamp);
                 if (!isNaN(date.getTime())) {
-                    // Format as YYYY-MM-DD for cleaner display
                     prefilledValue = date.toISOString().split('T')[0];
                 }
             } catch (e) {
@@ -160,10 +133,11 @@ class TimestampHandler {
 
         const previewText = this.manualTimestamp
             ? `Parsed: ${this.formatTimestamp(this.manualTimestamp)}`
-            : (prefilledValue ? `Pre-filled from recommended timestamp` : '');
+            : (prefilledValue ? `Pre-filled from selected date` : '');
+        const previewClass = this.manualTimestamp ? 'parsed' : 'hint';
 
         return `
-            <div class="timestamp-source manual ${isManualSelected ? 'selected' : ''}" data-source="manual">
+            <div class="timestamp-source manual ${isManualSelected ? 'selected' : ''}" data-timestamp="manual">
                 <div class="source-radio">
                     <input type="radio" name="timestamp-source"
                            id="ts-manual"
@@ -180,7 +154,7 @@ class TimestampHandler {
                                class="form-input form-input-sm"
                                placeholder="e.g., Jan 2020, 2019-08-15, 2020"
                                value="${prefilledValue}">
-                        <span class="date-preview" id="date-preview">${previewText}</span>
+                        <span class="date-preview ${previewClass}" id="date-preview">${previewText}</span>
                     </div>
                 </div>
             </div>
@@ -194,13 +168,13 @@ class TimestampHandler {
                 // Don't trigger if clicking inside input
                 if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
 
-                const source = row.dataset.source;
-                this.selectSource(source, row.dataset.value);
+                const timestamp = row.dataset.timestamp;
+                this.selectTimestamp(timestamp);
             });
 
             const radio = row.querySelector('input[type="radio"]');
             radio?.addEventListener('change', () => {
-                this.selectSource(row.dataset.source, row.dataset.value);
+                this.selectTimestamp(row.dataset.timestamp);
             });
         });
 
@@ -210,7 +184,7 @@ class TimestampHandler {
 
         if (manualInput) {
             // If pre-filled, parse immediately
-            if (manualInput.value) {
+            if (manualInput.value && this.selectedTimestamp === 'manual') {
                 const parsed = this.parseDate(manualInput.value);
                 if (parsed) {
                     this.manualTimestamp = parsed.toISOString();
@@ -221,6 +195,7 @@ class TimestampHandler {
                 const input = e.target.value.trim();
                 if (input.length < 2) {
                     preview.textContent = '';
+                    preview.className = 'date-preview hint';
                     this.manualTimestamp = null;
                     return;
                 }
@@ -229,33 +204,33 @@ class TimestampHandler {
                 const parsed = this.parseDate(input);
                 if (parsed) {
                     preview.textContent = `Parsed: ${this.formatTimestamp(parsed.toISOString())}`;
-                    preview.classList.remove('error');
+                    preview.className = 'date-preview parsed';
                     this.manualTimestamp = parsed.toISOString();
                 } else {
                     preview.textContent = 'Could not parse date';
-                    preview.classList.add('error');
+                    preview.className = 'date-preview error';
                     this.manualTimestamp = null;
                 }
             });
 
             manualInput.addEventListener('focus', () => {
-                this.selectSource('manual');
+                this.selectTimestamp('manual');
             });
         }
     }
 
-    selectSource(source, value = null) {
-        this.selectedSource = source;
+    selectTimestamp(timestamp) {
+        this.selectedTimestamp = timestamp;
 
         // Update visual state
         this.container.querySelectorAll('.timestamp-source').forEach(row => {
-            row.classList.toggle('selected', row.dataset.source === source);
+            row.classList.toggle('selected', row.dataset.timestamp === timestamp);
             const radio = row.querySelector('input[type="radio"]');
-            if (radio) radio.checked = row.dataset.source === source;
+            if (radio) radio.checked = row.dataset.timestamp === timestamp;
         });
 
-        // If selecting a non-manual source, store its value
-        if (source !== 'manual' && value) {
+        // Clear manual timestamp if selecting a different option
+        if (timestamp !== 'manual') {
             this.manualTimestamp = null;
         }
     }
@@ -276,9 +251,9 @@ class TimestampHandler {
     }
 
     getSelectedTimestamp() {
-        if (!this.selectedSource) return null;
+        if (!this.selectedTimestamp) return null;
 
-        if (this.selectedSource === 'manual') {
+        if (this.selectedTimestamp === 'manual') {
             if (!this.manualTimestamp) return null;
             return {
                 value: this.manualTimestamp,
@@ -286,13 +261,9 @@ class TimestampHandler {
             };
         }
 
-        // Find the source data
-        const source = this.sources.find(s => s.source === this.selectedSource);
-        if (!source) return null;
-
         return {
-            value: source.value,
-            source: source.source
+            value: this.selectedTimestamp,
+            source: 'grouped'  // Indicates this came from a grouped option
         };
     }
 
@@ -316,10 +287,9 @@ class TimestampHandler {
 
     reset() {
         this.currentFile = null;
-        this.sources = [];
-        this.selectedSource = null;
+        this.options = [];
+        this.selectedTimestamp = null;
         this.manualTimestamp = null;
-        this.recommendedTimestamp = null;
         if (this.container) {
             this.container.innerHTML = '<p class="placeholder">Select a file to view timestamps</p>';
         }

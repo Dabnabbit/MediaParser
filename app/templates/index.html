@@ -187,6 +187,11 @@
                     Mark Reviewed
                 </button>
                 <div class="selection-divider"></div>
+                <!-- Examine/Compare button -->
+                <button class="btn btn-primary btn-sm" id="examine-selected" title="Open examination view (Enter)">
+                    <span id="examine-btn-label">Examine</span>
+                </button>
+                <div class="selection-divider"></div>
                 <!-- Tag quick-add -->
                 <div class="tag-quick-add">
                     <input type="text" id="quick-tag-input" class="form-input form-input-sm" placeholder="Add tag...">
@@ -319,26 +324,6 @@
             </div>
         </div>
 
-        <!-- Duplicate Groups Comparison View -->
-        <div id="duplicate-groups-container" class="duplicate-groups-container" style="display: none;">
-            <div class="duplicates-header">
-                <h3>Duplicate Groups</h3>
-                <div class="duplicates-summary">
-                    <span id="duplicates-group-count">0 groups</span>
-                    <span id="duplicates-file-count">0 files</span>
-                    <span id="duplicates-resolved-count">0 resolved</span>
-                </div>
-                <div class="duplicates-actions">
-                    <button id="btn-resolve-all" class="btn btn-primary" disabled>
-                        Confirm All Selections
-                    </button>
-                </div>
-            </div>
-            <div id="duplicate-groups-list">
-                <!-- Groups rendered by JavaScript -->
-            </div>
-        </div>
-
         <!-- Grid with Position Slider -->
         <div class="grid-with-slider">
             <!-- Unified Thumbnail Grid -->
@@ -365,127 +350,4 @@
     </div>
 </section>
 
-<!-- Examination Dialog (Modal) -->
-<dialog id="examination-dialog" class="examination-dialog">
-    <div class="examination-layout">
-        <!-- Main Content -->
-        <div class="examination-content">
-            <!-- Preview Area -->
-            <div class="examination-preview">
-                <!-- Close button overlaid on preview -->
-                <button class="preview-close" id="exam-close" title="Close (Escape)">
-                    &#10005;
-                </button>
-                <button class="nav-arrow nav-prev" id="exam-prev" title="Previous (Left Arrow)">
-                    &#10094;
-                </button>
-                <img id="exam-image" src="" alt="File preview">
-                <button class="nav-arrow nav-next" id="exam-next" title="Next (Right Arrow)">
-                    &#10095;
-                </button>
-                <div class="preview-loading" id="exam-loading" style="display: none;">
-                    <span class="spinner"></span>
-                </div>
-                <!-- Position, filename, and status below image -->
-                <div class="preview-info">
-                    <div class="preview-info-row">
-                        <span class="preview-position" id="exam-position">1 of 10</span>
-                        <span class="preview-filename" id="exam-filename">filename.jpg</span>
-                    </div>
-                    <div class="preview-status" id="exam-status">
-                        <span class="status-pill status-confidence" id="exam-status-confidence" title="Confidence level">
-                            <span class="status-icon">?</span>
-                            <span class="status-label">Unknown</span>
-                        </span>
-                        <span class="status-pill status-reviewed" id="exam-status-reviewed" style="display: none;" title="Timestamp confirmed">
-                            <span class="status-icon">&#10003;</span>
-                            <span class="status-label">Reviewed</span>
-                        </span>
-                        <span class="status-pill status-discarded" id="exam-status-discarded" style="display: none;" title="Excluded from output">
-                            <span class="status-icon">&#x1F5D1;</span>
-                            <span class="status-label">Discarded</span>
-                        </span>
-                        <span class="status-pill status-duplicate" id="exam-status-duplicate" style="display: none;" title="Part of duplicate group">
-                            <span class="status-icon">&#x29C9;</span>
-                            <span class="status-label">Duplicate</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Details Panel -->
-            <aside class="examination-details">
-                <!-- File Info -->
-                <section class="detail-section">
-                    <h3>File Info</h3>
-                    <dl class="detail-list">
-                        <dt>Size</dt>
-                        <dd id="exam-filesize">-</dd>
-                        <dt>Type</dt>
-                        <dd id="exam-mimetype">-</dd>
-                        <dt>Dimensions</dt>
-                        <dd id="exam-dimensions">-</dd>
-                        <dt>Confidence</dt>
-                        <dd id="exam-confidence">-</dd>
-                    </dl>
-                </section>
-
-                <!-- Timestamp Sources (placeholder for 04-06) -->
-                <section class="detail-section" id="timestamp-section">
-                    <h3>Timestamp Sources</h3>
-                    <div id="timestamp-sources-container">
-                        <!-- Populated by timestamp.js -->
-                        <p class="placeholder">Loading timestamp sources...</p>
-                    </div>
-                </section>
-
-                <!-- Tags (placeholder for 04-08) -->
-                <section class="detail-section" id="tags-section">
-                    <h3>Tags</h3>
-                    <div id="tags-container">
-                        <!-- Populated by tags.js -->
-                        <p class="placeholder">No tags</p>
-                    </div>
-                </section>
-
-                <!-- Actions -->
-                <section class="detail-section actions-section">
-                    <button class="btn btn-primary" id="exam-confirm" style="display: none;">
-                        Confirm & Next
-                    </button>
-                    <button class="btn btn-secondary" id="exam-unreview" style="display: none;">
-                        Unreview
-                    </button>
-                    <button class="btn btn-danger" id="exam-discard" style="display: none;">
-                        Discard
-                    </button>
-                    <button class="btn btn-secondary" id="exam-undiscard" style="display: none;">
-                        Restore
-                    </button>
-                </section>
-            </aside>
-        </div>
-    </div>
-</dialog>
-
-<!-- Duplicate Resolution Confirmation Modal -->
-<dialog id="duplicate-confirm-modal" class="modal">
-    <div class="modal-content">
-        <h2>Confirm Duplicate Resolution</h2>
-        <div class="confirmation-summary">
-            <p>You are about to resolve <strong id="confirm-group-count">0</strong> duplicate groups:</p>
-            <ul class="confirmation-stats">
-                <li><span class="keep-icon">+</span> Keep <strong id="confirm-keep-count">0</strong> files</li>
-                <li><span class="discard-icon">-</span> Discard <strong id="confirm-discard-count">0</strong> files</li>
-            </ul>
-            <p class="confirmation-warning">
-                Discarded files will be excluded from output generation but originals remain in storage.
-            </p>
-        </div>
-        <div class="modal-actions">
-            <button id="confirm-cancel" class="btn btn-secondary">Cancel</button>
-            <button id="confirm-execute" class="btn btn-danger">Confirm Discards</button>
-        </div>
-    </div>
-</dialog>
 {% endblock %}

@@ -1,0 +1,998 @@
+/**
+ * Viewport Mode CSS
+ *
+ * Handles the carousel viewport layout where tiles transition from
+ * grid mode to a centered prev/current/next carousel display.
+ *
+ * Uses CSS custom properties for smooth, GPU-accelerated transitions.
+ */
+
+/* Prevent body scroll when viewport is active */
+body.viewport-active {
+    overflow: hidden;
+}
+
+/* ============================================
+   CSS CUSTOM PROPERTIES
+   ============================================ */
+
+:root {
+    /* Viewport dimensions */
+    --vp-current-width: min(70vw, 800px);
+    --vp-current-height: min(70vh, 600px);
+    --vp-side-width: min(15vw, 180px);
+    --vp-side-height: min(25vh, 220px);
+
+    /* Viewport positioning */
+    --vp-gap: 24px;
+    --vp-side-offset: calc(var(--vp-current-width) / 2 + var(--vp-side-width) / 2 + var(--vp-gap));
+
+    /* Transition timing */
+    --vp-transition-duration: 0.35s;
+    --vp-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Viewport background */
+    --vp-backdrop: rgba(0, 0, 0, 0.85);
+}
+
+/* ============================================
+   VIEWPORT MODE CONTAINER
+   ============================================ */
+
+/* When viewport mode is active, the grid becomes a centered flex container */
+.thumbnail-grid.viewport-mode {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--vp-backdrop);
+    overflow: hidden;
+
+    /* Override grid layout */
+    grid-template-columns: none !important;
+    gap: 0 !important;
+}
+
+/* Ensure container fills viewport */
+.thumbnail-grid.viewport-mode::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--vp-backdrop);
+    z-index: -1;
+}
+
+/* ============================================
+   TILE BASE TRANSITIONS
+   ============================================ */
+
+/* All tiles get smooth transitions */
+.thumbnail-grid.viewport-mode .thumbnail {
+    position: absolute;
+    /* Center all tiles as base position */
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    transition:
+        transform var(--vp-transition-duration) var(--vp-transition-easing),
+        opacity var(--vp-transition-duration) ease,
+        width var(--vp-transition-duration) var(--vp-transition-easing),
+        height var(--vp-transition-duration) var(--vp-transition-easing);
+
+    /* Reset grid-specific styles */
+    aspect-ratio: auto;
+
+    /* GPU acceleration */
+    will-change: transform, opacity;
+}
+
+/* Image should fill tile and use contain for viewport */
+.thumbnail-grid.viewport-mode .thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: var(--border-radius);
+}
+
+/* ============================================
+   VIEWPORT POSITION: HIDDEN (default for unpositioned tiles)
+   ============================================ */
+
+/* Hide tiles that are in grid position or have no explicit viewport position */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="grid"],
+.thumbnail-grid.viewport-mode .thumbnail:not([data-vp-pos]),
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="hidden"],
+.thumbnail-grid.viewport-mode .thumbnail.vp-hidden {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transform: translate(-50%, -50%) scale(0.8);
+}
+
+/* ============================================
+   VIEWPORT POSITION: PREVIOUS
+   ============================================ */
+
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"],
+.thumbnail-grid.viewport-mode .thumbnail.vp-prev {
+    width: var(--vp-side-width);
+    height: var(--vp-side-height);
+    transform: translate(calc(-50% - var(--vp-side-offset)), -50%);
+    opacity: 0.6;
+    cursor: pointer;
+    z-index: 5;
+}
+
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"]:hover,
+.thumbnail-grid.viewport-mode .thumbnail.vp-prev:hover {
+    opacity: 0.85;
+    transform: translate(calc(-50% - var(--vp-side-offset)), -50%) scale(1.05);
+}
+
+/* ============================================
+   VIEWPORT POSITION: CURRENT (CENTER)
+   ============================================ */
+
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"],
+.thumbnail-grid.viewport-mode .thumbnail.vp-current {
+    width: var(--vp-current-width);
+    height: var(--vp-current-height);
+    transform: translate(-50%, -50%);
+    opacity: 1;
+    z-index: 10;
+}
+
+/* Current tile image styling */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] img,
+.thumbnail-grid.viewport-mode .thumbnail.vp-current img {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   VIEWPORT POSITION: NEXT
+   ============================================ */
+
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"],
+.thumbnail-grid.viewport-mode .thumbnail.vp-next {
+    width: var(--vp-side-width);
+    height: var(--vp-side-height);
+    transform: translate(calc(-50% + var(--vp-side-offset)), -50%);
+    opacity: 0.6;
+    cursor: pointer;
+    z-index: 5;
+}
+
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"]:hover,
+.thumbnail-grid.viewport-mode .thumbnail.vp-next:hover {
+    opacity: 0.85;
+    transform: translate(calc(-50% + var(--vp-side-offset)), -50%) scale(1.05);
+}
+
+/* ============================================
+   BADGE VISIBILITY IN VIEWPORT
+   ============================================ */
+
+/* Hide badges on side tiles */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"] .thumbnail-badges,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] .thumbnail-badges,
+.thumbnail-grid.viewport-mode .thumbnail.vp-prev .thumbnail-badges,
+.thumbnail-grid.viewport-mode .thumbnail.vp-next .thumbnail-badges {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Show badges on current tile with larger size */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] .thumbnail-badges,
+.thumbnail-grid.viewport-mode .thumbnail.vp-current .thumbnail-badges {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Scale up badges for viewport */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] .thumb-badge,
+.thumbnail-grid.viewport-mode .thumbnail.vp-current .thumb-badge {
+    font-size: 0.9rem;
+    padding: 4px 10px;
+    min-width: 1.8rem;
+    height: 1.8rem;
+}
+
+/* Filename always visible on current tile */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] .thumbnail-filename,
+.thumbnail-grid.viewport-mode .thumbnail.vp-current .thumbnail-filename {
+    opacity: 1;
+    transform: translateY(0);
+    font-size: 0.95rem;
+    padding: 8px 12px;
+}
+
+/* Hide filename on side tiles */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"] .thumbnail-filename,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] .thumbnail-filename,
+.thumbnail-grid.viewport-mode .thumbnail.vp-prev .thumbnail-filename,
+.thumbnail-grid.viewport-mode .thumbnail.vp-next .thumbnail-filename {
+    opacity: 0;
+}
+
+/* ============================================
+   VIEWPORT NAVIGATION HINTS
+   ============================================ */
+
+/* Navigation arrow indicators on side tiles */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"]::after,
+.thumbnail-grid.viewport-mode .thumbnail.vp-prev::after {
+    content: '\2039';  /* Single left angle quote */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"]::after,
+.thumbnail-grid.viewport-mode .thumbnail.vp-next::after {
+    content: '\203A';  /* Single right angle quote */
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"]:hover::after,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"]:hover::after,
+.thumbnail-grid.viewport-mode .thumbnail.vp-prev:hover::after,
+.thumbnail-grid.viewport-mode .thumbnail.vp-next:hover::after {
+    opacity: 0.8;
+}
+
+/* ============================================
+   VIEWPORT CLOSE BUTTON
+   ============================================ */
+
+.viewport-close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1010;
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, transform 0.2s ease;
+    backdrop-filter: blur(4px);
+}
+
+.viewport-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+.viewport-close:active {
+    transform: scale(0.95);
+}
+
+/* ============================================
+   VIEWPORT COUNTER
+   ============================================ */
+
+.viewport-counter {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1010;
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    font-size: 0.9rem;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+}
+
+/* ============================================
+   VIEWPORT KEYBOARD HINTS
+   ============================================ */
+
+.viewport-hints {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1010;
+    display: flex;
+    gap: 8px;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.viewport-hints:hover {
+    opacity: 1;
+}
+
+.viewport-hint {
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+}
+
+.viewport-hint kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    margin-right: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 0.7rem;
+}
+
+/* ============================================
+   VIEW MODE TOGGLE
+   ============================================ */
+
+.viewport-mode-toggle {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1010;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 8px;
+    backdrop-filter: blur(4px);
+}
+
+.viewport-mode-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    transition: all 0.2s ease;
+}
+
+.viewport-mode-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.viewport-mode-btn.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.viewport-mode-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* ============================================
+   VIEW MODE: CAROUSEL (default)
+   ============================================ */
+
+/* Carousel mode is the default - no additional classes needed */
+
+/* ============================================
+   VIEW MODE: COMPARE (equal size tiles)
+   ============================================ */
+
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="prev"],
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev,
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="next"],
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-next {
+    width: var(--vp-compare-size, min(30vw, 400px));
+    height: var(--vp-compare-size, min(50vh, 450px));
+    opacity: 1;
+}
+
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="current"],
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-current {
+    width: var(--vp-compare-size, min(30vw, 400px));
+    height: var(--vp-compare-size, min(50vh, 450px));
+}
+
+/* Tighter spacing in compare mode */
+.thumbnail-grid.viewport-mode.view-compare {
+    --vp-compare-gap: 16px;
+    --vp-compare-offset: calc(var(--vp-compare-size, min(30vw, 400px)) + var(--vp-compare-gap));
+}
+
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="prev"],
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev {
+    transform: translate(calc(-50% - var(--vp-compare-offset) / 2 - var(--vp-compare-gap)), -50%);
+}
+
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="next"],
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-next {
+    transform: translate(calc(-50% + var(--vp-compare-offset) / 2 + var(--vp-compare-gap)), -50%);
+}
+
+/* Show filename on all tiles in compare mode */
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="prev"] .thumbnail-filename,
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="next"] .thumbnail-filename,
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev .thumbnail-filename,
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-next .thumbnail-filename {
+    opacity: 1;
+    font-size: 0.8rem;
+}
+
+/* ============================================
+   VIEW MODE: FULLSCREEN (single image)
+   ============================================ */
+
+.thumbnail-grid.viewport-mode.view-fullscreen .thumbnail[data-vp-pos="prev"],
+.thumbnail-grid.viewport-mode.view-fullscreen .thumbnail.vp-prev,
+.thumbnail-grid.viewport-mode.view-fullscreen .thumbnail[data-vp-pos="next"],
+.thumbnail-grid.viewport-mode.view-fullscreen .thumbnail.vp-next {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.thumbnail-grid.viewport-mode.view-fullscreen .thumbnail[data-vp-pos="current"],
+.thumbnail-grid.viewport-mode.view-fullscreen .thumbnail.vp-current {
+    width: min(90vw, 1200px);
+    height: min(85vh, 900px);
+}
+
+/* Adjust fullscreen for details panel */
+.thumbnail-grid.viewport-mode.view-fullscreen.with-details .thumbnail[data-vp-pos="current"],
+.thumbnail-grid.viewport-mode.view-fullscreen.with-details .thumbnail.vp-current {
+    width: min(calc(90vw - 380px), 1000px);
+}
+
+/* Adjust compare mode for details panel */
+.thumbnail-grid.viewport-mode.view-compare.with-details {
+    --vp-compare-size: min(calc((100vw - 420px) / 3.5), 350px);
+}
+
+.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail[data-vp-pos="prev"],
+.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail.vp-prev,
+.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail[data-vp-pos="current"],
+.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail.vp-current,
+.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail[data-vp-pos="next"],
+.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail.vp-next {
+    left: calc((100vw - 380px) / 2);
+}
+
+/* ============================================
+   DETAILS PANEL IN VIEWPORT MODE
+   ============================================ */
+
+/* When viewport is active with details panel */
+.thumbnail-grid.viewport-mode.with-details {
+    padding-right: 380px;
+}
+
+/* Adjust all carousel positions when details panel is open */
+.thumbnail-grid.viewport-mode.with-details .thumbnail[data-vp-pos="current"],
+.thumbnail-grid.viewport-mode.with-details .thumbnail.vp-current {
+    /* Center in the available space (not the full viewport) */
+    left: calc((100vw - 380px) / 2);
+    transform: translate(-50%, -50%);
+}
+
+.thumbnail-grid.viewport-mode.with-details .thumbnail[data-vp-pos="prev"],
+.thumbnail-grid.viewport-mode.with-details .thumbnail.vp-prev {
+    left: calc((100vw - 380px) / 2);
+    transform: translate(calc(-50% - var(--vp-side-offset)), -50%);
+}
+
+.thumbnail-grid.viewport-mode.with-details .thumbnail[data-vp-pos="next"],
+.thumbnail-grid.viewport-mode.with-details .thumbnail.vp-next {
+    left: calc((100vw - 380px) / 2);
+    transform: translate(calc(-50% + var(--vp-side-offset)), -50%);
+}
+
+.thumbnail-grid.viewport-mode.with-details .thumbnail[data-vp-pos="prev"]:hover,
+.thumbnail-grid.viewport-mode.with-details .thumbnail.vp-prev:hover {
+    transform: translate(calc(-50% - var(--vp-side-offset)), -50%) scale(1.05);
+}
+
+.thumbnail-grid.viewport-mode.with-details .thumbnail[data-vp-pos="next"]:hover,
+.thumbnail-grid.viewport-mode.with-details .thumbnail.vp-next:hover {
+    transform: translate(calc(-50% + var(--vp-side-offset)), -50%) scale(1.05);
+}
+
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
+@media (max-width: 1200px) {
+    :root {
+        --vp-current-width: min(65vw, 700px);
+        --vp-current-height: min(65vh, 550px);
+        --vp-side-width: min(12vw, 150px);
+        --vp-side-height: min(20vh, 180px);
+    }
+}
+
+@media (max-width: 900px) {
+    :root {
+        --vp-current-width: min(80vw, 600px);
+        --vp-current-height: min(60vh, 500px);
+        --vp-side-width: min(10vw, 100px);
+        --vp-side-height: min(15vh, 120px);
+    }
+
+    /* Hide side tiles on smaller screens */
+    .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"],
+    .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"],
+    .thumbnail-grid.viewport-mode .thumbnail.vp-prev,
+    .thumbnail-grid.viewport-mode .thumbnail.vp-next {
+        opacity: 0.3;
+    }
+}
+
+@media (max-width: 600px) {
+    :root {
+        --vp-current-width: 95vw;
+        --vp-current-height: min(70vh, 400px);
+    }
+
+    /* Hide side tiles completely on mobile */
+    .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"],
+    .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"],
+    .thumbnail-grid.viewport-mode .thumbnail.vp-prev,
+    .thumbnail-grid.viewport-mode .thumbnail.vp-next {
+        display: none;
+    }
+
+    .viewport-close {
+        top: 10px;
+        right: 10px;
+        width: 40px;
+        height: 40px;
+    }
+
+    .viewport-hints {
+        display: none;
+    }
+
+    /* Smaller mode toggle on mobile */
+    .viewport-mode-toggle {
+        top: 10px;
+        left: 10px;
+        padding: 2px;
+        gap: 2px;
+    }
+
+    .viewport-mode-btn {
+        width: 32px;
+        height: 32px;
+    }
+}
+
+/* ============================================
+   ANIMATION STATES
+   ============================================ */
+
+/* Entry animation */
+.thumbnail-grid.viewport-mode.viewport-entering {
+    animation: viewportFadeIn 0.3s ease forwards;
+}
+
+@keyframes viewportFadeIn {
+    from {
+        background: transparent;
+    }
+    to {
+        background: var(--vp-backdrop);
+    }
+}
+
+/* Exit animation */
+.thumbnail-grid.viewport-mode.viewport-exiting {
+    animation: viewportFadeOut 0.3s ease forwards;
+}
+
+@keyframes viewportFadeOut {
+    from {
+        background: var(--vp-backdrop);
+    }
+    to {
+        background: transparent;
+    }
+}
+
+/* Tile slide animations for navigation */
+.thumbnail-grid.viewport-mode .thumbnail.slide-left {
+    animation: slideLeft var(--vp-transition-duration) var(--vp-transition-easing);
+}
+
+.thumbnail-grid.viewport-mode .thumbnail.slide-right {
+    animation: slideRight var(--vp-transition-duration) var(--vp-transition-easing);
+}
+
+@keyframes slideLeft {
+    from {
+        transform: translate(calc(-50% + 100vw), -50%);
+    }
+}
+
+@keyframes slideRight {
+    from {
+        transform: translate(calc(-50% - 100vw), -50%);
+    }
+}
+
+/* ============================================
+   VIEWPORT DETAILS PANEL
+   ============================================ */
+
+.viewport-details-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 360px;
+    background: var(--bg-primary, #0a0a0a);
+    border-left: 1px solid var(--color-border, #333);
+    z-index: 1005;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+.viewport-details-panel.visible {
+    transform: translateX(0);
+}
+
+/* Panel header */
+.vp-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-border, #333);
+    flex-shrink: 0;
+}
+
+.vp-panel-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text, #fff);
+}
+
+.vp-panel-close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted, #888);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.vp-panel-close:hover {
+    color: var(--color-text, #fff);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Panel content */
+.vp-panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+
+/* Detail sections */
+.vp-detail-section {
+    margin-bottom: 20px;
+}
+
+.vp-detail-section h4 {
+    margin: 0 0 12px 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-muted, #888);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.vp-detail-list {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 12px;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.vp-detail-list dt {
+    color: var(--color-text-muted, #888);
+}
+
+.vp-detail-list dd {
+    margin: 0;
+    color: var(--color-text, #fff);
+    word-break: break-word;
+}
+
+.vp-filename {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Status badges */
+.vp-status-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.vp-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.vp-badge.confidence-high {
+    background: var(--color-high, #22c55e);
+    color: white;
+}
+
+.vp-badge.confidence-medium {
+    background: var(--color-medium, #f59e0b);
+    color: #000;
+}
+
+.vp-badge.confidence-low {
+    background: var(--color-low, #ef4444);
+    color: white;
+}
+
+.vp-badge.confidence-none {
+    background: var(--color-text-muted, #6b7280);
+    color: white;
+}
+
+.vp-badge.reviewed {
+    background: var(--color-high, #22c55e);
+    color: white;
+}
+
+.vp-badge.discarded {
+    background: var(--color-danger, #dc2626);
+    color: white;
+}
+
+.vp-badge.duplicate {
+    background: var(--color-warning, #f59e0b);
+    color: #000;
+}
+
+/* Timestamp display */
+.vp-timestamp-display {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg-secondary, #1a1a1a);
+    border-radius: 6px;
+}
+
+.vp-timestamp-value {
+    font-size: 0.95rem;
+    color: var(--color-text, #fff);
+}
+
+.vp-timestamp-note {
+    margin: 8px 0 0 0;
+    font-size: 0.8rem;
+    color: var(--color-text-muted, #888);
+}
+
+/* Tags */
+.vp-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.vp-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: var(--bg-secondary, #1a1a1a);
+    border: 1px solid var(--color-border, #333);
+    border-radius: 12px;
+    font-size: 0.8rem;
+    color: var(--color-text, #fff);
+}
+
+/* Duplicate group info */
+.vp-duplicate-info {
+    background: var(--bg-secondary, #1a1a1a);
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border, #333);
+}
+
+.vp-duplicate-info h4 {
+    margin-bottom: 8px;
+}
+
+.vp-duplicate-context {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+#vp-duplicate-position {
+    font-size: 0.9rem;
+    color: var(--color-text, #fff);
+    font-weight: 500;
+}
+
+.vp-duplicate-quality {
+    font-size: 0.8rem;
+    color: var(--color-text-muted, #888);
+    line-height: 1.6;
+}
+
+.vp-recommended {
+    color: var(--color-high, #22c55e);
+    font-weight: 600;
+}
+
+/* Placeholders */
+.vp-placeholder {
+    color: var(--color-text-muted, #888);
+    font-size: 0.85rem;
+    font-style: italic;
+    margin: 0;
+}
+
+.vp-error {
+    color: var(--color-danger, #ef4444);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* Panel actions */
+.vp-panel-actions {
+    padding: 16px 20px;
+    border-top: 1px solid var(--color-border, #333);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.vp-action {
+    width: 100%;
+    justify-content: center;
+}
+
+.vp-action-divider {
+    height: 1px;
+    background: var(--color-border, #333);
+    margin: 4px 0;
+}
+
+/* Adjust viewport when details panel is open */
+body.viewport-details-open .thumbnail-grid.viewport-mode {
+    padding-right: 360px;
+}
+
+body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-close {
+    right: 380px;
+}
+
+body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-counter {
+    transform: translateX(calc(-50% - 180px));
+}
+
+/* ============================================
+   RESPONSIVE DETAILS PANEL
+   ============================================ */
+
+@media (max-width: 900px) {
+    .viewport-details-panel {
+        width: 320px;
+    }
+
+    body.viewport-details-open .thumbnail-grid.viewport-mode {
+        padding-right: 340px;
+    }
+
+    body.viewport-details-open .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"],
+    body.viewport-details-open .thumbnail-grid.viewport-mode .thumbnail.vp-current {
+        left: calc((100vw - 340px) / 2);
+    }
+
+    body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-close {
+        right: 340px;
+    }
+}
+
+@media (max-width: 600px) {
+    .viewport-details-panel {
+        width: 100%;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 50vh;
+        border-left: none;
+        border-top: 1px solid var(--color-border, #333);
+        transform: translateY(100%);
+    }
+
+    .viewport-details-panel.visible {
+        transform: translateY(0);
+    }
+
+    body.viewport-details-open .thumbnail-grid.viewport-mode {
+        padding-right: 0;
+        padding-bottom: 50vh;
+    }
+
+    body.viewport-details-open .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"],
+    body.viewport-details-open .thumbnail-grid.viewport-mode .thumbnail.vp-current {
+        left: 50%;
+        top: calc((50vh) / 2);
+    }
+
+    body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-close {
+        right: 20px;
+    }
+
+    body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-counter {
+        transform: translateX(-50%);
+        bottom: calc(50vh + 20px);
+    }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+    .thumbnail-grid.viewport-mode {
+        display: none;
+    }
+
+    .viewport-details-panel {
+        display: none;
+    }
+}

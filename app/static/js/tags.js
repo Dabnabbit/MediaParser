@@ -28,6 +28,15 @@ class TagsHandler {
         this.loadRecentTags();
     }
 
+    /**
+     * Set the container element for rendering tags
+     * Used by ViewportDetailsPanel to specify its own container
+     * @param {HTMLElement} container
+     */
+    setContainer(container) {
+        this.examinationContainer = container;
+    }
+
     initEventListeners() {
         // Quick add in toolbar
         if (this.addQuickTagBtn) {

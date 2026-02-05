@@ -1,102 +1,13 @@
 /**
- * Examination Modal Styles
+ * Examination Styles
  *
- * Uses native <dialog> element for accessibility.
- * Responsive layout: preview left, details right on wide screens.
+ * Generic utility styles that may be used by various components.
+ * The main examination/viewport functionality is in viewport.css
  */
 
 /* ============================================
-   DIALOG BASE
+   LOADING INDICATOR
    ============================================ */
-
-.examination-dialog {
-    border: none;
-    border-radius: var(--border-radius-lg, 12px);
-    padding: 0;
-    max-width: 95vw;
-    max-height: 95vh;
-    width: 1200px;
-    background: var(--bg-primary);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.examination-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
-}
-
-/* ============================================
-   LAYOUT
-   ============================================ */
-
-.examination-layout {
-    display: flex;
-    flex-direction: column;
-    height: 90vh;
-    max-height: 90vh;
-}
-
-.examination-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--spacing-md);
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-}
-
-.examination-title {
-    font-size: 1.1rem;
-    font-weight: 500;
-    margin: 0;
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-right: var(--spacing-md);
-}
-
-.examination-nav {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
-
-.nav-position {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    min-width: 80px;
-    text-align: center;
-}
-
-.examination-content {
-    display: flex;
-    flex: 1;
-    min-height: 0; /* Allow flex shrinking */
-    overflow: hidden;
-}
-
-/* ============================================
-   PREVIEW AREA
-   ============================================ */
-
-.examination-preview {
-    flex: 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--spacing-md);
-    background: var(--bg-tertiary, #1a1a1a);
-    position: relative;
-    min-width: 0;
-}
-
-.examination-preview img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    border-radius: var(--border-radius);
-}
 
 .preview-loading {
     position: absolute;
@@ -105,66 +16,33 @@
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.5);
+    z-index: 100;
 }
 
 /* ============================================
-   DETAILS PANEL
+   PLACEHOLDER AND ERROR TEXT
    ============================================ */
 
-.examination-details {
-    flex: 1;
-    min-width: 300px;
-    max-width: 400px;
-    padding: var(--spacing-md);
-    overflow-y: auto;
-    border-left: 1px solid var(--border-color);
-    background: var(--bg-primary);
-}
-
-.detail-section {
-    margin-bottom: var(--spacing-lg);
-}
-
-.detail-section h3 {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary);
-    margin: 0 0 var(--spacing-sm) 0;
-    padding-bottom: var(--spacing-xs);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.detail-list {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--spacing-xs) var(--spacing-sm);
-    margin: 0;
-}
-
-.detail-list dt {
-    color: var(--text-secondary);
-    font-size: 0.85rem;
-}
-
-.detail-list dd {
-    margin: 0;
-    font-size: 0.9rem;
-}
-
 .placeholder {
-    color: var(--text-secondary);
+    color: var(--text-secondary, #888);
     font-style: italic;
     font-size: 0.9rem;
 }
 
 .error {
-    color: var(--error-color);
+    color: var(--color-danger, #ef4444);
     font-size: 0.9rem;
 }
 
+.no-sources {
+    color: var(--text-secondary, #888);
+    font-style: italic;
+    font-size: 0.9rem;
+    margin-bottom: var(--spacing-sm);
+}
+
 /* ============================================
-   BUTTONS
+   ICON BUTTON
    ============================================ */
 
 .btn-icon {
@@ -174,18 +52,18 @@
     width: 36px;
     height: 36px;
     padding: 0;
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    background: var(--bg-secondary);
+    border: 1px solid var(--border-color, #333);
+    border-radius: var(--border-radius, 6px);
+    background: var(--bg-secondary, #1a1a1a);
     cursor: pointer;
     font-size: 1rem;
-    color: var(--text-primary);
+    color: var(--text-primary, #fff);
     transition: all 0.15s ease;
 }
 
 .btn-icon:hover:not(:disabled) {
-    background: var(--bg-hover);
-    border-color: var(--accent-color);
+    background: var(--bg-hover, #2a2a2a);
+    border-color: var(--accent-color, #3b82f6);
 }
 
 .btn-icon:disabled {
@@ -193,87 +71,58 @@
     cursor: not-allowed;
 }
 
-.close-btn {
-    margin-left: var(--spacing-md);
-}
-
-.close-btn:hover {
-    background: var(--error-color);
-    border-color: var(--error-color);
-    color: white;
-}
-
-.actions-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-    padding-top: var(--spacing-md);
-    border-top: 1px solid var(--border-color);
-    margin-top: auto;
-}
-
-.actions-section .btn {
-    width: 100%;
-}
-
 /* ============================================
-   RESPONSIVE
+   STATUS PILLS (for info display)
    ============================================ */
 
-@media (max-width: 768px) {
-    .examination-dialog {
-        width: 100vw;
-        max-width: 100vw;
-        height: 100vh;
-        max-height: 100vh;
-        border-radius: 0;
-    }
-
-    .examination-layout {
-        height: 100vh;
-    }
-
-    .examination-content {
-        flex-direction: column;
-    }
-
-    .examination-preview {
-        flex: 1;
-        min-height: 200px;
-    }
-
-    .examination-details {
-        max-width: none;
-        border-left: none;
-        border-top: 1px solid var(--border-color);
-        max-height: 40vh;
-    }
-}
-
-/* ============================================
-   CONFIDENCE BADGES IN DETAILS
-   ============================================ */
-
-.examination-details .confidence-badge {
-    display: inline-block;
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 2px 8px;
-    border-radius: 3px;
+    border-radius: 12px;
     font-size: 0.75rem;
-    font-weight: bold;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9);
 }
 
-.examination-details .confidence-badge.confidence-high {
-    background: var(--success-color);
-    color: white;
+.status-pill .status-icon {
+    font-size: 0.8rem;
 }
 
-.examination-details .confidence-badge.confidence-medium {
-    background: var(--warning-color);
+/* Confidence status colors */
+.status-pill.status-confidence.confidence-high {
+    background: var(--color-high, #22c55e);
+    color: #fff;
+}
+
+.status-pill.status-confidence.confidence-medium {
+    background: var(--color-medium, #f59e0b);
     color: #000;
 }
 
-.examination-details .confidence-badge.confidence-low,
-.examination-details .confidence-badge.confidence-none {
-    background: var(--error-color);
-    color: white;
+.status-pill.status-confidence.confidence-low {
+    background: var(--color-low, #ef4444);
+    color: #fff;
+}
+
+.status-pill.status-confidence.confidence-none {
+    background: var(--color-text-muted, #6b7280);
+    color: #fff;
+}
+
+.status-pill.status-reviewed {
+    background: var(--color-high, #22c55e);
+    color: #fff;
+}
+
+.status-pill.status-discarded {
+    background: var(--color-danger, #dc3545);
+    color: #fff;
+}
+
+.status-pill.status-duplicate {
+    background: var(--color-info, #17a2b8);
+    color: #fff;
 }
