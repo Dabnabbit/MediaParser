@@ -172,8 +172,8 @@
 
 /* Similar group styling */
 .media-tile.similar-group {
-    --similar-color: hsl(175, 70%, 40%);
-    --similar-color-light: hsla(175, 70%, 40%, 0.4);
+    --similar-color: hsl(210, 75%, 50%);
+    --similar-color-light: hsla(210, 75%, 50%, 0.4);
     border-color: var(--similar-color);
 }
 
@@ -284,7 +284,7 @@
 }
 
 .tile-badge.similar {
-    background: var(--similar-color, hsl(175, 70%, 40%));
+    background: var(--similar-color, hsl(210, 75%, 50%));
 }
 
 .tile-badge.media-video {
