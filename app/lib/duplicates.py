@@ -4,11 +4,33 @@ Duplicate file quality metrics and recommendation logic.
 Provides functions for:
 - Extracting quality metrics (resolution, file size, format)
 - Recommending which duplicate to keep based on quality
+- Accumulating metadata from discarded duplicates into kept file
 """
+import json
+import logging
 from pathlib import Path
 from typing import Optional
 
 from app.lib.metadata import get_image_dimensions
+
+logger = logging.getLogger(__name__)
+
+# Format quality multipliers — influences score without overriding large resolution differences
+FORMAT_MULTIPLIERS = {
+    # RAW formats: highest fidelity, unprocessed sensor data
+    'x-canon-cr2': 1.3, 'x-nikon-nef': 1.3, 'x-sony-arw': 1.3,
+    'x-adobe-dng': 1.3, 'x-olympus-orf': 1.3, 'x-panasonic-rw2': 1.3,
+    'x-fuji-raf': 1.3, 'x-dcraw': 1.3,
+    # Shorter aliases used by some mime databases
+    'cr2': 1.3, 'nef': 1.3, 'arw': 1.3, 'dng': 1.3,
+    'orf': 1.3, 'rw2': 1.3, 'raf': 1.3,
+    # Lossless formats
+    'png': 1.1, 'tiff': 1.1, 'bmp': 1.1,
+    # Standard lossy
+    'jpeg': 1.0, 'jpg': 1.0,
+    # Modern compressed
+    'webp': 0.9, 'heic': 0.9, 'heif': 0.9, 'avif': 0.9,
+}
 
 
 def get_quality_metrics(file) -> dict:
@@ -78,18 +100,70 @@ def recommend_best_duplicate(files: list[dict]) -> Optional[int]:
         file_id = file_dict.get('id')
         resolution_mp = file_dict.get('resolution_mp')
         file_size_bytes = file_dict.get('file_size_bytes', 0)
+        fmt = (file_dict.get('format') or '').lower()
+        format_mult = FORMAT_MULTIPLIERS.get(fmt, 1.0)
 
-        # Calculate score: resolution dominates, file size is tiebreaker
+        # Calculate score: resolution dominates, file size is tiebreaker,
+        # format multiplier weights the combined score
         if resolution_mp is not None:
-            # Resolution is primary factor (in megapixels)
-            # File size is secondary (normalized to avoid overflow)
-            score = resolution_mp * 1_000_000 + file_size_bytes
+            score = (resolution_mp * 1_000_000 + file_size_bytes) * format_mult
         else:
-            # No resolution available, fall back to file size only
-            score = file_size_bytes
+            score = file_size_bytes * format_mult
 
         if score > best_score:
             best_score = score
             best_file = file_id
 
     return best_file
+
+
+def accumulate_metadata(kept_file, discarded_files):
+    """
+    Merge timestamp_candidates from discarded files into the kept file.
+
+    Deduplicates by (timestamp, source) tuple. Does not change
+    detected_timestamp or final_timestamp — those are left for user review.
+
+    Args:
+        kept_file: File model instance to accumulate into
+        discarded_files: List of File model instances being discarded
+    """
+    # Parse existing candidates from the kept file
+    existing = []
+    if kept_file.timestamp_candidates:
+        try:
+            existing = json.loads(kept_file.timestamp_candidates)
+        except (json.JSONDecodeError, TypeError):
+            existing = []
+
+    # Build a set of (timestamp, source) for deduplication
+    seen = set()
+    for c in existing:
+        ts = c.get('timestamp') or c.get('value') or ''
+        src = c.get('source', '')
+        seen.add((ts, src))
+
+    added = 0
+    for discarded in discarded_files:
+        if not discarded.timestamp_candidates:
+            continue
+        try:
+            candidates = json.loads(discarded.timestamp_candidates)
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+        for c in candidates:
+            ts = c.get('timestamp') or c.get('value') or ''
+            src = c.get('source', '')
+            key = (ts, src)
+            if key not in seen:
+                seen.add(key)
+                existing.append(c)
+                added += 1
+
+    if added > 0:
+        kept_file.timestamp_candidates = json.dumps(existing)
+        logger.info(
+            f"Accumulated {added} timestamp candidates into file {kept_file.id} "
+            f"from {len(discarded_files)} discarded file(s)"
+        )

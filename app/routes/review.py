@@ -540,8 +540,44 @@ def bulk_discard():
     if not isinstance(data['file_ids'], list):
         return jsonify({'error': 'file_ids must be an array'}), 400
 
+    from app.lib.duplicates import accumulate_metadata
+
     success_count = 0
     affected_groups = set()
+    affected_similar_groups = set()
+    discard_ids = set(data['file_ids'])
+
+    # Collect group memberships before discarding (needed for metadata accumulation)
+    files_by_exact_group = {}   # group_id -> [File, ...]
+    files_by_similar_group = {}  # group_id -> [File, ...]
+    for file_id in data['file_ids']:
+        file = db.session.get(File, file_id)
+        if file is None:
+            continue
+        if file.exact_group_id:
+            files_by_exact_group.setdefault(file.exact_group_id, []).append(file)
+        if file.similar_group_id:
+            files_by_similar_group.setdefault(file.similar_group_id, []).append(file)
+
+    # Accumulate metadata from discarded files into kept files
+    for group_id, discarded_in_group in files_by_exact_group.items():
+        # Find the file(s) that will be kept (same group, not being discarded)
+        kept_files = File.query.filter(
+            File.exact_group_id == group_id,
+            File.discarded == False,
+            ~File.id.in_(discard_ids)
+        ).all()
+        for kept in kept_files:
+            accumulate_metadata(kept, discarded_in_group)
+
+    for group_id, discarded_in_group in files_by_similar_group.items():
+        kept_files = File.query.filter(
+            File.similar_group_id == group_id,
+            File.discarded == False,
+            ~File.id.in_(discard_ids)
+        ).all()
+        for kept in kept_files:
+            accumulate_metadata(kept, discarded_in_group)
 
     # First pass: discard files and collect affected group IDs
     for file_id in data['file_ids']:
@@ -552,6 +588,8 @@ def bulk_discard():
         # Track which groups are affected
         if file.exact_group_id:
             affected_groups.add(file.exact_group_id)
+        if file.similar_group_id:
+            affected_similar_groups.add(file.similar_group_id)
 
         # Discard clears review and duplicate status (mutually exclusive states)
         file.discarded = True

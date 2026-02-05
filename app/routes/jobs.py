@@ -261,6 +261,37 @@ def get_job_files(job_id):
     else:
         query = query.order_by(File.discarded.asc(), sort_column.asc().nullsfirst())
 
+    # Pre-compute recommended file IDs for duplicate/similar modes
+    recommended_ids = set()
+    if mode in ('duplicates', 'similar'):
+        group_field = File.exact_group_id if mode == 'duplicates' else File.similar_group_id
+        group_files_query = db.session.query(File).join(File.jobs).filter(
+            Job.id == job_id,
+            group_field.isnot(None),
+            File.discarded == False
+        ).all()
+
+        # Group files by their group ID
+        from collections import defaultdict
+        groups_map = defaultdict(list)
+        for gf in group_files_query:
+            gid = gf.exact_group_id if mode == 'duplicates' else gf.similar_group_id
+            groups_map[gid].append(gf)
+
+        # Compute recommendation per group using dicts with quality metrics
+        for gid, group_file_objs in groups_map.items():
+            if len(group_file_objs) < 2:
+                continue
+            file_dicts = []
+            for gf in group_file_objs:
+                fd = {'id': gf.id, 'file_size_bytes': gf.file_size_bytes}
+                metrics = get_quality_metrics(gf)
+                fd.update(metrics)
+                file_dicts.append(fd)
+            rec_id = recommend_best_duplicate(file_dicts)
+            if rec_id is not None:
+                recommended_ids.add(rec_id)
+
     # Group by confidence if requested
     if group_by == 'confidence':
         results = {}
@@ -268,7 +299,7 @@ def get_job_files(job_id):
             level_query = query.filter(File.confidence == level)
             level_files = level_query.all()
             results[level.value] = [
-                _serialize_file_extended(f)
+                _serialize_file_extended(f, is_recommended=(f.id in recommended_ids))
                 for f in level_files
             ]
 
@@ -319,7 +350,7 @@ def get_job_files(job_id):
     # Apply offset/limit or pagination
     if use_offset_mode:
         files = query.offset(offset).limit(limit).all()
-        files_data = [_serialize_file_extended(f) for f in files]
+        files_data = [_serialize_file_extended(f, is_recommended=(f.id in recommended_ids)) for f in files]
 
         return jsonify({
             'job_id': job_id,
@@ -334,7 +365,7 @@ def get_job_files(job_id):
     else:
         # Legacy pagination mode
         paginated = query.paginate(page=page, per_page=per_page, error_out=False)
-        files_data = [_serialize_file_extended(f) for f in paginated.items]
+        files_data = [_serialize_file_extended(f, is_recommended=(f.id in recommended_ids)) for f in paginated.items]
 
         return jsonify({
             'job_id': job_id,
@@ -348,7 +379,7 @@ def get_job_files(job_id):
         }), 200
 
 
-def _serialize_file_extended(f):
+def _serialize_file_extended(f, is_recommended=False):
     """Serialize a File object with extended fields for the review grid."""
     return {
         'id': f.id,
@@ -368,7 +399,8 @@ def _serialize_file_extended(f):
         'is_similar': f.similar_group_id is not None,
         'similar_group_id': f.similar_group_id,
         'similar_group_type': f.similar_group_type,
-        'discarded': f.discarded
+        'discarded': f.discarded,
+        'is_recommended': is_recommended
     }
 
 
@@ -431,8 +463,8 @@ def get_job_duplicates(job_id):
         sha256s = set(f.file_hash_sha256 for f in file_objs if f.file_hash_sha256)
         match_type = 'sha256' if len(sha256s) == 1 else 'perceptual'
 
-        # Get recommendation for which file to keep
-        recommended_id = recommend_best_duplicate(file_objs)
+        # Get recommendation for which file to keep (use dicts with quality metrics)
+        recommended_id = recommend_best_duplicate(files)
 
         # Calculate group-level aggregates
         total_size_bytes = sum(f.get('file_size_bytes', 0) for f in files)
@@ -514,9 +546,8 @@ def get_similar_groups(job_id):
     result = []
     for gid, group in groups.items():
         if len(group['files']) >= 2:
-            # Get file objects for recommendation
-            group_file_objs = [f for f in files if f.similar_group_id == gid]
-            group['recommended_id'] = recommend_best_duplicate(group_file_objs)
+            # Use dicts with quality metrics for recommendation
+            group['recommended_id'] = recommend_best_duplicate(group['files'])
             result.append(group)
 
     return jsonify({'similar_groups': result}), 200

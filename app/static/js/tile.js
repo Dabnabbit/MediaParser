@@ -173,6 +173,13 @@ class Tile {
             similarBadge = `<span class="thumb-badge similar" title="Similar group (${typeLabel})">&#x2248;</span>`;
         }
 
+        // Recommended badge — shown in duplicate/similar modes for the best file
+        const showRecommended = !!file.is_recommended && (mode === 'duplicates' || mode === 'similar');
+        let recommendedBadge = '';
+        if (showRecommended) {
+            recommendedBadge = `<span class="thumb-badge recommended" title="Recommended to keep">&#x2605;</span>`;
+        }
+
         return `
             <div class="thumbnail-badges">
                 <div class="badge-top">
@@ -189,6 +196,7 @@ class Tile {
                 <div class="badge-bottom">
                     <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
                     ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
+                    ${recommendedBadge}
                     ${duplicateBadge}
                     ${similarBadge}
                 </div>
@@ -487,6 +495,12 @@ class Tile {
             similarBadge = `<span class="thumb-badge similar" title="Similar group (${typeLabel})">&#x2248;</span>`;
         }
 
+        const showRecommended = !!file.is_recommended && (mode === 'duplicates' || mode === 'similar');
+        let recommendedBadge = '';
+        if (showRecommended) {
+            recommendedBadge = `<span class="thumb-badge recommended" title="Recommended to keep">&#x2605;</span>`;
+        }
+
         badgesContainer.innerHTML = `
             <div class="badge-top">
                 <label class="thumb-checkbox" title="Select file">
@@ -502,6 +516,7 @@ class Tile {
             <div class="badge-bottom">
                 <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
                 ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
+                ${recommendedBadge}
                 ${duplicateBadge}
                 ${similarBadge}
             </div>

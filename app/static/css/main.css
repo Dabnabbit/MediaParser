@@ -1341,6 +1341,13 @@ body {
     filter: brightness(1.1);
 }
 
+.thumb-badge.recommended {
+    background: #f59e0b;
+    color: #000;
+    font-size: 0.7rem;
+    pointer-events: none;
+}
+
 .thumb-badge.reviewed {
     background: var(--color-high);
     border-radius: 50%;
