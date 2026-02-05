@@ -91,7 +91,15 @@ class File(db.Model):
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime)  # When user confirmed timestamp decision
     final_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime)  # User-confirmed timestamp (may differ from detected_timestamp)
     discarded: Mapped[bool] = mapped_column(default=False, nullable=False)  # True if file excluded from output
-    duplicate_group_id: Mapped[Optional[str]] = mapped_column(String(64), index=True)  # Set to file_hash when part of duplicate group
+
+    # Exact duplicate grouping (SHA256 match)
+    exact_group_id: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+    exact_group_confidence: Mapped[Optional[str]] = mapped_column(String(10))  # 'high', 'medium', 'low'
+
+    # Similar/sequence grouping (perceptual match)
+    similar_group_id: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+    similar_group_confidence: Mapped[Optional[str]] = mapped_column(String(10))  # 'high', 'medium', 'low'
+    similar_group_type: Mapped[Optional[str]] = mapped_column(String(20))  # 'burst', 'panorama', 'similar'
 
     # Output
     output_path: Mapped[Optional[str]] = mapped_column(String(500))  # Final output location

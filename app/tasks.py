@@ -101,7 +101,7 @@ def _mark_duplicate_groups(db, job):
     """
     Detect and mark duplicate groups based on SHA256 hash.
 
-    Files with identical SHA256 hashes are duplicates. Sets duplicate_group_id
+    Files with identical SHA256 hashes are duplicates. Sets exact_group_id
     to the hash value for all files in groups of 2+ identical files.
 
     Args:
@@ -121,7 +121,8 @@ def _mark_duplicate_groups(db, job):
     for hash_value, files in hash_groups.items():
         if len(files) > 1:
             for file in files:
-                file.duplicate_group_id = hash_value
+                file.exact_group_id = hash_value
+                file.exact_group_confidence = 'high'  # SHA256 matches are always high confidence
                 duplicate_count += 1
 
     if duplicate_count > 0:

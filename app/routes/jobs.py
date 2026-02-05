@@ -201,7 +201,7 @@ def get_job_files(job_id):
     if mode == 'duplicates':
         # Files in duplicate groups that aren't discarded
         query = query.filter(
-            File.duplicate_group_id.isnot(None),
+            File.exact_group_id.isnot(None),
             File.discarded == False
         )
     elif mode == 'unreviewed':
@@ -209,7 +209,7 @@ def get_job_files(job_id):
         query = query.filter(
             File.reviewed_at.is_(None),
             File.discarded == False,
-            File.duplicate_group_id.is_(None)
+            File.exact_group_id.is_(None)
         )
     elif mode == 'reviewed':
         # Reviewed files (not discarded)
@@ -287,13 +287,13 @@ def get_job_files(job_id):
     base_query = File.query.join(File.jobs).filter(Job.id == job_id)
     mode_totals = {
         'duplicates': base_query.filter(
-            File.duplicate_group_id.isnot(None),
+            File.exact_group_id.isnot(None),
             File.discarded == False
         ).count(),
         'unreviewed': base_query.filter(
             File.reviewed_at.is_(None),
             File.discarded == False,
-            File.duplicate_group_id.is_(None)
+            File.exact_group_id.is_(None)
         ).count(),
         'reviewed': base_query.filter(
             File.reviewed_at.isnot(None),
@@ -351,7 +351,7 @@ def _serialize_file_extended(f):
         'file_size_bytes': f.file_size_bytes,
         'mime_type': f.mime_type,
         'reviewed_at': f.reviewed_at.isoformat() if f.reviewed_at else None,
-        'is_duplicate': f.duplicate_group_id is not None,
+        'is_duplicate': f.exact_group_id is not None,
         'discarded': f.discarded
     }
 
@@ -629,7 +629,7 @@ def bulk_review(job_id):
         if has_duplicates == 'include':
             pass
         elif has_duplicates == 'exclude':
-            query = query.filter(File.duplicate_group_id.is_(None))
+            query = query.filter(File.exact_group_id.is_(None))
 
         # Failed filter
         failed_filter = filter_params.get('failed', '')
@@ -712,14 +712,14 @@ def get_job_summary(job_id):
 
     # Mode counts (for mode selector)
     duplicates_count = base_query.filter(
-        File.duplicate_group_id.isnot(None),
+        File.exact_group_id.isnot(None),
         File.discarded == False
     ).count()
 
     unreviewed_count = base_query.filter(
         File.reviewed_at.is_(None),
         File.discarded == False,
-        File.duplicate_group_id.is_(None)
+        File.exact_group_id.is_(None)
     ).count()
 
     reviewed_count = base_query.filter(

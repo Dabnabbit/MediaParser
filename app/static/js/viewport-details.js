@@ -283,7 +283,7 @@ class ViewportDetailsPanel {
         }
 
         // Duplicate
-        if (file.duplicate_group_id || file.is_duplicate) {
+        if (file.exact_group_id || file.is_duplicate) {
             badges.push('<span class="vp-badge duplicate">Duplicate</span>');
         }
 
@@ -296,7 +296,7 @@ class ViewportDetailsPanel {
     renderDuplicateInfo(file) {
         const section = this.elements.duplicateSection;
         const isDuplicateMode = this.currentMode === 'duplicates';
-        const isDuplicate = file.duplicate_group_id || file.is_duplicate;
+        const isDuplicate = file.exact_group_id || file.is_duplicate;
 
         if (!isDuplicateMode || !isDuplicate) {
             section.style.display = 'none';
@@ -339,7 +339,7 @@ class ViewportDetailsPanel {
         const footer = this.elements.actionsFooter;
         const isReviewed = !!file.reviewed_at;
         const isDiscarded = !!file.discarded;
-        const isDuplicate = file.duplicate_group_id || file.is_duplicate;
+        const isDuplicate = file.exact_group_id || file.is_duplicate;
         const mode = this.currentMode;
 
         let html = '';

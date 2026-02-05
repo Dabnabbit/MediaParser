@@ -88,7 +88,10 @@ def get_file_detail(file_id):
         'thumbnail_path': file.thumbnail_path,
         'file_hash': file.file_hash_sha256,
         'discarded': file.discarded,
-        'duplicate_group_id': file.duplicate_group_id,
+        'exact_group_id': file.exact_group_id,
+        'similar_group_id': file.similar_group_id,
+        'similar_group_confidence': file.similar_group_confidence,
+        'similar_group_type': file.similar_group_type,
         'width': width,
         'height': height
     }), 200
@@ -155,7 +158,7 @@ def submit_review(file_id):
         'confidence': file.confidence.value,
         'reviewed_at': file.reviewed_at.isoformat() if file.reviewed_at else None,
         'discarded': file.discarded,
-        'duplicate_group_id': file.duplicate_group_id
+        'exact_group_id': file.exact_group_id
     }), 200
 
 
@@ -191,7 +194,7 @@ def unreview_file(file_id):
         'confidence': file.confidence.value,
         'reviewed_at': None,
         'discarded': file.discarded,
-        'duplicate_group_id': file.duplicate_group_id
+        'exact_group_id': file.exact_group_id
     }), 200
 
 
@@ -412,18 +415,19 @@ def discard_file(file_id):
         return jsonify({'error': f'File {file_id} not found'}), 404
 
     # Discard clears review and duplicate status (mutually exclusive states)
-    old_group_id = file.duplicate_group_id
+    old_group_id = file.exact_group_id
     file.discarded = True
     file.reviewed_at = None
     file.final_timestamp = None
-    file.duplicate_group_id = None  # Discarded files are out of duplicate workflow
+    file.exact_group_id = None  # Discarded files are out of duplicate workflow
+    file.similar_group_id = None  # Also clear similar group
 
     # Check if we're leaving a single file alone in its duplicate group (same job only)
     # A file can't be a "duplicate" by itself
     if old_group_id:
         file_job_ids = [j.id for j in file.jobs]
         remaining_in_group = File.query.join(File.jobs).filter(
-            File.duplicate_group_id == old_group_id,
+            File.exact_group_id == old_group_id,
             File.discarded == False,
             File.id != file.id,
             Job.id.in_(file_job_ids)
@@ -431,7 +435,7 @@ def discard_file(file_id):
 
         if len(remaining_in_group) == 1:
             # Only one file left in this job - it's no longer a duplicate
-            remaining_in_group[0].duplicate_group_id = None
+            remaining_in_group[0].exact_group_id = None
             logger.info(f"Cleared duplicate status from file {remaining_in_group[0].id} (last in group)")
 
     db.session.commit()
@@ -447,7 +451,7 @@ def discard_file(file_id):
         'confidence': file.confidence.value,
         'reviewed_at': None,
         'discarded': True,
-        'duplicate_group_id': file.duplicate_group_id
+        'exact_group_id': file.exact_group_id
     }), 200
 
 
@@ -488,13 +492,13 @@ def undiscard_file(file_id):
 
         if matching_files:
             # Restore duplicate group for this file and all matching files
-            file.duplicate_group_id = file.file_hash_sha256
+            file.exact_group_id = file.file_hash_sha256
             for match in matching_files:
-                match.duplicate_group_id = file.file_hash_sha256
+                match.exact_group_id = file.file_hash_sha256
             logger.info(f"File {file_id} restored to duplicate group with {len(matching_files)} other file(s)")
         else:
             # No other non-discarded files with same hash in same job - not a duplicate
-            file.duplicate_group_id = None
+            file.exact_group_id = None
 
     db.session.commit()
 
@@ -509,7 +513,7 @@ def undiscard_file(file_id):
         'confidence': file.confidence.value,
         'reviewed_at': file.reviewed_at.isoformat() if file.reviewed_at else None,
         'discarded': False,
-        'duplicate_group_id': file.duplicate_group_id
+        'exact_group_id': file.exact_group_id
     }), 200
 
 
@@ -544,14 +548,14 @@ def bulk_discard():
             continue
 
         # Track which groups are affected
-        if file.duplicate_group_id:
-            affected_groups.add(file.duplicate_group_id)
+        if file.exact_group_id:
+            affected_groups.add(file.exact_group_id)
 
         # Discard clears review and duplicate status (mutually exclusive states)
         file.discarded = True
         file.reviewed_at = None
         file.final_timestamp = None
-        file.duplicate_group_id = None  # Discarded files are out of duplicate workflow
+        file.exact_group_id = None  # Discarded files are out of duplicate workflow
         success_count += 1
 
     # Collect job IDs from all discarded files for job-scoped duplicate checking
@@ -565,14 +569,14 @@ def bulk_discard():
     # A file can't be a "duplicate" by itself
     for group_id in affected_groups:
         remaining_in_group = File.query.join(File.jobs).filter(
-            File.duplicate_group_id == group_id,
+            File.exact_group_id == group_id,
             File.discarded == False,
             Job.id.in_(affected_job_ids)
         ).all()
 
         if len(remaining_in_group) == 1:
             # Only one file left in affected jobs - it's no longer a duplicate
-            remaining_in_group[0].duplicate_group_id = None
+            remaining_in_group[0].exact_group_id = None
             logger.info(f"Cleared duplicate status from file {remaining_in_group[0].id} (last in group)")
 
     db.session.commit()
@@ -641,16 +645,16 @@ def bulk_undiscard():
 
         if matching_files:
             # Only count as restored if this file wasn't already in a group
-            if not file.duplicate_group_id:
+            if not file.exact_group_id:
                 groups_restored += 1
 
             # Restore duplicate group for this file and all matching files
-            file.duplicate_group_id = file.file_hash_sha256
+            file.exact_group_id = file.file_hash_sha256
             for match in matching_files:
-                match.duplicate_group_id = file.file_hash_sha256
+                match.exact_group_id = file.file_hash_sha256
         else:
             # No other non-discarded files with same hash in same job - not a duplicate
-            file.duplicate_group_id = None
+            file.exact_group_id = None
 
     db.session.commit()
 
@@ -689,8 +693,8 @@ def bulk_not_duplicate():
         if file is None:
             continue
 
-        if file.duplicate_group_id is not None:
-            file.duplicate_group_id = None
+        if file.exact_group_id is not None:
+            file.exact_group_id = None
             success_count += 1
 
     db.session.commit()
@@ -712,14 +716,14 @@ def keep_all_duplicates(group_hash):
     are actually unique and should all be kept.
 
     Args:
-        group_hash: The duplicate_group_id hash
+        group_hash: The exact_group_id hash
 
     Returns:
         JSON with success status and affected file count
     """
     # Query all non-discarded files in this duplicate group
     files = File.query.filter_by(
-        duplicate_group_id=group_hash,
+        exact_group_id=group_hash,
         discarded=False
     ).all()
 
@@ -728,9 +732,9 @@ def keep_all_duplicates(group_hash):
 
     affected_count = len(files)
 
-    # Clear duplicate_group_id from all files
+    # Clear exact_group_id from all files
     for file in files:
-        file.duplicate_group_id = None
+        file.exact_group_id = None
 
         # Create UserDecision record for audit trail
         decision = UserDecision(
