@@ -421,6 +421,8 @@ def discard_file(file_id):
     file.final_timestamp = None
     file.exact_group_id = None  # Discarded files are out of duplicate workflow
     file.similar_group_id = None  # Also clear similar group
+    file.similar_group_confidence = None
+    file.similar_group_type = None
 
     # Check if we're leaving a single file alone in its duplicate group (same job only)
     # A file can't be a "duplicate" by itself
@@ -556,6 +558,9 @@ def bulk_discard():
         file.reviewed_at = None
         file.final_timestamp = None
         file.exact_group_id = None  # Discarded files are out of duplicate workflow
+        file.similar_group_id = None  # Also clear similar group
+        file.similar_group_confidence = None
+        file.similar_group_type = None
         success_count += 1
 
     # Collect job IDs from all discarded files for job-scoped duplicate checking
@@ -756,3 +761,121 @@ def keep_all_duplicates(group_hash):
         'success': True,
         'affected_count': affected_count
     }), 200
+
+
+@review_bp.route('/api/similar-groups/<group_id>/resolve', methods=['POST'])
+def resolve_similar_group(group_id):
+    """
+    Resolve a similar group by keeping selected files and discarding the rest.
+
+    Body: { keep_file_ids: [int, ...] }
+    Unlike exact duplicates (keep one), similar groups allow keeping multiple files.
+
+    Args:
+        group_id: The similar_group_id
+
+    Returns:
+        JSON with kept and discarded counts
+    """
+    data = request.get_json()
+    keep_ids = set(data.get('keep_file_ids', []))
+
+    if not keep_ids:
+        return jsonify({'error': 'Must specify at least one file to keep'}), 400
+
+    # Get all files in this similar group
+    group_files = File.query.filter(
+        File.similar_group_id == group_id,
+        File.discarded == False
+    ).all()
+
+    if not group_files:
+        return jsonify({'error': 'Group not found or already resolved'}), 404
+
+    kept = 0
+    discarded = 0
+
+    for f in group_files:
+        if f.id in keep_ids:
+            # Keep: clear group membership
+            f.similar_group_id = None
+            f.similar_group_confidence = None
+            f.similar_group_type = None
+            kept += 1
+        else:
+            # Discard: mark as discarded and clear group
+            f.discarded = True
+            f.similar_group_id = None
+            f.similar_group_confidence = None
+            f.similar_group_type = None
+            discarded += 1
+
+    db.session.commit()
+
+    logger.info(f"Resolved similar group {group_id}: kept {kept}, discarded {discarded}")
+
+    return jsonify({'kept': kept, 'discarded': discarded}), 200
+
+
+@review_bp.route('/api/similar-groups/<group_id>/keep-all', methods=['POST'])
+def keep_all_similar(group_id):
+    """
+    Keep all files in a similar group (mark as not similar).
+
+    Args:
+        group_id: The similar_group_id
+
+    Returns:
+        JSON with cleared count
+    """
+    group_files = File.query.filter(
+        File.similar_group_id == group_id,
+        File.discarded == False
+    ).all()
+
+    if not group_files:
+        return jsonify({'error': 'Group not found'}), 404
+
+    for f in group_files:
+        f.similar_group_id = None
+        f.similar_group_confidence = None
+        f.similar_group_type = None
+
+    db.session.commit()
+
+    logger.info(f"Kept all {len(group_files)} files from similar group {group_id}")
+
+    return jsonify({'cleared': len(group_files)}), 200
+
+
+@review_bp.route('/api/files/bulk/not-similar', methods=['POST'])
+def bulk_not_similar():
+    """
+    Remove files from similar groups (mark as not similar).
+
+    Request body:
+        { file_ids: [1, 2, 3] }
+
+    Returns:
+        JSON with cleared count
+    """
+    data = request.get_json()
+    file_ids = data.get('file_ids', [])
+
+    if not file_ids:
+        return jsonify({'error': 'file_ids array is required'}), 400
+
+    files = File.query.filter(File.id.in_(file_ids)).all()
+    cleared = 0
+    for f in files:
+        if f.similar_group_id:
+            f.similar_group_id = None
+            f.similar_group_confidence = None
+            f.similar_group_type = None
+            cleared += 1
+
+    db.session.commit()
+
+    logger.info(f"Cleared similar group from {cleared} files")
+
+    return jsonify({'cleared': cleared}), 200
