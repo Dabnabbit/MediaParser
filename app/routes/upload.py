@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 from pathlib import Path
 from datetime import datetime, timezone
 import os
+import json
 import logging
 
 from app import db
@@ -78,6 +79,15 @@ def upload_files():
                 error_msg += f'. Invalid files: {", ".join(invalid_files)}'
             return jsonify({'error': error_msg}), 400
 
+        # Parse timestamps from frontend (for preserving original modification times)
+        timestamps_json = request.form.get('timestamps')
+        timestamps = []
+        if timestamps_json:
+            try:
+                timestamps = json.loads(timestamps_json)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse timestamps JSON, ignoring")
+
         # Create job
         job = Job(
             job_type='import',
@@ -92,13 +102,22 @@ def upload_files():
 
         # Save files and create File records
         file_records = []
-        for file in valid_files:
+        for i, file in enumerate(valid_files):
             # Secure the filename
             filename = secure_filename(file.filename)
 
             # Save to job subdirectory
             storage_path = job_upload_dir / filename
             file.save(str(storage_path))
+
+            # Restore original modification time if provided
+            if i < len(timestamps) and timestamps[i]:
+                try:
+                    # timestamps[i] is milliseconds since epoch
+                    mtime_sec = timestamps[i] / 1000.0
+                    os.utime(str(storage_path), (mtime_sec, mtime_sec))
+                except (OSError, TypeError) as e:
+                    logger.warning(f"Failed to restore mtime for {filename}: {e}")
 
             # Create File record
             file_record = File(

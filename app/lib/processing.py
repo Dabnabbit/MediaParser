@@ -13,7 +13,7 @@ import os
 
 from app.lib.hashing import calculate_sha256, calculate_perceptual_hash
 from app.lib.confidence import calculate_confidence
-from app.lib.metadata import get_best_datetime
+from app.lib.metadata import get_all_datetime_candidates
 from app.lib.timestamp import get_datetime_from_name
 from app.models import ConfidenceLevel
 
@@ -164,11 +164,11 @@ def process_single_file(
         # Step 3: Extract timestamp candidates
         timestamp_candidates = []
 
-        # 3a: EXIF metadata
-        exif_dt, exif_source, exif_confidence = get_best_datetime(path, default_tz)
-        if exif_dt:
-            timestamp_candidates.append((exif_dt, exif_source))
-            logger.debug(f"EXIF timestamp: {exif_dt} from {exif_source}")
+        # 3a: All metadata timestamps (EXIF, QuickTime, filesystem)
+        metadata_candidates = get_all_datetime_candidates(path, default_tz)
+        for dt, source in metadata_candidates:
+            timestamp_candidates.append((dt, source))
+            logger.debug(f"Metadata timestamp: {dt} from {source}")
 
         # 3b: Filename parsing
         filename_dt = get_datetime_from_name(path.name, default_tz)

@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}MediaParser{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/viewport.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/examination.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/duplicates.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/timeline.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tags.css') }}">
     {% block extra_css %}{% endblock %}
@@ -31,12 +32,19 @@
     <script src="{{ url_for('static', filename='js/settings.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/upload.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/progress.js') }}" defer></script>
+    <!-- Tile system (must load before results.js) -->
+    <script src="{{ url_for('static', filename='js/tile.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/tile-manager.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/viewport-controller.js') }}" defer></script>
+    <!-- Grid and filtering -->
     <script src="{{ url_for('static', filename='js/filters.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/results.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/slider.js') }}" defer></script>
+    <!-- Selection and viewport details (depend on ViewportController) -->
     <script src="{{ url_for('static', filename='js/selection.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/duplicates.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/viewport-details.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/examination.js') }}" defer></script>
+    <!-- Timestamp and tags -->
     <script src="{{ url_for('static', filename='js/vendor/chrono.min.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/timestamp.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/tags.js') }}" defer></script>

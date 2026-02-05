@@ -2,12 +2,14 @@
 
 Provides GET and POST endpoints for application settings configuration,
 including output directory path validation and timezone settings.
+Also includes debug endpoints for development (database stats, clear).
 """
+import os
 from pathlib import Path
 from flask import Blueprint, jsonify, request, current_app
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from app import db
-from app.models import Setting
+from app.models import Setting, File, Job, Tag, UserDecision
 
 settings_bp = Blueprint('settings', __name__, url_prefix='/api')
 
@@ -172,3 +174,202 @@ def save_settings():
             'success': False,
             'error': f'Database error: {str(e)}'
         }), 500
+
+
+# =============================================================================
+# Debug Endpoints (only available when DEBUG_MODE is enabled)
+# =============================================================================
+
+@settings_bp.route('/debug/info', methods=['GET'])
+def get_debug_info():
+    """Get debug information including database stats.
+
+    Only available when DEBUG_MODE is enabled in config.
+
+    Returns:
+        JSON with debug info:
+        {
+            "enabled": true,
+            "database": {
+                "path": "/path/to/db",
+                "size_bytes": 12345678,
+                "size_human": "11.8 MB",
+                "tables": {
+                    "files": 150,
+                    "jobs": 5,
+                    "tags": 10,
+                    ...
+                }
+            },
+            "storage": {
+                "uploads_path": "/path/to/uploads",
+                "uploads_size_human": "500 MB"
+            }
+        }
+    """
+    debug_mode = current_app.config.get('DEBUG_MODE', False)
+
+    if not debug_mode:
+        return jsonify({
+            'enabled': False,
+            'message': 'Debug mode is disabled'
+        })
+
+    # Get database path and size
+    db_uri = current_app.config['SQLALCHEMY_DATABASE_URI']
+    db_path = db_uri.replace('sqlite:///', '')
+
+    db_size = 0
+    if os.path.exists(db_path):
+        db_size = os.path.getsize(db_path)
+
+    # Get table counts
+    table_counts = {
+        'files': File.query.count(),
+        'jobs': Job.query.count(),
+        'tags': Tag.query.count(),
+        'user_decisions': UserDecision.query.count(),
+        'settings': Setting.query.count()
+    }
+
+    # Get storage folder sizes
+    uploads_path = current_app.config['UPLOAD_FOLDER']
+    uploads_size = _get_folder_size(uploads_path)
+
+    thumbnails_path = current_app.config.get('THUMBNAILS_FOLDER')
+    thumbnails_size = _get_folder_size(thumbnails_path) if thumbnails_path else 0
+
+    return jsonify({
+        'enabled': True,
+        'database': {
+            'path': db_path,
+            'size_bytes': db_size,
+            'size_human': _format_size(db_size),
+            'tables': table_counts
+        },
+        'storage': {
+            'uploads_path': str(uploads_path),
+            'uploads_size_bytes': uploads_size,
+            'uploads_size_human': _format_size(uploads_size),
+            'thumbnails_size_bytes': thumbnails_size,
+            'thumbnails_size_human': _format_size(thumbnails_size)
+        }
+    })
+
+
+@settings_bp.route('/debug/clear-database', methods=['POST'])
+def clear_database():
+    """Clear all data from database tables.
+
+    Only available when DEBUG_MODE is enabled in config.
+    Does NOT delete the database file, just truncates tables.
+
+    Returns:
+        JSON with success status
+    """
+    debug_mode = current_app.config.get('DEBUG_MODE', False)
+
+    if not debug_mode:
+        return jsonify({
+            'success': False,
+            'error': 'Debug mode is disabled'
+        }), 403
+
+    try:
+        # Delete in order to respect foreign keys
+        UserDecision.query.delete()
+        # Clear file_tags association table
+        db.session.execute(db.text('DELETE FROM file_tags'))
+        # Clear job_files association table
+        db.session.execute(db.text('DELETE FROM job_files'))
+        Tag.query.delete()
+        File.query.delete()
+        Job.query.delete()
+        # Keep settings
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Database cleared successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Failed to clear database: {str(e)}'
+        }), 500
+
+
+@settings_bp.route('/debug/clear-storage', methods=['POST'])
+def clear_storage():
+    """Clear uploaded files and thumbnails.
+
+    Only available when DEBUG_MODE is enabled in config.
+
+    Returns:
+        JSON with success status
+    """
+    import shutil
+
+    debug_mode = current_app.config.get('DEBUG_MODE', False)
+
+    if not debug_mode:
+        return jsonify({
+            'success': False,
+            'error': 'Debug mode is disabled'
+        }), 403
+
+    try:
+        cleared = []
+
+        # Clear uploads folder
+        uploads_path = current_app.config['UPLOAD_FOLDER']
+        if uploads_path.exists():
+            for item in uploads_path.iterdir():
+                if item.is_dir():
+                    shutil.rmtree(item)
+                else:
+                    item.unlink()
+            cleared.append('uploads')
+
+        # Clear thumbnails folder
+        thumbnails_path = current_app.config.get('THUMBNAILS_FOLDER')
+        if thumbnails_path and thumbnails_path.exists():
+            for item in thumbnails_path.iterdir():
+                item.unlink()
+            cleared.append('thumbnails')
+
+        return jsonify({
+            'success': True,
+            'message': f'Cleared: {", ".join(cleared)}'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Failed to clear storage: {str(e)}'
+        }), 500
+
+
+def _get_folder_size(path) -> int:
+    """Calculate total size of folder in bytes."""
+    if not path or not Path(path).exists():
+        return 0
+    total = 0
+    for dirpath, dirnames, filenames in os.walk(path):
+        for f in filenames:
+            fp = os.path.join(dirpath, f)
+            try:
+                total += os.path.getsize(fp)
+            except OSError:
+                pass
+    return total
+
+
+def _format_size(size_bytes: int) -> str:
+    """Format bytes as human-readable string."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.1f} TB"

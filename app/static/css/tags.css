@@ -24,6 +24,7 @@
     border: 1px solid var(--color-border);
     border-radius: 12px;
     font-size: 0.8rem;
+    color: var(--color-text);
 }
 
 .tag-remove {
@@ -67,6 +68,15 @@
 .tag-input-group .tag-input {
     flex: 1;
     min-width: 0;
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    padding: 6px 10px;
+}
+
+.tag-input-group .tag-input::placeholder {
+    color: var(--color-text-muted);
 }
 
 /* ============================================
@@ -99,6 +109,7 @@
     padding: 8px 12px;
     cursor: pointer;
     transition: background 0.1s ease;
+    color: var(--color-text);
 }
 
 .autocomplete-item:hover {
@@ -122,33 +133,7 @@
     min-width: 200px;
 }
 
-/* ============================================
-   TOAST NOTIFICATIONS
-   ============================================ */
-
-.toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 12px 20px;
-    background: var(--color-completed);
-    color: white;
-    border-radius: var(--border-radius);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transform: translateY(100px);
-    opacity: 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-    z-index: 10000;
-}
-
-.toast.show {
-    transform: translateY(0);
-    opacity: 1;
-}
-
-.toast-error {
-    background: var(--color-danger);
-}
+/* Toast styles moved to main.css */
 
 /* ============================================
    EXAMINATION VIEW TAGS

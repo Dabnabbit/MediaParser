@@ -157,9 +157,14 @@ class UploadHandler {
 
         // Use XMLHttpRequest for upload progress tracking
         const formData = new FormData();
+        const timestamps = [];
         validFiles.forEach(file => {
             formData.append('files', file);
+            // Preserve original modification time (milliseconds since epoch)
+            timestamps.push(file.lastModified || null);
         });
+        // Send timestamps as JSON for backend to restore after saving
+        formData.append('timestamps', JSON.stringify(timestamps));
 
         const xhr = new XMLHttpRequest();
 

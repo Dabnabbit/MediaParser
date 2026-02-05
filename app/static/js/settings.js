@@ -16,10 +16,20 @@ class SettingsHandler {
         this.errorContainer = document.getElementById('settings-error');
         this.errorText = document.getElementById('settings-error-text');
 
+        // Debug section elements
+        this.debugSection = document.getElementById('debug-section');
+        this.dbSizeEl = document.getElementById('db-size');
+        this.dbTablesEl = document.getElementById('db-tables');
+        this.storageSizeEl = document.getElementById('storage-size');
+        this.clearDbBtn = document.getElementById('clear-db-btn');
+        this.clearStorageBtn = document.getElementById('clear-storage-btn');
+        this.clearAllBtn = document.getElementById('clear-all-btn');
+
         this.defaults = {};
 
         this.initializeEventListeners();
         this.loadSettings();
+        this.loadDebugInfo();
     }
 
     /**
@@ -42,6 +52,17 @@ class SettingsHandler {
         this.outputDirInput.addEventListener('input', () => {
             this.clearFeedback();
         });
+
+        // Debug buttons
+        if (this.clearDbBtn) {
+            this.clearDbBtn.addEventListener('click', () => this.clearDatabase());
+        }
+        if (this.clearStorageBtn) {
+            this.clearStorageBtn.addEventListener('click', () => this.clearStorage());
+        }
+        if (this.clearAllBtn) {
+            this.clearAllBtn.addEventListener('click', () => this.clearAll());
+        }
     }
 
     /**
@@ -182,6 +203,167 @@ class SettingsHandler {
         this.statusText.style.display = 'none';
         this.errorContainer.style.display = 'none';
         this.errorText.textContent = '';
+    }
+
+    // =========================================================================
+    // Debug Methods
+    // =========================================================================
+
+    /**
+     * Load debug information from API.
+     */
+    async loadDebugInfo() {
+        try {
+            const response = await fetch('/api/debug/info');
+            const data = await response.json();
+
+            if (!data.enabled) {
+                // Debug mode disabled - hide section
+                if (this.debugSection) {
+                    this.debugSection.style.display = 'none';
+                }
+                return;
+            }
+
+            // Show debug section
+            if (this.debugSection) {
+                this.debugSection.style.display = 'block';
+            }
+
+            // Update database info
+            if (this.dbSizeEl && data.database) {
+                this.dbSizeEl.textContent = data.database.size_human;
+            }
+
+            if (this.dbTablesEl && data.database?.tables) {
+                const tables = data.database.tables;
+                this.dbTablesEl.textContent =
+                    `Files: ${tables.files} | Jobs: ${tables.jobs} | Tags: ${tables.tags}`;
+            }
+
+            // Update storage info
+            if (this.storageSizeEl && data.storage) {
+                this.storageSizeEl.textContent =
+                    `Uploads: ${data.storage.uploads_size_human} | Thumbnails: ${data.storage.thumbnails_size_human}`;
+            }
+
+        } catch (error) {
+            console.error('Failed to load debug info:', error);
+            // Don't show error to user - debug info is optional
+        }
+    }
+
+    /**
+     * Clear database tables.
+     */
+    async clearDatabase() {
+        if (!confirm('Clear all data from database? This cannot be undone.')) {
+            return;
+        }
+
+        try {
+            this.clearDbBtn.disabled = true;
+            this.clearDbBtn.textContent = 'Clearing...';
+
+            const response = await fetch('/api/debug/clear-database', {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to clear database');
+            }
+
+            this.showStatus('Database cleared');
+            await this.loadDebugInfo();
+
+        } catch (error) {
+            console.error('Failed to clear database:', error);
+            this.showError(error.message);
+        } finally {
+            this.clearDbBtn.disabled = false;
+            this.clearDbBtn.textContent = 'Clear Database';
+        }
+    }
+
+    /**
+     * Clear storage folders.
+     */
+    async clearStorage() {
+        if (!confirm('Delete all uploaded files and thumbnails? This cannot be undone.')) {
+            return;
+        }
+
+        try {
+            this.clearStorageBtn.disabled = true;
+            this.clearStorageBtn.textContent = 'Clearing...';
+
+            const response = await fetch('/api/debug/clear-storage', {
+                method: 'POST'
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to clear storage');
+            }
+
+            this.showStatus('Storage cleared');
+            await this.loadDebugInfo();
+
+        } catch (error) {
+            console.error('Failed to clear storage:', error);
+            this.showError(error.message);
+        } finally {
+            this.clearStorageBtn.disabled = false;
+            this.clearStorageBtn.textContent = 'Clear Storage';
+        }
+    }
+
+    /**
+     * Clear both database and storage.
+     */
+    async clearAll() {
+        if (!confirm('Clear ALL data (database AND files)? This cannot be undone.')) {
+            return;
+        }
+
+        try {
+            this.clearAllBtn.disabled = true;
+            this.clearAllBtn.textContent = 'Clearing...';
+
+            // Clear database first
+            const dbResponse = await fetch('/api/debug/clear-database', {
+                method: 'POST'
+            });
+            const dbData = await dbResponse.json();
+            if (!dbData.success) {
+                throw new Error(dbData.error || 'Failed to clear database');
+            }
+
+            // Then clear storage
+            const storageResponse = await fetch('/api/debug/clear-storage', {
+                method: 'POST'
+            });
+            const storageData = await storageResponse.json();
+            if (!storageData.success) {
+                throw new Error(storageData.error || 'Failed to clear storage');
+            }
+
+            this.showStatus('All data cleared');
+            await this.loadDebugInfo();
+
+            // Reload page to reset UI state
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+
+        } catch (error) {
+            console.error('Failed to clear all:', error);
+            this.showError(error.message);
+        } finally {
+            this.clearAllBtn.disabled = false;
+            this.clearAllBtn.textContent = 'Clear All';
+        }
     }
 }
 

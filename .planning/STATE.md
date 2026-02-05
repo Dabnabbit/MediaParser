@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-04 00:20 UTC
+**Last Updated:** 2026-02-04 11:00 UTC
 
 ## Environment
 
@@ -13,7 +13,7 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 5 - Duplicate Detection (Exact) (In progress)
+**Current Focus:** Carousel Viewport System Complete (Out-of-band refactor)
 
 ## Current Position
 
@@ -145,6 +145,25 @@
 | Multi-stage confirmation for discards | 2026-02-04 | Modal shows group/keep/discard counts before executing bulk discard | 05-04: Bulk confirmation |
 | Mode-based view switching | 2026-02-04 | Duplicates mode hides grid and shows comparison; other modes reverse | 05-04: Mode integration |
 | Auto-switch to unreviewed mode | 2026-02-04 | When duplicates count reaches 0 after resolution, switch to unreviewed mode | 05-04: Mode transitions |
+| Carousel viewport system | 2026-02-04 | Replace separate examination modal with in-place tile scaling for unified UX | Viewport refactor |
+| Tile as universal container | 2026-02-04 | Same tile element renders at any size (grid to viewport), CSS transitions between states | Viewport refactor |
+| MIPMAP resolution switching | 2026-02-04 | ResizeObserver triggers image source upgrade when tile exceeds 400px threshold | Viewport refactor |
+| Position-based carousel CSS | 2026-02-04 | Tiles use data-vp-pos (grid/prev/current/next/hidden) for GPU-accelerated transitions | Viewport refactor |
+| TileManager for lifecycle | 2026-02-04 | Central manager for tile creation, file mapping, lazy loading via IntersectionObserver | Viewport refactor |
+| ViewportController orchestration | 2026-02-04 | Handles examination mode entry/exit, keyboard navigation, tile position updates | Viewport refactor |
+| Deferred initialization pattern | 2026-02-04 | Cross-module dependencies resolved after DOMContentLoaded via setViewportController() | Viewport refactor |
+| ExaminationHandler as fallback | 2026-02-04 | Legacy modal remains for duplicate group loading but viewport is primary interface | Viewport refactor |
+| Cleanup comparison view | 2026-02-04 | Removed orphaned comparison grid code, CSS, HTML modal - now using single-view navigation | Viewport refactor |
+| Cleanup legacy bucket CSS | 2026-02-04 | Removed 276 lines of unused accordion/bucket styles from main.css and examination.css | CSS cleanup |
+| Two-tier duplicate detection | 2026-02-04 | Separate DUPLICATES (exact SHA256 + perceptual 0-4) from SIMILAR (sequences, bursts, perceptual 5-20) | Phase 6: Architecture |
+| Sequential duplicate resolution | 2026-02-04 | Workflow enforces: Duplicates → Similar → Unreviewed. Must resolve each before proceeding. | Phase 6: Workflow |
+| Confidence reuse for duplicates | 2026-02-04 | Reuse HIGH/MEDIUM/LOW confidence system for duplicate detection (no timestamp overlap due to workflow order) | Phase 6: UI consistency |
+| Radio vs checkbox selection | 2026-02-04 | Duplicates = radio (keep one), Similar = checkbox (keep multiple from burst/sequence) | Phase 6: UX |
+| Discard clears duplicate status | 2026-02-04 | Discarding a file clears its duplicate_group_id to prevent confusion in Discarded view | 05: Bug fix |
+| Undiscard re-evaluates groups | 2026-02-04 | Undiscarding checks SHA256 against non-discarded files to restore duplicate group membership | 05: Bug fix |
+| Timestamp-constrained perceptual matching | 2026-02-04 | Use timestamp clustering as constraint for perceptual comparison - O(n log n) vs O(n²). Only compare files within same time cluster. | Phase 6: Performance |
+| Perceptual thresholds | 2026-02-04 | Distance 0-5 = DUPLICATE (same image), 6-20 = SIMILAR (burst/panorama), 20+ = unrelated | Phase 6: Algorithm |
+| Deferred edge cases | 2026-02-04 | Skip cross-cluster duplicate detection for v1. Edits made weeks later handled manually. Optional "Deep Scan" later. | Phase 6: Scope |
 
 ### Active TODOs
 
@@ -199,16 +218,29 @@ None
 
 **Resolution Plan:** Phase 1 Plan 01-03 resolved items 1 and 5. Item 2 remains (PhotoTimeFixer.py itself still has hardcoded paths, but new library code uses pathlib). Phase 2 addresses item 4. Phase 5/6 addresses item 3 with better collision handling.
 
+### Future Polish (Aesthetics Pass)
+
+**Color Schemes:**
+- Current dark mode has purple tint ("Windows XP vibes") - needs neutral gray update
+- Add OLED-friendly theme (true black `#000000` backgrounds for power saving)
+- Experiment with overall color schemes - consider multiple theme options
+- Light mode untested - needs review and polish
+- Consider: True Dark, Soft Dark, Light, High Contrast options
+
+**When:** Final aesthetics pass before v1 release
+
 ### Research Flags
 
-**Phase 6 (Perceptual Duplicate Detection):** Needs deeper research during planning.
-- Algorithm selection: pHash vs dHash vs aHash performance/accuracy tradeoffs
-- Threshold tuning methodology for family photos (burst shots, crops, edits)
-- False positive rate targets and mitigation strategies
-- Format normalization approaches (JPEG vs PNG vs HEIC)
-- Performance optimization for large datasets (50k+ files)
+**Phase 6 (Perceptual Duplicate Detection):** Design document created, some research still needed.
+- ✓ Two-tier architecture defined: DUPLICATES (exact) → SIMILAR (perceptual/sequences)
+- ✓ Confidence scoring approach defined (reuse existing system)
+- ✓ UI workflow designed (radio for duplicates, checkbox for similar)
+- Algorithm selection: pHash vs dHash vs aHash - currently using dHash only
+- Threshold tuning: defined ranges (0-4 exact, 5-20 similar) but may need adjustment
+- Performance optimization for large datasets (O(n²) clustering concern)
+- Burst/panorama detection heuristics need refinement
 
-**Recommendation:** Use `/gsd:research-phase` before planning Phase 6.
+**Design Document:** `.planning/designs/duplicate-detection-system.md`
 
 ## Completed Requirements (Phase 3)
 
@@ -287,9 +319,9 @@ None
 - JavaScript modules:
   - app/static/js/upload.js: UploadHandler class for drag-drop, file picker, folder picker, server path import
   - app/static/js/progress.js: ProgressHandler class for 1.5s polling, job control, session resume
-  - app/static/js/results.js: ResultsHandler class for confidence buckets, thumbnail grid, duplicates, multi-select
+  - app/static/js/results.js: ResultsHandler class - now uses TileManager for grid rendering
   - app/static/js/settings.js: SettingsHandler class for collapsible panel, load/save/reset settings
-  - window.* pattern: Global handlers for cross-script communication (uploadHandler, progressHandler, resultsHandler)
+  - window.* pattern: Global handlers for cross-script communication (uploadHandler, progressHandler, resultsHandler, tileManager, viewportController)
   - XMLHttpRequest for upload progress (fetch doesn't support upload progress events)
   - localStorage for session resume (preserves job ID across page reloads)
   - Client-side extension filtering: jpg, jpeg, png, gif, heic, mp4, mov, avi, mkv
@@ -303,29 +335,47 @@ None
   - Pagination: prev/next controls for jobs with >100 files
   - Placeholder: app/static/img/placeholder.svg for missing thumbnails
   - API integration: /api/jobs/:id/files with filter/sort params, /api/jobs/:id/summary for counts
-- Selection patterns (04-04):
+- Selection patterns (04-04, updated for viewport):
   - app/static/js/selection.js: SelectionHandler class for multi-select
-  - Owns all #unified-grid click handling (event delegation)
+  - Owns all .thumbnail-grid click handling (event delegation)
   - selectedIds Set tracks selected file IDs
   - Shift-click for range selection, Ctrl/Cmd-click for toggle
   - Keyboard shortcuts: Escape (clear), Delete (discard), Ctrl+A (select all), Enter (examine)
   - Duplicate group auto-selection on click
   - Selection toolbar: sticky bar with count, quick tag input, duplicate actions
-  - Custom events: fileExamine, filesDiscard for downstream handlers
-  - Syncs with resultsHandler.selectedFiles
-- Examination modal (04-05, 04-07):
-  - app/static/js/examination.js: ExaminationHandler class for file review
-  - Native HTML <dialog> with showModal() for accessibility
-  - Listens for fileExamine events from selection.js
-  - Fetches file details from /api/files/:id
-  - Prev/Next navigation with arrow key shortcuts
-  - Two-column layout: preview (left), details (right)
-  - Placeholder sections for timestamp sources and tags
-  - Confirm & Next / Unreview action buttons
-  - Updates grid items when review status changes
-  - Review workflow: confirmAndNext, moveToNextUnreviewed, unreviewFile
-  - Keyboard shortcut: Ctrl+Enter to confirm & next
-  - Completion detection: prompts when all files reviewed
+  - ViewportController integration: openExamination() uses viewport.enter() as primary interface
+  - Deferred initialization: setViewportController() called after DOMContentLoaded
+  - Fallback: dispatches fileExamine event if ViewportController not available
+- Carousel viewport system (replaces examination modal):
+  - app/static/js/tile.js: Tile class for universal file containers
+    - MIPMAP resolution: ResizeObserver upgrades image source at 400px threshold
+    - Position states: grid/prev/current/next/hidden via CSS data attributes
+    - Preloading: preloadFullRes() for smooth transitions
+    - Cleanup: destroy() for memory management
+  - app/static/js/tile-manager.js: TileManager class for tile lifecycle
+    - File-to-tile mapping: getTile(fileId), getAllTiles()
+    - Lazy loading: IntersectionObserver for offscreen tiles
+    - Bulk operations: renderFiles(), destroyAll()
+    - Navigation helpers: setupViewport() for prev/current/next positioning
+  - app/static/js/viewport-controller.js: ViewportController class for examination
+    - Mode management: enter(fileId, navigableIds), exit()
+    - Navigation: next(), previous() with keyboard support (arrows, escape)
+    - Position updates: updateTilePositions() manages carousel state
+    - Events: viewportEnter, viewportNavigate, viewportExit custom events
+  - app/static/js/viewport-details.js: ViewportDetails class for file info panel
+    - Fetches full file details from /api/files/:id
+    - Updates tile's file data for MIPMAP resolution switching
+    - Integrates with timestampHandler and tagsHandler
+    - Action buttons: confirm, discard, keep/not-duplicate
+  - app/static/css/viewport.css: Viewport-specific styles
+    - CSS custom properties: --vp-side-offset, --vp-side-scale
+    - Position-based transforms for carousel animation
+    - GPU-accelerated transitions via transform/opacity
+- Examination modal (legacy fallback):
+  - app/static/js/examination.js: ExaminationHandler for duplicate group loading
+  - Primarily used for loadDuplicateGroup() to fetch and setup duplicate navigation
+  - Single file navigation now handled by ViewportController
+  - Simplified: removed comparison grid, bulk selection, confirmation modal
 - Tagging UI (04-08):
   - app/static/js/tags.js: TagsHandler class for tag management
   - Quick tag input in selection toolbar for bulk operations
@@ -355,24 +405,51 @@ None
   - @media (prefers-color-scheme: dark) for system preference detection
   - Theme select in settings panel, changes apply immediately
   - Color aliases for component compatibility: --bg-primary, --bg-hover, --border-color, --text-secondary, --accent-color
-- Duplicate comparison UI (05-03):
-  - app/static/js/duplicates.js: DuplicatesHandler class for group comparison
-  - Fetches groups from /api/jobs/:id/duplicates with quality metrics
-  - IntersectionObserver lazy loading pattern (same as results.js)
-  - Map-based selection state: groupHash → selectedFileId
-  - Pre-selects recommended file based on quality metrics
-  - Radio buttons scoped per group (name="keep-{hash}")
-  - Real-time KEEP/DISCARD badge updates on selection
-  - Per-group actions: Keep All, Confirm Selection
-  - Event delegation for radios and buttons
-  - Integration: shows on duplicates mode, hides on other modes
-  - Quality metrics display: resolution, file size, format, timestamp
+- Duplicate handling (refactored):
+  - Duplicate navigation uses same viewport system as regular files
+  - ExaminationHandler.loadDuplicateGroup() fetches group from /api/jobs/:id/duplicates
+  - Single-view carousel navigation through duplicate group files
+  - Action buttons: "Keep This, Discard Others" and "Not a Duplicate"
+  - Quality metrics (resolution, file size) shown in viewport details panel
+  - No separate comparison grid - unified UX across all view modes
+  - DELETED: app/static/js/duplicates.js, app/static/css/duplicates.css
 
 ## Session Continuity
 
 **Last session:** 2026-02-04
-**Stopped at:** Completed 05-04-PLAN.md (Duplicate Resolution Integration)
+**Stopped at:** Context-aware action buttons implemented. Duplicate resolution flow fixes in progress.
 **Resume file:** None
+
+**Current troubleshooting session work:**
+1. **Context-aware action buttons** - `viewport-details.js` now shows different buttons based on mode:
+   - Duplicates mode: "Keep This, Discard Others", "Not a Duplicate", "Discard"
+   - Discarded mode: "Restore" only
+   - Review modes: "Confirm & Next", "Clear Review", "Discard"
+
+2. **Duplicate group info section** - Shows position in group and quality metrics
+
+3. **Fixed `markNotDuplicate()`** - Now navigates to next duplicate instead of closing viewport:
+   - Removes file from duplicate group
+   - If 1 file remains in group, auto-removes it too (can't be duplicate alone)
+   - Navigates to remaining duplicates from ANY group
+   - Only exits when ALL duplicates resolved
+
+4. **Fixed `keepDuplicate()`** - Similar navigation fixes:
+   - Discards other files in group
+   - **Clears duplicate status on kept file** (so it moves to Unreviewed)
+   - Navigates to next duplicate group if any remain
+
+5. **Fixed `ViewportController.exit()`** - Set `isActive=false` immediately (not after 300ms) to fix double-click re-entry bug
+
+**Files modified this session:**
+- `app/static/js/viewport-details.js` - Action buttons, duplicate info, resolution flow
+- `app/static/js/viewport-controller.js` - Exit state fix
+- `app/static/css/viewport.css` - Duplicate info styles
+
+**Still testing:**
+- Verify kept file appears in Unreviewed after "Keep This, Discard Others"
+- Verify navigation continues through all duplicate groups
+- Verify double-click re-entry works after viewport exit
 
 **Phase 4 Execution Status:**
 - ✓ 04-01: Review API Models and Endpoints
@@ -387,10 +464,33 @@ None
 
 **Phase 5 Execution Status (Duplicate Detection - Exact):**
 - ✓ 05-01: Quality Metrics API (COMPLETE)
-- ✓ 05-02: Duplicate Comparison View HTML & CSS (COMPLETE)
-- ✓ 05-03: Duplicate Comparison JavaScript (COMPLETE)
+- ✓ 05-02: Duplicate Comparison View HTML & CSS (COMPLETE - later refactored)
+- ✓ 05-03: Duplicate Comparison JavaScript (COMPLETE - later refactored)
 - ✓ 05-04: Duplicate Resolution Integration (COMPLETE)
 - **PHASE 5 COMPLETE** - Ready for Phase 6 (Perceptual Duplicates) or Phase 7 (Export)
+
+**Session Work Completed (2026-02-04 - Out-of-band):**
+- **Carousel Viewport System** (major architectural refactor):
+  - Replaced separate examination modal with in-place tile scaling
+  - New files: tile.js, tile-manager.js, viewport-controller.js, viewport-details.js, viewport.css
+  - MIPMAP-style resolution switching: thumbnails → full-res based on rendered size
+  - CSS-based carousel: position states (grid/prev/current/next) with GPU-accelerated transitions
+  - TileManager: tile lifecycle, file↔tile mapping, lazy loading via IntersectionObserver
+  - ViewportController: examination mode orchestration, keyboard navigation
+  - ViewportDetails: file info panel, integrates with timestamp/tag handlers
+  - Unified UX: same examination behavior across all view modes (duplicates, unreviewed, etc.)
+- **Cleanup of orphaned code (examination system)**:
+  - Removed comparison view HTML from index.html
+  - Removed ~234 lines of comparison CSS from examination.css
+  - Removed comparison methods from examination.js (renderComparisonView, calculateBestValues, etc.)
+  - Removed duplicate confirmation modal HTML and CSS
+  - Removed orphaned event listeners and state variables
+  - Deleted: duplicates.js, duplicates.css
+  - Updated examination.js header comments
+- **Cleanup of legacy bucket/accordion CSS (276 lines total)**:
+  - main.css (-262 lines): Removed `.buckets-container`, `.buckets-header`, `.bucket*` accordion styles, `.failed-file*`, `.duplicate-group` container styles (old expandable groups), `.duplicate-file*` comparison cards, `.bucket-pagination`
+  - examination.css (-14 lines): Removed orphaned `.examination-preview` and `.nav-arrow` from mobile media query
+  - Preserved: `.confidence-badge` and level classes, `.thumb-size-toggle`, `.thumbnail-grid`, `.thumbnail.duplicate-group` border styling
 
 **Session Work Completed (2026-02-03 afternoon):**
 - **Mode-based workflow** (major refactor):
@@ -413,20 +513,34 @@ None
   - Files auto-remove from grid when they no longer match current mode
   - Discarded badge (trash icon) on thumbnails
 
-**Deferred to Phase 5:**
-- Visual duplicate grouping (side-by-side comparison)
-- Quality metrics comparison (resolution, file size)
-- Bulk duplicate resolution ("keep largest", "keep earliest")
-
 **For Next Session:**
 1. `/clear` and start fresh
-2. `/gsd:plan-phase 5` - Plan duplicate detection and resolution UI
-3. Focus on visual grouping and comparison workflow
+2. **Reimplement duplicate UI handling** with new viewport system as base
+
+**Duplicate UI Reimplementation Context:**
+The carousel viewport system is now the solid baseline. The old comparison grid was removed. Need to enhance duplicate handling within the viewport:
+
+- **Current state:** Duplicates mode shows duplicate files in grid, clicking opens viewport carousel
+- **ExaminationHandler.loadDuplicateGroup()** still works - fetches group, sets up navigation
+- **Action buttons exist:** "Keep This, Discard Others" and "Not a Duplicate" in viewport-details.js
+
+**Potential enhancements to consider:**
+1. Visual indicators in viewport showing which file is "recommended" (highest quality)
+2. Quality metrics comparison (resolution, file size) visible during duplicate navigation
+3. Group progress indicator ("File 2 of 4 duplicates")
+4. Keyboard shortcuts for duplicate actions (K=keep, D=discard)
+5. Auto-advance to next duplicate group after resolution
+
+**Key files:**
+- `app/static/js/viewport-controller.js` - examination mode orchestration
+- `app/static/js/viewport-details.js` - details panel, action buttons
+- `app/static/js/examination.js` - loadDuplicateGroup() for fetching duplicate data
+- `app/static/css/viewport.css` - viewport styling
 
 **Resume commands:**
 - `/gsd:resume-work` - Full context restoration
-- `/gsd:plan-phase 5` - Start Phase 5 planning
-- `/gsd:progress` - Shows status and routes to next action
+- Read `.planning/carousel-viewport-plan.md` for architecture overview
+- Read `app/static/js/viewport-details.js` to understand current action button handling
 
 ---
 

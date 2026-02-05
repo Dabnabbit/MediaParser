@@ -97,6 +97,39 @@ def _commit_pending_updates(db, pending_updates: list):
     db.session.flush()  # Flush but don't commit yet
 
 
+def _mark_duplicate_groups(db, job):
+    """
+    Detect and mark duplicate groups based on SHA256 hash.
+
+    Files with identical SHA256 hashes are duplicates. Sets duplicate_group_id
+    to the hash value for all files in groups of 2+ identical files.
+
+    Args:
+        db: SQLAlchemy database instance
+        job: Job object with files to check
+    """
+    from collections import defaultdict
+
+    # Group files by SHA256 hash
+    hash_groups = defaultdict(list)
+    for file in job.files:
+        if file.file_hash_sha256:
+            hash_groups[file.file_hash_sha256].append(file)
+
+    # Mark files that have duplicates (2+ files with same hash)
+    duplicate_count = 0
+    for hash_value, files in hash_groups.items():
+        if len(files) > 1:
+            for file in files:
+                file.duplicate_group_id = hash_value
+                duplicate_count += 1
+
+    if duplicate_count > 0:
+        logger.info(f"Job {job.id}: marked {duplicate_count} files in duplicate groups")
+
+    db.session.flush()
+
+
 @huey.task(retries=2, retry_delay=30)
 def process_import_job(job_id: int) -> dict:
     """
@@ -323,6 +356,9 @@ def process_import_job(job_id: int) -> dict:
             # Commit any remaining pending updates
             if pending_updates:
                 _commit_pending_updates(db, pending_updates)
+
+            # Detect and mark duplicate groups based on SHA256 hash
+            _mark_duplicate_groups(db, job)
 
             # Finalize job - ensure progress reflects actual count
             job.status = JobStatus.COMPLETED

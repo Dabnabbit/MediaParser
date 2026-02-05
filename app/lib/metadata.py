@@ -79,7 +79,14 @@ def get_best_datetime(
         if tag in metadata:
             value = metadata[tag]
             if isinstance(value, str):
-                dt = convert_str_to_datetime(value, default_tz)
+                # QuickTime timestamps are typically stored in UTC per spec
+                # EXIF timestamps are typically stored in local time
+                # File timestamps include timezone info from exiftool
+                if tag.startswith('QuickTime'):
+                    tag_tz = 'UTC'
+                else:
+                    tag_tz = default_tz
+                dt = convert_str_to_datetime(value, tag_tz)
                 if dt:
                     found_dates.append((dt, tag))
 
@@ -102,6 +109,45 @@ def get_best_datetime(
     # Shouldn't reach here, but just in case
     dt, source = found_dates[0]
     return dt, source, 'low'
+
+
+def get_all_datetime_candidates(
+    file_path: Path | str,
+    default_tz: str = 'UTC'
+) -> list[tuple[datetime, str]]:
+    """
+    Get all available datetime candidates from file metadata.
+
+    Unlike get_best_datetime which returns only the best match,
+    this returns ALL valid timestamps for confidence scoring
+    and review UI display.
+
+    Args:
+        file_path: Path to the file
+        default_tz: Timezone to assume for EXIF dates without timezone info
+                   (QuickTime dates are assumed UTC per spec)
+
+    Returns:
+        List of (datetime, source_tag) tuples
+    """
+    metadata = extract_metadata(file_path)
+    found_dates: list[tuple[datetime, str]] = []
+
+    for tag in DATETIME_TAGS:
+        if tag in metadata:
+            value = metadata[tag]
+            if isinstance(value, str):
+                # QuickTime timestamps are typically stored in UTC per spec
+                # EXIF timestamps are typically stored in local time
+                if tag.startswith('QuickTime'):
+                    tag_tz = 'UTC'
+                else:
+                    tag_tz = default_tz
+                dt = convert_str_to_datetime(value, tag_tz)
+                if dt:
+                    found_dates.append((dt, tag))
+
+    return found_dates
 
 
 def get_file_type(file_path: Path | str) -> Optional[str]:

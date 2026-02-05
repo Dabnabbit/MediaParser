@@ -36,8 +36,9 @@
     background: rgba(59, 130, 246, 0.1);
 }
 
-.timestamp-source.recommended {
-    border-left: 3px solid var(--success-color);
+/* System-selected option indicator */
+.timestamp-source.system-pick {
+    border-left: 3px solid var(--color-high);
 }
 
 .source-radio {
@@ -57,14 +58,16 @@
 .source-info label {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--spacing-xs);
     cursor: pointer;
     font-weight: 500;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
 }
 
 .source-label {
     font-size: 0.9rem;
+    color: var(--text-primary);
 }
 
 .source-time {
@@ -74,14 +77,85 @@
     font-family: monospace;
 }
 
-/* ============================================
-   RECOMMENDED BADGE
-   ============================================ */
+/* Primary timestamp display (new grouped view) */
+.source-time-primary {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-family: monospace;
+}
 
-.recommended-badge {
+/* Option badges */
+.option-badge {
     display: inline-block;
     padding: 1px 6px;
-    background: var(--success-color);
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-radius: 3px;
+}
+
+.option-badge.recommended {
+    background: var(--color-high);
+    color: white;
+}
+
+.option-badge.earliest {
+    background: var(--color-primary);
+    color: white;
+}
+
+.option-badge.highest-scored {
+    background: var(--color-medium);
+    color: #000;
+}
+
+/* Source metadata row */
+.source-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 0.8rem;
+}
+
+.source-count {
+    color: var(--text-secondary);
+}
+
+/* Confidence badges in timestamp options */
+.source-meta .confidence-badge {
+    padding: 1px 6px;
+    font-size: 0.65rem;
+    font-weight: bold;
+    border-radius: 3px;
+}
+
+.source-meta .confidence-badge.confidence-high {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--color-high);
+}
+
+.source-meta .confidence-badge.confidence-medium {
+    background: rgba(234, 179, 8, 0.15);
+    color: var(--color-medium);
+}
+
+.source-meta .confidence-badge.confidence-low {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--color-low);
+}
+
+/* ============================================
+   LEGACY BADGE (kept for compatibility)
+   ============================================ */
+
+.timestamp-sources .recommended-badge,
+#timestamp-sources-container .recommended-badge {
+    display: inline-block;
+    position: static;
+    padding: 1px 6px;
+    margin-right: var(--spacing-xs);
+    background: var(--color-high);
     color: white;
     font-size: 0.65rem;
     font-weight: bold;
@@ -107,18 +181,30 @@
     width: 100%;
     padding: 6px 10px;
     font-size: 0.9rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+}
+
+.manual-input-group .form-input-sm::placeholder {
+    color: var(--text-secondary);
 }
 
 .date-preview {
     display: block;
     margin-top: 4px;
     font-size: 0.8rem;
-    color: var(--success-color);
+    color: var(--color-text-muted);
     min-height: 1.2em;
 }
 
+.date-preview.parsed {
+    color: var(--color-high);
+}
+
 .date-preview.error {
-    color: var(--error-color);
+    color: var(--color-low);
 }
 
 /* ============================================

@@ -106,4 +106,10 @@ def create_app(config_name='development'):
         from flask import send_from_directory
         return send_from_directory(app.config['THUMBNAILS_FOLDER'], filename)
 
+    # Serve full images from uploads directory
+    @app.route('/uploads/<path:filename>')
+    def serve_upload(filename):
+        from flask import send_from_directory
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
     return app

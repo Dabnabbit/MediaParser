@@ -45,6 +45,9 @@ class Config:
     BATCH_COMMIT_SIZE = 10  # Files per database commit
     ERROR_THRESHOLD = 0.10  # Halt job if error rate exceeds this
 
+    # Debug mode (enables debug UI features)
+    DEBUG_MODE = False
+
     @classmethod
     def validate_timezone(cls):
         """Validate timezone configuration using zoneinfo."""
@@ -59,6 +62,7 @@ class DevelopmentConfig(Config):
     """Development environment configuration."""
 
     DEBUG = True
+    DEBUG_MODE = True  # Enables debug features in UI (db clear, stats)
     SQLALCHEMY_ECHO = True
 
 
@@ -66,6 +70,7 @@ class ProductionConfig(Config):
     """Production environment configuration."""
 
     DEBUG = False
+    DEBUG_MODE = False  # Disable debug features in production
 
 
 # Configuration dictionary for easy lookup

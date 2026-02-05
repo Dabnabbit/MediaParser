@@ -12,7 +12,7 @@ import json
 import logging
 
 from app import db
-from app.models import File, Tag, UserDecision, file_tags
+from app.models import File, Job, Tag, UserDecision, file_tags
 
 logger = logging.getLogger(__name__)
 
@@ -411,10 +411,29 @@ def discard_file(file_id):
     if file is None:
         return jsonify({'error': f'File {file_id} not found'}), 404
 
-    # Discard clears review (mutually exclusive)
+    # Discard clears review and duplicate status (mutually exclusive states)
+    old_group_id = file.duplicate_group_id
     file.discarded = True
     file.reviewed_at = None
     file.final_timestamp = None
+    file.duplicate_group_id = None  # Discarded files are out of duplicate workflow
+
+    # Check if we're leaving a single file alone in its duplicate group (same job only)
+    # A file can't be a "duplicate" by itself
+    if old_group_id:
+        file_job_ids = [j.id for j in file.jobs]
+        remaining_in_group = File.query.join(File.jobs).filter(
+            File.duplicate_group_id == old_group_id,
+            File.discarded == False,
+            File.id != file.id,
+            Job.id.in_(file_job_ids)
+        ).all()
+
+        if len(remaining_in_group) == 1:
+            # Only one file left in this job - it's no longer a duplicate
+            remaining_in_group[0].duplicate_group_id = None
+            logger.info(f"Cleared duplicate status from file {remaining_in_group[0].id} (last in group)")
+
     db.session.commit()
 
     logger.info(f"File {file_id} discarded")
@@ -437,6 +456,9 @@ def undiscard_file(file_id):
     """
     Undiscard a file (return to pending review state).
 
+    Also re-evaluates duplicate status: if other non-discarded files
+    share the same SHA256 hash, restores the duplicate group relationship.
+
     Args:
         file_id: ID of the file
 
@@ -449,6 +471,31 @@ def undiscard_file(file_id):
         return jsonify({'error': f'File {file_id} not found'}), 404
 
     file.discarded = False
+
+    # Re-evaluate duplicate status based on hash (scoped to same job(s))
+    if file.file_hash_sha256:
+        # Get job IDs this file belongs to
+        file_job_ids = [j.id for j in file.jobs]
+
+        # Find other non-discarded files with same hash IN THE SAME JOB(S)
+        # Cross-job duplicates should be detected during import, not restore
+        matching_files = File.query.join(File.jobs).filter(
+            File.file_hash_sha256 == file.file_hash_sha256,
+            File.discarded == False,
+            File.id != file.id,
+            Job.id.in_(file_job_ids)
+        ).all()
+
+        if matching_files:
+            # Restore duplicate group for this file and all matching files
+            file.duplicate_group_id = file.file_hash_sha256
+            for match in matching_files:
+                match.duplicate_group_id = file.file_hash_sha256
+            logger.info(f"File {file_id} restored to duplicate group with {len(matching_files)} other file(s)")
+        else:
+            # No other non-discarded files with same hash in same job - not a duplicate
+            file.duplicate_group_id = None
+
     db.session.commit()
 
     logger.info(f"File {file_id} undiscarded")
@@ -488,17 +535,45 @@ def bulk_discard():
         return jsonify({'error': 'file_ids must be an array'}), 400
 
     success_count = 0
+    affected_groups = set()
 
+    # First pass: discard files and collect affected group IDs
     for file_id in data['file_ids']:
         file = db.session.get(File, file_id)
         if file is None:
             continue
 
-        # Discard clears review (mutually exclusive)
+        # Track which groups are affected
+        if file.duplicate_group_id:
+            affected_groups.add(file.duplicate_group_id)
+
+        # Discard clears review and duplicate status (mutually exclusive states)
         file.discarded = True
         file.reviewed_at = None
         file.final_timestamp = None
+        file.duplicate_group_id = None  # Discarded files are out of duplicate workflow
         success_count += 1
+
+    # Collect job IDs from all discarded files for job-scoped duplicate checking
+    affected_job_ids = set()
+    for file_id in data['file_ids']:
+        file = db.session.get(File, file_id)
+        if file:
+            affected_job_ids.update(j.id for j in file.jobs)
+
+    # Second pass: check if any affected groups now have only 1 file remaining (same jobs only)
+    # A file can't be a "duplicate" by itself
+    for group_id in affected_groups:
+        remaining_in_group = File.query.join(File.jobs).filter(
+            File.duplicate_group_id == group_id,
+            File.discarded == False,
+            Job.id.in_(affected_job_ids)
+        ).all()
+
+        if len(remaining_in_group) == 1:
+            # Only one file left in affected jobs - it's no longer a duplicate
+            remaining_in_group[0].duplicate_group_id = None
+            logger.info(f"Cleared duplicate status from file {remaining_in_group[0].id} (last in group)")
 
     db.session.commit()
 
@@ -507,6 +582,84 @@ def bulk_discard():
     return jsonify({
         'success': True,
         'files_discarded': success_count
+    }), 200
+
+
+@review_bp.route('/api/files/bulk/undiscard', methods=['POST'])
+def bulk_undiscard():
+    """
+    Bulk undiscard files (return to pending review state).
+
+    Also re-evaluates duplicate status for each file: if other non-discarded
+    files share the same SHA256 hash, restores the duplicate group relationship.
+
+    Request body:
+        { file_ids: [1, 2, 3] }
+
+    Returns:
+        JSON with success count and duplicate groups restored
+    """
+    data = request.get_json()
+
+    if not data or 'file_ids' not in data:
+        return jsonify({'error': 'file_ids array is required'}), 400
+
+    if not isinstance(data['file_ids'], list):
+        return jsonify({'error': 'file_ids must be an array'}), 400
+
+    success_count = 0
+    groups_restored = 0
+
+    # First pass: undiscard all files
+    files_to_process = []
+    for file_id in data['file_ids']:
+        file = db.session.get(File, file_id)
+        if file is None:
+            continue
+
+        file.discarded = False
+        files_to_process.append(file)
+        success_count += 1
+
+    # Second pass: re-evaluate duplicate status for each undiscarded file
+    # We need to do this after all are undiscarded so they can match each other
+    for file in files_to_process:
+        if not file.file_hash_sha256:
+            continue
+
+        # Get job IDs this file belongs to
+        file_job_ids = [j.id for j in file.jobs]
+
+        # Find other non-discarded files with same hash IN THE SAME JOB(S)
+        # Cross-job duplicates should be detected during import, not restore
+        matching_files = File.query.join(File.jobs).filter(
+            File.file_hash_sha256 == file.file_hash_sha256,
+            File.discarded == False,
+            File.id != file.id,
+            Job.id.in_(file_job_ids)
+        ).all()
+
+        if matching_files:
+            # Only count as restored if this file wasn't already in a group
+            if not file.duplicate_group_id:
+                groups_restored += 1
+
+            # Restore duplicate group for this file and all matching files
+            file.duplicate_group_id = file.file_hash_sha256
+            for match in matching_files:
+                match.duplicate_group_id = file.file_hash_sha256
+        else:
+            # No other non-discarded files with same hash in same job - not a duplicate
+            file.duplicate_group_id = None
+
+    db.session.commit()
+
+    logger.info(f"Bulk undiscarded {success_count} files, restored {groups_restored} duplicate groups")
+
+    return jsonify({
+        'success': True,
+        'files_undiscarded': success_count,
+        'groups_restored': groups_restored
     }), 200
 
 
