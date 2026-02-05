@@ -1210,13 +1210,12 @@ body {
     border-color: var(--color-medium);
 }
 
-/* Badge positioning - top/bottom layout */
+/* Badge positioning */
 .thumbnail-badges {
     position: absolute;
     inset: 4px;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     pointer-events: none;
     z-index: 5;
 }
@@ -1227,15 +1226,12 @@ body {
     align-items: flex-start;
 }
 
-.badge-bottom {
+.badge-info {
     display: flex;
+    flex-wrap: wrap;
     gap: 2px;
-    align-items: flex-end;
-}
-
-.badge-status {
-    display: flex;
-    gap: 2px;
+    align-items: flex-start;
+    max-width: calc(100% - 26px); /* Leave room for checkbox */
 }
 
 /* Checkbox styling */

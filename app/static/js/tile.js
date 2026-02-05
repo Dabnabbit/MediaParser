@@ -200,22 +200,20 @@ class Tile {
         return `
             <div class="thumbnail-badges">
                 <div class="badge-top">
-                    <label class="thumb-checkbox" title="Select file">
-                        <input type="checkbox" data-file-id="${file.id}" ${this.selected ? 'checked' : ''}>
-                        <span class="checkmark"></span>
-                    </label>
-                    <div class="badge-status">
+                    <div class="badge-info">
+                        <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
+                        ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
+                        ${recommendedBadge}
+                        ${duplicateBadge}
+                        ${similarBadge}
                         ${isReviewed ? '<span class="thumb-badge reviewed">&#10003;</span>' : ''}
                         ${isFailed ? '<span class="thumb-badge failed">&#10007;</span>' : ''}
                         ${isDiscarded ? '<span class="thumb-badge discarded">&#x1F5D1;</span>' : ''}
                     </div>
-                </div>
-                <div class="badge-bottom">
-                    <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
-                    ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
-                    ${recommendedBadge}
-                    ${duplicateBadge}
-                    ${similarBadge}
+                    <label class="thumb-checkbox" title="Select file">
+                        <input type="checkbox" data-file-id="${file.id}" ${this.selected ? 'checked' : ''}>
+                        <span class="checkmark"></span>
+                    </label>
                 </div>
             </div>
             <img class="tile-image"
@@ -521,22 +519,20 @@ class Tile {
 
         badgesContainer.innerHTML = `
             <div class="badge-top">
-                <label class="thumb-checkbox" title="Select file">
-                    <input type="checkbox" data-file-id="${file.id}" ${this.selected ? 'checked' : ''}>
-                    <span class="checkmark"></span>
-                </label>
-                <div class="badge-status">
+                <div class="badge-info">
+                    <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
+                    ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
+                    ${recommendedBadge}
+                    ${duplicateBadge}
+                    ${similarBadge}
                     ${isReviewed ? '<span class="thumb-badge reviewed">&#10003;</span>' : ''}
                     ${isFailed ? '<span class="thumb-badge failed">&#10007;</span>' : ''}
                     ${isDiscarded ? '<span class="thumb-badge discarded">&#x1F5D1;</span>' : ''}
                 </div>
-            </div>
-            <div class="badge-bottom">
-                <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
-                ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
-                ${recommendedBadge}
-                ${duplicateBadge}
-                ${similarBadge}
+                <label class="thumb-checkbox" title="Select file">
+                    <input type="checkbox" data-file-id="${file.id}" ${this.selected ? 'checked' : ''}>
+                    <span class="checkmark"></span>
+                </label>
             </div>
         `;
 
