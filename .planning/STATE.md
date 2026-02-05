@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-04
+**Last Updated:** 2026-02-05
 
 ## Environment
 
@@ -20,7 +20,7 @@
 **Phase:** 5 of 7 - Duplicate Detection (Exact) ✓
 **Plan:** 4 of 4 (Phase complete)
 **Status:** Phase 5 complete + Carousel Viewport refactor complete
-**Last activity:** 2026-02-04 - Viewport z-index layering, FLIP animation, grid locking, documentation sync
+**Last activity:** 2026-02-05 - Navigation FLIP animation (enter/leave tiles), tile.css transition selector fix
 **Progress:** `[█████████████████████████████] 86%` (30/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
@@ -174,6 +174,8 @@
 | Timestamp-constrained perceptual matching | 2026-02-04 | Use timestamp clustering as constraint for perceptual comparison - O(n log n) vs O(n²). Only compare files within same time cluster. | Phase 6: Performance |
 | Perceptual thresholds | 2026-02-04 | Distance 0-5 = DUPLICATE (same image), 6-20 = SIMILAR (burst/panorama), 20+ = unrelated | Phase 6: Algorithm |
 | Deferred edge cases | 2026-02-04 | Skip cross-cluster duplicate detection for v1. Edits made weeks later handled manually. Optional "Deep Scan" later. | Phase 6: Scope |
+| FLIP animation for navigation | 2026-02-05 | Tiles entering/leaving viewport animate to/from their grid positions using FLIP technique; entering tiles frozen at grid rect then released, leaving tiles animated back to grid rect | Viewport refactor: smooth navigation |
+| Narrow tile.css transition selector | 2026-02-05 | `.thumbnail[data-vp-pos]` was too broad — applied transitions to grid tiles causing shoot-off bug; narrowed to only prev/current/next positions | Viewport refactor: bug fix |
 
 ### Active TODOs
 
@@ -429,10 +431,10 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-04
-**Stopped at:** Documentation sync complete. Viewport refactor fully documented.
+**Last session:** 2026-02-05
+**Stopped at:** Navigation FLIP animation complete, project status files updated.
 **Resume file:** None
-**Last commit:** `93bb1e5` — FLIP enter animation, grid locking, z-index layering
+**Last commit:** `631a0fd` — FLIP animation for nav enter/leave, fix grid tile transition
 
 **Phase 4 Execution Status:** ✓ COMPLETE (all 9 plans)
 
@@ -493,7 +495,7 @@ None
 1. `/clear` and start fresh
 2. Consider Phase 6 (Perceptual Duplicate Detection) or Phase 7 (Output Generation)
 3. Restore `--vp-transition-duration` from `2s` to `0.35s` when done testing animations
-4. Exit animation could be improved (tiles snap back to grid, no smooth return)
+4. ~~Exit animation could be improved (tiles snap back to grid, no smooth return)~~ — Partially addressed: navigation enter/leave tiles now FLIP animate to/from grid positions; full exit (Escape) still snaps
 5. Exit timeout hardcoded to 300ms — should read CSS variable like enter does
 
 **Key viewport files:**

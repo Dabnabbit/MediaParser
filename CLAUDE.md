@@ -38,9 +38,10 @@ cd /home/dab/Projects/MediaParser
 - **Python:** 3.11+ with venv at `.venv/`
 
 ## Current Development Focus
-- Phase 3 complete: Web UI with upload, progress, results, settings
-- Pause/Resume functionality verified working
-- Ready for Phase 4: Timestamp Review & Override
+- Phase 5 complete: Duplicate Detection (Exact)
+- Carousel viewport refactor complete (replaces examination modal)
+- FLIP animations for enter, navigation, and partial exit
+- Ready for Phase 6 (Perceptual Duplicate Detection) or Phase 7 (Output Generation)
 
 ## Recent Session Work (outside GSD tracking)
 The following was tested and fixed in sessions not tracked by GSD:
@@ -49,4 +50,7 @@ The following was tested and fixed in sessions not tracked by GSD:
 - Progress polling and UI updates
 - Session resume on page refresh
 - Various UI improvements and bug fixes
-- Commit: `80039e4 feat: pause/resume fixes, worker health check, UI improvements`
+- Carousel viewport system (major architectural refactor)
+- FLIP animation for navigation enter/leave (tiles animate to/from grid positions)
+- Fixed tile.css transition selector (was applying to grid tiles, causing shoot-off bug)
+- Latest commit: `631a0fd fix(viewport): FLIP animation for nav enter/leave, fix grid tile transition`

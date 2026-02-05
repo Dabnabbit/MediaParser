@@ -457,9 +457,19 @@ User navigates (arrows/clicks/wheel)
         ▼
 ViewportController.next() / previous()
         │
+        ├─ _cleanupFlipStyles() — clear pending FLIP animations from rapid navigation
         ├─ _clearViewportZIndices() — reset previous inline z
-        ├─ Set z:10 on upcoming current, z:2 on entering-from-grid tiles
-        └─ setupViewport() — tiles transition between positions (CSS animated)
+        ├─ Identify entering tiles (grid → viewport) and leaving tiles (viewport → grid)
+        ├─ Capture entering grid rects (getBoundingClientRect before changes)
+        ├─ Set z:10 on upcoming current, z:2 on entering tiles, z:3 on leaving tiles
+        ├─ Suppress CSS transitions (inline transition:none) on entering+leaving
+        ├─ setupViewport() — assign new prev/current/next positions
+        ├─ Read leaving tiles' grid target rects (layout computed, not yet painted)
+        ├─ FLIP Freeze: entering at grid rect (opacity:0), leaving at viewport rect
+        ├─ Force reflow (void container.offsetHeight)
+        └─ rAF: release entering (clear inline → CSS animates to viewport),
+           animate leaving to grid rect (inline left/top/width/height + opacity:0)
+           setTimeout: cleanup inline styles after transition completes
         │
         ▼
 User exits (Escape/close button)
@@ -522,6 +532,8 @@ app/static/
 - [x] FLIP animation on enter: tiles fly from grid positions to viewport positions
 - [x] Grid stays in document flow, doesn't move or reflow
 - [x] Navigation animates smoothly (tiles slide between viewport positions)
+- [x] Tiles entering from grid FLIP animate from grid position to viewport position
+- [x] Tiles leaving viewport FLIP animate back to their grid position
 - [x] Tiles entering from grid stay behind existing viewport tiles (z-index: 2)
 - [x] Current tile always on top (z-index: 10) during transitions
 - [x] Escape/close returns to grid at same scroll position
