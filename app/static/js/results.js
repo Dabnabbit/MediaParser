@@ -270,6 +270,19 @@ class ResultsHandler {
         if (window.selectionHandler) {
             window.selectionHandler.refreshUI();
         }
+
+        // Force layout recalculation after tiles are added
+        // Double RAF ensures we're after the browser has painted the new layout
+        // This fixes initial render issues where grid dimensions aren't stable yet
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                // Force reflow by reading a layout property
+                void this.unifiedGrid?.offsetHeight;
+                if (window.positionSlider) {
+                    window.positionSlider.recalculateWindowSize();
+                }
+            });
+        });
     }
 
     /**
