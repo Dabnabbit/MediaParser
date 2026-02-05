@@ -801,6 +801,9 @@ body {
 .thumbnail-grid {
     display: grid;
     gap: var(--spacing-sm);
+    /* Prevent browser text/element selection when clicking/dragging */
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .thumbnail-grid.thumb-compact {
@@ -822,6 +825,9 @@ body {
     overflow: hidden;
     cursor: pointer;
     aspect-ratio: 1;
+    /* Prevent text selection on drag */
+    user-select: none;
+    -webkit-user-select: none;
     /* Smooth transitions for grid interactions and viewport mode */
     transition:
         transform 0.2s ease,

@@ -53,6 +53,10 @@ body.viewport-active {
     /* Override grid layout */
     grid-template-columns: none !important;
     gap: 0 !important;
+
+    /* Prevent browser drag selection */
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 /* Ensure container fills viewport */
