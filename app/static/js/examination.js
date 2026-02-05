@@ -12,6 +12,8 @@ class ExaminationDataService {
     constructor() {
         this.currentDuplicateGroup = null;
         this.duplicateGroups = [];  // Cache of all duplicate groups
+        this.currentSimilarGroup = null;
+        this.similarGroups = [];    // Cache of all similar groups
     }
 
     /**
@@ -102,11 +104,106 @@ class ExaminationDataService {
     }
 
     /**
+     * Fetch all similar groups for a job
+     * @param {number} jobId
+     * @returns {Promise<Array>} Array of similar group objects
+     */
+    async fetchSimilarGroups(jobId) {
+        try {
+            const response = await fetch(`/api/jobs/${jobId}/similar-groups`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch similar groups');
+            }
+            const data = await response.json();
+            this.similarGroups = data.similar_groups || [];
+            return this.similarGroups;
+        } catch (error) {
+            console.error('Error fetching similar groups:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Find the similar group containing a specific file
+     * @param {number} fileId
+     * @returns {Object|null} The similar group or null
+     */
+    findSimilarGroupForFile(fileId) {
+        return this.similarGroups.find(g =>
+            g.files && g.files.some(f => f.id === fileId)
+        ) || null;
+    }
+
+    /**
+     * Load similar group data for a file
+     * Returns the group's files for navigation in viewport
+     * @param {number} fileId - The file to find the group for
+     * @param {number} jobId - The job ID
+     * @returns {Promise<Object>} Object with files array, group metadata
+     */
+    async loadSimilarGroupForFile(fileId, jobId) {
+        // Try to find in cache first
+        let group = this.findSimilarGroupForFile(fileId);
+
+        // If not found, fetch fresh data
+        if (!group && jobId) {
+            await this.fetchSimilarGroups(jobId);
+            group = this.findSimilarGroupForFile(fileId);
+        }
+
+        if (!group) {
+            console.warn('No similar group found for file:', fileId);
+            return {
+                files: [],
+                group_id: null,
+                group_type: null,
+                confidence: null,
+                recommended_id: null
+            };
+        }
+
+        this.currentSimilarGroup = group;
+
+        return {
+            files: group.files || [],
+            group_id: group.group_id,
+            group_type: group.group_type,
+            confidence: group.confidence,
+            recommended_id: group.recommended_id
+        };
+    }
+
+    /**
+     * Get all files in the current similar group
+     * @returns {Array}
+     */
+    getCurrentSimilarGroupFiles() {
+        return this.currentSimilarGroup?.files || [];
+    }
+
+    /**
+     * Get the recommended file ID in the current similar group
+     * @returns {number|null}
+     */
+    getSimilarRecommendedId() {
+        return this.currentSimilarGroup?.recommended_id || null;
+    }
+
+    /**
+     * Clear the current similar group reference
+     */
+    clearCurrentSimilarGroup() {
+        this.currentSimilarGroup = null;
+    }
+
+    /**
      * Clear all cached data
      */
     reset() {
         this.currentDuplicateGroup = null;
         this.duplicateGroups = [];
+        this.currentSimilarGroup = null;
+        this.similarGroups = [];
     }
 }
 

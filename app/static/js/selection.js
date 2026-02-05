@@ -469,10 +469,11 @@ class SelectionHandler {
 
     /**
      * Get the list of file IDs that should be navigable in viewport mode
-     * Priority: multi-selection > current filter > all visible
+     * Priority: multi-selection > duplicate/similar group > current filter > all visible
      */
     getNavigableFileIds(clickedFileId) {
         const visibleFiles = window.resultsHandler?.allFiles || [];
+        const currentMode = window.filterHandler?.getCurrentMode();
 
         // If multiple files are selected, navigate only selected files
         if (this.selectedIds.size > 1) {
@@ -480,6 +481,34 @@ class SelectionHandler {
             return visibleFiles
                 .filter(f => this.selectedIds.has(f.id))
                 .map(f => f.id);
+        }
+
+        // In duplicates mode, navigate the duplicate group only
+        if (currentMode === 'duplicates') {
+            const clickedFile = visibleFiles.find(f => f.id === clickedFileId);
+            if (clickedFile?.is_duplicate) {
+                // Get all files in the same duplicate group
+                const groupFiles = visibleFiles.filter(f =>
+                    f.file_hash && f.file_hash === clickedFile.file_hash
+                );
+                if (groupFiles.length > 0) {
+                    return groupFiles.map(f => f.id);
+                }
+            }
+        }
+
+        // In similar mode, navigate the similar group only
+        if (currentMode === 'similar') {
+            const clickedFile = visibleFiles.find(f => f.id === clickedFileId);
+            if (clickedFile?.is_similar) {
+                // Get all files in the same similar group
+                const groupFiles = visibleFiles.filter(f =>
+                    f.similar_group_id && f.similar_group_id === clickedFile.similar_group_id
+                );
+                if (groupFiles.length > 0) {
+                    return groupFiles.map(f => f.id);
+                }
+            }
         }
 
         // Otherwise, navigate all visible files (filtered by current mode)
