@@ -216,6 +216,29 @@ body.viewport-active {
     opacity: 0;
 }
 
+/* Hide checkbox in viewport mode - selection doesn't apply during examination */
+.thumbnail-grid.viewport-mode .thumbnail .thumb-checkbox {
+    display: none;
+}
+
+/* Remove selected state styling in viewport mode */
+.thumbnail-grid.viewport-mode .thumbnail.selected {
+    outline: none;
+}
+
+/* Hide selection overlay pseudo-elements */
+.thumbnail-grid.viewport-mode .thumbnail.selected::before,
+.thumbnail-grid.viewport-mode .thumbnail.selected::after {
+    display: none;
+}
+
+/* Override duplicate-group selected state in viewport mode */
+.thumbnail-grid.viewport-mode .thumbnail.duplicate-group.selected {
+    /* Keep duplicate color, ignore selection styling */
+    border-color: var(--duplicate-color);
+    box-shadow: none;
+}
+
 /* ============================================
    VIEWPORT NAVIGATION HINTS
    ============================================ */
