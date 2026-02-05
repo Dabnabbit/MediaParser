@@ -99,6 +99,10 @@ class ResultsHandler {
 
         // Listen for window size changes (from resize)
         window.addEventListener('windowSizeChange', (e) => {
+            // Don't reload files while viewport is active - it would break the examination view
+            if (window.selectionHandler?.isViewportActive()) {
+                return;
+            }
             this.windowSize = e.detail.windowSize;
             // Reload with new window size
             this.loadFiles();
