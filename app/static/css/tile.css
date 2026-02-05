@@ -417,8 +417,10 @@
    VIEWPORT POSITION STATES
    ============================================ */
 
-/* Base transition for all viewport positions */
-.thumbnail[data-vp-pos] {
+/* Base transition for active viewport positions (not grid) */
+.thumbnail[data-vp-pos="prev"],
+.thumbnail[data-vp-pos="current"],
+.thumbnail[data-vp-pos="next"] {
     transition:
         transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
         opacity 0.35s ease,
