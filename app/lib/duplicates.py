@@ -8,10 +8,7 @@ Provides functions for:
 """
 import json
 import logging
-from pathlib import Path
 from typing import Optional
-
-from app.lib.metadata import get_image_dimensions
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +34,11 @@ def get_quality_metrics(file) -> dict:
     """
     Extract quality metrics for a file.
 
+    Reads dimensions from the database (populated during import) to avoid
+    redundant ExifTool calls on every request.
+
     Args:
-        file: File model instance with storage_path and mime_type
+        file: File model instance with image_width, image_height, mime_type
 
     Returns:
         Dictionary with quality metrics:
@@ -48,31 +48,26 @@ def get_quality_metrics(file) -> dict:
         - file_size_bytes: File size in bytes
         - format: File format from mime_type (e.g. 'jpg', 'png')
     """
-    metrics = {
-        'width': None,
-        'height': None,
-        'resolution_mp': None,
-        'file_size_bytes': file.file_size_bytes,
-        'format': None
-    }
+    width = getattr(file, 'image_width', None)
+    height = getattr(file, 'image_height', None)
 
-    # Extract format from mime_type (e.g. 'image/jpeg' -> 'jpeg')
+    resolution_mp = None
+    if width is not None and height is not None:
+        resolution_mp = round((width * height) / 1_000_000, 2)
+
+    fmt = None
     if file.mime_type:
         mime_parts = file.mime_type.split('/')
         if len(mime_parts) == 2:
-            metrics['format'] = mime_parts[1].lower()
+            fmt = mime_parts[1].lower()
 
-    # Get image dimensions if available
-    if file.storage_path:
-        width, height = get_image_dimensions(file.storage_path)
-        metrics['width'] = width
-        metrics['height'] = height
-
-        # Calculate resolution in megapixels
-        if width is not None and height is not None:
-            metrics['resolution_mp'] = round((width * height) / 1_000_000, 2)
-
-    return metrics
+    return {
+        'width': width,
+        'height': height,
+        'resolution_mp': resolution_mp,
+        'file_size_bytes': file.file_size_bytes,
+        'format': fmt
+    }
 
 
 def recommend_best_duplicate(files: list[dict]) -> Optional[int]:

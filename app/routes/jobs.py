@@ -232,19 +232,30 @@ def get_job_files(job_id):
         query = query.filter(File.processing_error.isnot(None))
 
     # Apply confidence filter within the mode
+    # In group modes, filter on the group confidence (string column) instead of
+    # the timestamp confidence (enum column)
     if confidence_filter:
         confidence_values = [c.strip() for c in confidence_filter.split(',')]
-        valid_levels = []
-        for conf_value in confidence_values:
-            try:
-                valid_levels.append(ConfidenceLevel(conf_value))
-            except ValueError:
-                return jsonify({
-                    'error': f'Invalid confidence level: {conf_value}',
-                    'allowed_values': ['high', 'medium', 'low', 'none']
-                }), 400
-        if valid_levels:
-            query = query.filter(File.confidence.in_(valid_levels))
+        if mode == 'duplicates':
+            valid_string_levels = [v for v in confidence_values if v in ('high', 'medium', 'low')]
+            if valid_string_levels:
+                query = query.filter(File.exact_group_confidence.in_(valid_string_levels))
+        elif mode == 'similar':
+            valid_string_levels = [v for v in confidence_values if v in ('high', 'medium', 'low')]
+            if valid_string_levels:
+                query = query.filter(File.similar_group_confidence.in_(valid_string_levels))
+        else:
+            valid_levels = []
+            for conf_value in confidence_values:
+                try:
+                    valid_levels.append(ConfidenceLevel(conf_value))
+                except ValueError:
+                    return jsonify({
+                        'error': f'Invalid confidence level: {conf_value}',
+                        'allowed_values': ['high', 'medium', 'low', 'none']
+                    }), 400
+            if valid_levels:
+                query = query.filter(File.confidence.in_(valid_levels))
 
     # Apply sorting - discarded files always sort to end
     sort_mapping = {
@@ -314,12 +325,39 @@ def get_job_files(job_id):
     total_count = query.count()
 
     # Calculate counts by confidence level within current mode's result set
-    mode_counts = {
-        'high': query.filter(File.confidence == ConfidenceLevel.HIGH).count(),
-        'medium': query.filter(File.confidence == ConfidenceLevel.MEDIUM).count(),
-        'low': query.filter(File.confidence == ConfidenceLevel.LOW).count(),
-        'none': query.filter(File.confidence == ConfidenceLevel.NONE).count(),
-    }
+    # Use the mode-appropriate confidence field for counting
+    if mode == 'duplicates':
+        # Count on the unfiltered-by-confidence query (base mode query before confidence filter)
+        base_mode_query = db.session.query(File).join(Job.files).filter(
+            Job.id == job_id,
+            File.exact_group_id.isnot(None),
+            File.discarded == False
+        )
+        mode_counts = {
+            'high': base_mode_query.filter(File.exact_group_confidence == 'high').count(),
+            'medium': base_mode_query.filter(File.exact_group_confidence == 'medium').count(),
+            'low': base_mode_query.filter(File.exact_group_confidence == 'low').count(),
+            'none': 0,
+        }
+    elif mode == 'similar':
+        base_mode_query = db.session.query(File).join(Job.files).filter(
+            Job.id == job_id,
+            File.similar_group_id.isnot(None),
+            File.discarded == False
+        )
+        mode_counts = {
+            'high': base_mode_query.filter(File.similar_group_confidence == 'high').count(),
+            'medium': base_mode_query.filter(File.similar_group_confidence == 'medium').count(),
+            'low': base_mode_query.filter(File.similar_group_confidence == 'low').count(),
+            'none': 0,
+        }
+    else:
+        mode_counts = {
+            'high': query.filter(File.confidence == ConfidenceLevel.HIGH).count(),
+            'medium': query.filter(File.confidence == ConfidenceLevel.MEDIUM).count(),
+            'low': query.filter(File.confidence == ConfidenceLevel.LOW).count(),
+            'none': query.filter(File.confidence == ConfidenceLevel.NONE).count(),
+        }
 
     # Calculate mode counts (for mode selector display)
     base_query = File.query.join(File.jobs).filter(Job.id == job_id)
@@ -400,7 +438,9 @@ def _serialize_file_extended(f, is_recommended=False):
         'similar_group_id': f.similar_group_id,
         'similar_group_type': f.similar_group_type,
         'discarded': f.discarded,
-        'is_recommended': is_recommended
+        'is_recommended': is_recommended,
+        'exact_group_confidence': f.exact_group_confidence,
+        'similar_group_confidence': f.similar_group_confidence
     }
 
 

@@ -13,7 +13,7 @@ import os
 
 from app.lib.hashing import calculate_sha256, calculate_perceptual_hash
 from app.lib.confidence import calculate_confidence
-from app.lib.metadata import get_all_datetime_candidates
+from app.lib.metadata import extract_metadata, get_all_datetime_candidates, get_image_dimensions
 from app.lib.timestamp import get_datetime_from_name
 from app.models import ConfidenceLevel
 
@@ -161,11 +161,17 @@ def process_single_file(
         if perceptual_hash is None:
             logger.debug(f"No perceptual hash for {path.name} (not an image or error)")
 
-        # Step 3: Extract timestamp candidates
+        # Step 3: Extract metadata once (single ExifTool call)
+        raw_metadata = extract_metadata(path)
+
+        # 3a: Extract image dimensions from metadata
+        image_width, image_height = get_image_dimensions(path, metadata=raw_metadata)
+
+        # 3b: Extract timestamp candidates
         timestamp_candidates = []
 
-        # 3a: All metadata timestamps (EXIF, QuickTime, filesystem)
-        metadata_candidates = get_all_datetime_candidates(path, default_tz)
+        # All metadata timestamps (EXIF, QuickTime, filesystem)
+        metadata_candidates = get_all_datetime_candidates(path, default_tz, metadata=raw_metadata)
         for dt, source in metadata_candidates:
             timestamp_candidates.append((dt, source))
             logger.debug(f"Metadata timestamp: {dt} from {source}")
@@ -222,6 +228,8 @@ def process_single_file(
             'confidence': confidence_level.value,
             'timestamp_candidates': candidates_json,
             'mime_type': mime_type,
+            'image_width': image_width,
+            'image_height': image_height,
             'error': None
         }
 

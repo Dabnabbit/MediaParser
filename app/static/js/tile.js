@@ -140,6 +140,22 @@ class Tile {
     }
 
     /**
+     * Get the effective confidence for badge display based on current mode.
+     * - duplicates mode: use exact_group_confidence
+     * - similar mode: use similar_group_confidence
+     * - default: use timestamp confidence
+     * @returns {string} confidence value (high/medium/low/none)
+     */
+    getEffectiveConfidence() {
+        const { file } = this;
+        if (!file) return 'none';
+        const mode = Tile.getCurrentMode();
+        if (mode === 'duplicates') return file.exact_group_confidence || file.confidence || 'none';
+        if (mode === 'similar') return file.similar_group_confidence || file.confidence || 'none';
+        return file.confidence || 'none';
+    }
+
+    /**
      * Build inner HTML for the tile
      * Mode-aware: only renders badges relevant to current mode
      */
@@ -148,8 +164,9 @@ class Tile {
         if (!file) return '';
 
         const imgSrc = this.getThumbnailSrc();
-        const confidenceClass = `confidence-${file.confidence}`;
-        const confidenceLabel = file.confidence?.charAt(0).toUpperCase() || '?';
+        const effectiveConfidence = this.getEffectiveConfidence();
+        const confidenceClass = `confidence-${effectiveConfidence}`;
+        const confidenceLabel = effectiveConfidence?.charAt(0).toUpperCase() || '?';
         const isVideo = file.mime_type?.startsWith('video/');
         const isReviewed = !!file.reviewed_at;
         const isFailed = !!file.processing_error;
@@ -474,8 +491,9 @@ class Tile {
 
         // Rebuild badges HTML (mode-aware)
         const file = this.file;
-        const confidenceClass = `confidence-${file.confidence}`;
-        const confidenceLabel = file.confidence?.charAt(0).toUpperCase() || '?';
+        const effectiveConfidence = this.getEffectiveConfidence();
+        const confidenceClass = `confidence-${effectiveConfidence}`;
+        const confidenceLabel = effectiveConfidence?.charAt(0).toUpperCase() || '?';
         const isVideo = file.mime_type?.startsWith('video/');
         const isReviewed = !!file.reviewed_at;
         const isFailed = !!file.processing_error;

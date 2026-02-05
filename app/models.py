@@ -76,6 +76,8 @@ class File(db.Model):
     # File metadata
     file_size_bytes: Mapped[Optional[int]] = mapped_column(Integer)
     mime_type: Mapped[Optional[str]] = mapped_column(String(100))
+    image_width: Mapped[Optional[int]] = mapped_column(Integer)
+    image_height: Mapped[Optional[int]] = mapped_column(Integer)
 
     # Timestamp detection
     detected_timestamp: Mapped[Optional[datetime]] = mapped_column(DateTime)  # Timezone-aware

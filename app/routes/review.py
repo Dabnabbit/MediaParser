@@ -30,9 +30,7 @@ def get_file_detail(file_id):
     Returns:
         JSON with complete file details
     """
-    from app.lib.metadata import get_image_dimensions
     from app.lib.confidence import build_timestamp_options
-    from pathlib import Path
 
     file = db.session.get(File, file_id)
 
@@ -62,14 +60,6 @@ def get_file_detail(file_id):
         except json.JSONDecodeError:
             timestamp_candidates = None
 
-    # Extract dimensions on-demand (not stored in DB)
-    width, height = None, None
-    if file.storage_path:
-        try:
-            width, height = get_image_dimensions(Path(file.storage_path))
-        except Exception:
-            pass  # Non-fatal, just won't have dimensions
-
     return jsonify({
         'id': file.id,
         'original_filename': file.original_filename,
@@ -92,8 +82,8 @@ def get_file_detail(file_id):
         'similar_group_id': file.similar_group_id,
         'similar_group_confidence': file.similar_group_confidence,
         'similar_group_type': file.similar_group_type,
-        'width': width,
-        'height': height
+        'width': file.image_width,
+        'height': file.image_height
     }), 200
 
 

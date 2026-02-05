@@ -241,9 +241,13 @@ class ViewportDetailsPanel {
         this.currentFile = file;
         this.renderFileDetails();
 
-        // Notify timestamp handler
-        if (window.timestampHandler) {
-            // Use the viewport's timestamp container
+        // Notify timestamp handler (only in unreviewed/reviewed modes)
+        const showTimestamp = this.currentMode === 'unreviewed' || this.currentMode === 'reviewed';
+        const timestampSection = this.panel.querySelector('#vp-timestamp-section');
+        if (timestampSection) {
+            timestampSection.style.display = showTimestamp ? '' : 'none';
+        }
+        if (showTimestamp && window.timestampHandler) {
             window.timestampHandler.setContainer(this.elements.timestampContainer);
             window.timestampHandler.loadForFile(file);
         }

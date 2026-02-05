@@ -100,14 +100,6 @@ class FilterHandler {
     setMode(mode) {
         if (this.currentMode === mode) return;
 
-        // Warn if trying to skip ahead in workflow
-        if (mode === 'similar' && this.counts.duplicates > 0) {
-            this._showModeWarning('Resolve duplicate groups first for best results');
-        }
-        if (mode === 'unreviewed' && (this.counts.duplicates > 0 || this.counts.similar > 0)) {
-            this._showModeWarning('Resolve duplicate and similar groups first for best results');
-        }
-
         this.currentMode = mode;
 
         // All modes now use the unified grid view - duplicates appear in grid like other files
@@ -183,7 +175,8 @@ class FilterHandler {
         // Confidence levels that are visible
         const visibleLevels = Array.from(this.visibleConfidence);
         // Include 'none' with 'low' since they're both uncertain timestamps
-        if (visibleLevels.includes('low')) {
+        // But not in group modes — group confidence never has a 'none' value
+        if (visibleLevels.includes('low') && this.currentMode !== 'duplicates' && this.currentMode !== 'similar') {
             visibleLevels.push('none');
         }
         params.set('confidence', visibleLevels.join(','));
@@ -300,40 +293,6 @@ class FilterHandler {
         return 'reviewed';
     }
 
-    /**
-     * Show a brief warning toast message
-     * @param {string} message
-     */
-    _showModeWarning(message) {
-        // Check if toast system exists
-        if (window.toast) {
-            window.toast(message, 'warning');
-            return;
-        }
-
-        // Fallback: create a simple toast
-        const toast = document.createElement('div');
-        toast.className = 'mode-warning-toast';
-        toast.textContent = message;
-        toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--color-warning);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 10000;
-            animation: slideInRight 0.3s ease;
-        `;
-        document.body.appendChild(toast);
-
-        setTimeout(() => {
-            toast.style.animation = 'slideOutRight 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
 }
 
 /**

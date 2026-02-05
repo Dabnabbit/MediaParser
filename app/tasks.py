@@ -90,6 +90,8 @@ def _commit_pending_updates(db, pending_updates: list):
         file_obj.timestamp_source = result['timestamp_source']
         file_obj.confidence = ConfidenceLevel(result['confidence'])
         file_obj.timestamp_candidates = result['timestamp_candidates']
+        file_obj.image_width = result.get('image_width')
+        file_obj.image_height = result.get('image_height')
 
         # Set thumbnail path if generated
         if update.get('thumbnail_path'):

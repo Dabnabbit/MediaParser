@@ -113,7 +113,8 @@ def get_best_datetime(
 
 def get_all_datetime_candidates(
     file_path: Path | str,
-    default_tz: str = 'UTC'
+    default_tz: str = 'UTC',
+    metadata: dict | None = None
 ) -> list[tuple[datetime, str]]:
     """
     Get all available datetime candidates from file metadata.
@@ -126,11 +127,13 @@ def get_all_datetime_candidates(
         file_path: Path to the file
         default_tz: Timezone to assume for EXIF dates without timezone info
                    (QuickTime dates are assumed UTC per spec)
+        metadata: Pre-extracted metadata dict (avoids redundant ExifTool call)
 
     Returns:
         List of (datetime, source_tag) tuples
     """
-    metadata = extract_metadata(file_path)
+    if metadata is None:
+        metadata = extract_metadata(file_path)
     found_dates: list[tuple[datetime, str]] = []
 
     for tag in DATETIME_TAGS:
@@ -171,14 +174,19 @@ def get_file_type(file_path: Path | str) -> Optional[str]:
     return None
 
 
-def get_image_dimensions(file_path: Path | str) -> tuple[Optional[int], Optional[int]]:
+def get_image_dimensions(file_path: Path | str, metadata: dict | None = None) -> tuple[Optional[int], Optional[int]]:
     """
     Get image width and height from metadata.
+
+    Args:
+        file_path: Path to the file
+        metadata: Pre-extracted metadata dict (avoids redundant ExifTool call)
 
     Returns:
         Tuple of (width, height) or (None, None) if not available
     """
-    metadata = extract_metadata(file_path)
+    if metadata is None:
+        metadata = extract_metadata(file_path)
 
     width = metadata.get('EXIF:ImageWidth') or metadata.get('File:ImageWidth')
     height = metadata.get('EXIF:ImageHeight') or metadata.get('File:ImageHeight')
