@@ -404,44 +404,51 @@ body.viewport-active {
    VIEW MODE: COMPARE (equal size tiles)
    ============================================ */
 
+/* Compare mode: 3 equal tiles filling available width */
+.thumbnail-grid.viewport-mode.view-compare {
+    --vp-compare-gap: 12px;
+    --vp-compare-padding: 40px;
+    /* Each tile takes ~1/3 of available width minus gaps and padding */
+    --vp-compare-tile-width: calc((100vw - var(--vp-compare-padding) * 2 - var(--vp-compare-gap) * 2) / 3);
+    --vp-compare-tile-height: min(70vh, 600px);
+}
+
+/* All three tiles same size */
 .thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="prev"],
-.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev,
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="current"],
 .thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="next"],
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev,
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-current,
 .thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-next {
-    width: var(--vp-compare-size, min(30vw, 400px));
-    height: var(--vp-compare-size, min(50vh, 450px));
+    width: var(--vp-compare-tile-width);
+    height: var(--vp-compare-tile-height);
     opacity: 1;
+}
+
+/* Position tiles side by side: prev | current | next */
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="prev"],
+.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev {
+    left: var(--vp-compare-padding);
+    transform: translate(0, -50%);
 }
 
 .thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="current"],
 .thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-current {
-    width: var(--vp-compare-size, min(30vw, 400px));
-    height: var(--vp-compare-size, min(50vh, 450px));
-}
-
-/* Tighter spacing in compare mode */
-.thumbnail-grid.viewport-mode.view-compare {
-    --vp-compare-gap: 16px;
-    --vp-compare-offset: calc(var(--vp-compare-size, min(30vw, 400px)) + var(--vp-compare-gap));
-}
-
-.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="prev"],
-.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev {
-    transform: translate(calc(-50% - var(--vp-compare-offset) / 2 - var(--vp-compare-gap)), -50%);
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="next"],
 .thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-next {
-    transform: translate(calc(-50% + var(--vp-compare-offset) / 2 + var(--vp-compare-gap)), -50%);
+    left: auto;
+    right: var(--vp-compare-padding);
+    transform: translate(0, -50%);
 }
 
 /* Show filename on all tiles in compare mode */
-.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="prev"] .thumbnail-filename,
-.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="next"] .thumbnail-filename,
-.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev .thumbnail-filename,
-.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-next .thumbnail-filename {
+.thumbnail-grid.viewport-mode.view-compare .thumbnail .thumbnail-filename {
     opacity: 1;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
 }
 
 /* ============================================
@@ -471,16 +478,19 @@ body.viewport-active {
 
 /* Adjust compare mode for details panel */
 .thumbnail-grid.viewport-mode.view-compare.with-details {
-    --vp-compare-size: min(calc((100vw - 420px) / 3.5), 350px);
+    /* Recalculate for reduced width (subtract 380px panel) */
+    --vp-compare-tile-width: calc((100vw - 380px - var(--vp-compare-padding) * 2 - var(--vp-compare-gap) * 2) / 3);
 }
 
-.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail[data-vp-pos="prev"],
-.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail.vp-prev,
+/* Reposition tiles within the reduced space */
 .thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail[data-vp-pos="current"],
-.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail.vp-current,
+.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail.vp-current {
+    left: calc((100vw - 380px) / 2);
+}
+
 .thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail[data-vp-pos="next"],
 .thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail.vp-next {
-    left: calc((100vw - 380px) / 2);
+    right: calc(380px + var(--vp-compare-padding));
 }
 
 /* ============================================

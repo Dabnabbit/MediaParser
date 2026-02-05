@@ -303,6 +303,11 @@ class ViewportController {
     notifyNavigation(direction) {
         const file = this.getCurrentFile();
 
+        // In compare mode, ensure all visible tiles have full resolution
+        if (this.viewMode === ViewportController.VIEW_MODES.COMPARE) {
+            this.upgradeVisibleTilesToFullRes();
+        }
+
         if (this.options.onNavigate) {
             this.options.onNavigate(direction, file, this.currentIndex);
         }
@@ -431,6 +436,11 @@ class ViewportController {
 
         this.viewMode = mode;
 
+        // In compare mode, all visible tiles need full resolution
+        if (mode === ViewportController.VIEW_MODES.COMPARE) {
+            this.upgradeVisibleTilesToFullRes();
+        }
+
         // Update toggle button states
         if (this.modeToggle) {
             this.modeToggle.querySelectorAll('.viewport-mode-btn').forEach(btn => {
@@ -442,6 +452,24 @@ class ViewportController {
         window.dispatchEvent(new CustomEvent('viewportModeChange', {
             detail: { mode, file: this.getCurrentFile() }
         }));
+    }
+
+    /**
+     * Upgrade all visible tiles (prev, current, next) to full resolution
+     */
+    upgradeVisibleTilesToFullRes() {
+        const currentId = this.navigationFiles[this.currentIndex];
+        const prevId = this.navigationFiles[this.currentIndex - 1];
+        const nextId = this.navigationFiles[this.currentIndex + 1];
+
+        [prevId, currentId, nextId].forEach(fileId => {
+            if (fileId !== undefined) {
+                const tile = this.tileManager.getTile(fileId);
+                if (tile && tile.hasFullResSource()) {
+                    tile.setResolution('full');
+                }
+            }
+        });
     }
 
     /**
