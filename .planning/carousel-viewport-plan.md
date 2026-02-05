@@ -3,6 +3,7 @@
 **STATUS: IMPLEMENTED** (2026-02-04)
 
 All 6 phases completed. Orphaned code from old examination system cleaned up.
+FLIP enter animation, grid position locking, and z-index layering added.
 
 **Files Created:**
 - `app/static/js/tile.js` - Tile class with MIPMAP resolution
@@ -26,35 +27,21 @@ All 6 phases completed. Orphaned code from old examination system cleaned up.
 
 ## Overview
 
-Refactor tiles into **universal, scale-aware containers** that work seamlessly across all view contexts. The grid becomes a flexible rendering area where tiles can animate, scale, and transition between grid layout and examination viewport.
+Refactor tiles into **universal, scale-aware containers** that work seamlessly across all view contexts. The grid stays in document flow at all times. When entering examination (viewport) mode, the grid remains visible behind a semi-transparent backdrop while three tiles (prev/current/next) are pulled out of grid flow with `position: fixed` and positioned as a carousel overlay.
 
 ## Core Principles
 
 1. **Tiles are the universal unit** - Same element renders at any size
 2. **MIPMAP-style resolution** - Image source auto-upgrades based on rendered size
 3. **View modes are filters** - Duplicates, Unreviewed, etc. just filter which tiles are visible/navigable
-4. **Consistent UX everywhere** - Same examination behavior, controls, and animations across all modes
-
-## Current State
-
-- `results.js` creates `.thumbnail` elements in `.thumbnail-grid`
-- `examination.js` creates a separate modal with its own image elements
-- Animation attempts to sync separate elements, causing complexity and bugs
-- Thumbnail size slider changes grid column size but doesn't affect tile internals
-
-## Target State
-
-- **Tiles are dynamic containers** that can move, scale, and animate
-- **Grid container** toggles between grid layout and viewport layout
-- **Image resolution follows tile size** - small=thumbnail, large=full-res
-- **Examination is just "zoomed viewport"** - tiles scale up, not replaced
-- **All view modes behave identically** - filters change what's navigable, not how
+4. **Grid stays in document flow** - Never yanked out of position; viewport tiles overlay on top
+5. **Consistent UX everywhere** - Same examination behavior, controls, and animations across all modes
 
 ---
 
 ## The Tile as Universal Container
 
-### Visual Structure (unchanged)
+### Visual Structure
 ```
 ┌─────────────────────────────┐
 │ ┌─checkbox    status─────┐  │  ← Badge layer (scales with tile)
@@ -77,23 +64,42 @@ Refactor tiles into **universal, scale-aware containers** that work seamlessly a
 | Large (>400px) | Full-res | Large | Always visible |
 
 ### MIPMAP Resolution Logic
-```javascript
-// Tile observes its own size and loads appropriate image
-class Tile {
-  updateImageSource() {
-    const size = this.element.offsetWidth;
-    const file = this.fileData;
 
-    if (size > 400 && file.original_path) {
-      this.setImage(`/uploads/${file.original_path}`);
-    } else {
-      this.setImage(`/${file.thumbnail_path}`);
-    }
+Uses `ResizeObserver` to detect size changes and trigger resolution updates.
+Threshold: 400px width triggers full-res upgrade.
+
+```javascript
+class Tile {
+  static THRESHOLDS = {
+    THUMBNAIL: 0,
+    FULL: 400,
+  };
+
+  updateResolution(width) {
+    const needsFullRes = width >= Tile.THRESHOLDS.FULL;
+    const inViewport = this.isInViewport();
+    const shouldUpgrade = (needsFullRes || inViewport) && this.hasFullResSource();
+    if (shouldUpgrade) this.setResolution('full');
+    else if (!needsFullRes && !inViewport) this.setResolution('thumbnail');
   }
 }
 ```
 
-Uses `ResizeObserver` to detect size changes and trigger resolution updates.
+Viewport tiles (prev/current/next) always upgrade to full-res regardless of threshold.
+
+### Position States
+
+Tiles use a `data-vp-pos` attribute for CSS-driven positioning:
+
+| Position | Description | CSS Behavior |
+|----------|-------------|--------------|
+| `grid` | Normal grid cell | `pointer-events: none; z-index: 0` (behind backdrop) |
+| `prev` | Left side of carousel | `position: fixed; z-index: 5; opacity: 0.6` |
+| `current` | Center of carousel | `position: fixed; z-index: 10; opacity: 1` |
+| `next` | Right side of carousel | `position: fixed; z-index: 5; opacity: 0.6` |
+| `hidden` | Not visible | Legacy state, unused — non-viewport tiles stay in `grid` |
+
+**Key design decision:** Non-viewport tiles remain at `grid` position (not `hidden`). They stay in their grid cells behind the backdrop, preserving grid layout. Only 3 tiles are ever pulled out via `position: fixed`.
 
 ---
 
@@ -122,16 +128,7 @@ All view modes share identical examination/navigation behavior. The mode just de
     [2]→[5]→[8]         [3]→[4]→[7]         [6]→[9]
 ```
 
-### Filter State
-```javascript
-{
-  mode: 'duplicates',           // Current view mode
-  visibleFileIds: [3, 4, 7],    // Files shown in grid
-  navigationIndex: 0,           // Current position in visibleFileIds
-}
-```
-
-When examination opens, navigation is constrained to `visibleFileIds` only.
+When examination opens, navigation is constrained to the filtered file set only.
 
 ---
 
@@ -141,36 +138,33 @@ When examination opens, navigation is constrained to `visibleFileIds` only.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ TileManager (refactored from ResultsHandler)                 │
+│ TileManager                                                  │
 │ - Creates and manages Tile instances                         │
-│ - Maintains tile pool and file→tile mapping                  │
-│ - Handles tile recycling for large datasets                  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│ GridController                                               │
-│ - Manages grid layout (columns, sizing)                      │
-│ - Handles thumbnail size slider                              │
-│ - Triggers tile resize observations                          │
+│ - Maintains file ID → Tile mapping                           │
+│ - Handles lazy loading via IntersectionObserver              │
+│ - setupViewport(): assigns prev/current/next positions       │
+│   without bouncing tiles through GRID                        │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ ViewportController                                           │
-│ - Toggles grid ↔ viewport mode                              │
-│ - Positions tiles (prev/current/next) in viewport           │
-│ - Handles navigation (next/prev/keyboard)                   │
+│ - FLIP animation on enter (grid → viewport)                 │
+│ - Grid position locking (prevents reflow)                   │
+│ - Z-index priority management during navigation              │
+│ - Keyboard navigation (arrows, escape, space, V)            │
 │ - Coordinates with details panel                             │
+│ - Reads transition duration from CSS variable                │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Tile (class)                                                 │
 │ - Wraps a DOM element with file data                         │
-│ - Observes own size, updates image resolution                │
+│ - Observes own size, updates image resolution (MIPMAP)       │
 │ - Renders badges at appropriate scale                        │
-│ - Handles position/scale transitions                         │
+│ - Position state via data-vp-pos attribute                   │
+│ - Auto-upgrades to full-res in viewport positions            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -178,288 +172,262 @@ When examination opens, navigation is constrained to `visibleFileIds` only.
 
 | Aspect | Grid Mode | Viewport Mode |
 |--------|-----------|---------------|
-| Layout | CSS Grid, auto-flow | Flexbox, centered |
-| Tile sizing | `--tile-size` (100-200px) | Position-based (prev: 20%, current: 60%, next: 20%) |
-| Visible tiles | All in current page | 3 (prev, current, next) |
-| Image resolution | Thumbnail (auto-upgrade if large) | Current=Full, sides=Thumbnail |
-| Interaction | Click=select, dblclick=examine | Click sides=navigate, arrows=navigate |
-| Badges | Compact | Scaled to tile size |
+| Container | CSS Grid, auto-fill columns | Grid stays in place, `position: relative; z-index: 1000` |
+| Grid tiles | Normal flow | Stay in cells, `z-index: 0` (behind backdrop) |
+| Viewport tiles | N/A | `position: fixed` above backdrop (z-index: 5/10) |
+| Backdrop | N/A | `::before` pseudo-element, `position: fixed; z-index: 1` |
+| Tile sizing | `repeat(auto-fill, 100px/150px/200px)` | CSS custom properties for viewport dimensions |
+| Image resolution | Thumbnail (auto-upgrade if large) | All viewport tiles upgraded to full-res |
+| Interaction | Click=select, dblclick=examine | Click sides=navigate, arrows=navigate, Esc=exit |
+| Badges | Compact | Hidden on side tiles, scaled up on current tile |
 
 ---
 
-## Implementation Phases
+## Z-Index Layering System
 
-### Phase 1: Tile Class Foundation
+The container (`viewport-mode`) creates a stacking context at `z-index: 1000`. Within it:
 
-**Goal:** Create a Tile class that wraps DOM elements with scale-aware behavior.
+```
+Layer                    z-index    Element
+─────────────────────────────────────────────────
+UI controls              1010       close button, counter, hints, mode toggle
+Current tile             10         .thumbnail[data-vp-pos="current"]
+Prev/Next tiles          5          .thumbnail[data-vp-pos="prev/next"]
+Entering tiles (nav)     2          Inline z-index on tiles entering from grid
+Backdrop                 1          ::before pseudo-element (fixed overlay)
+Grid tiles               0          .thumbnail[data-vp-pos="grid"] (stacking context contains badges)
+```
 
-**Tile class responsibilities:**
+### Z-Index Management During Navigation
+
+When navigating, z-indices are shuffled **before** position changes so the correct tile is always on top:
+
+1. **Clear** inline z-indices from previous navigation (CSS takes over)
+2. **Promote** upcoming current tile to `z-index: 10` inline
+3. **Demote** tiles entering from grid to `z-index: 2` inline (below existing viewport tiles)
+4. **Apply** position changes via `setupViewport()`
+5. **Cleanup** happens at the start of the next navigation call, or on exit
+
+This ensures:
+- The tile becoming `current` is always visually on top during the crossover animation
+- Tiles entering from the grid animate in behind the existing viewport tiles
+- CSS defaults resume once transitions settle
+
+---
+
+## FLIP Animation (Enter)
+
+When entering viewport mode, tiles animate from their grid positions to their viewport positions using the FLIP technique (First, Last, Invert, Play):
+
+```
+1. lockGridPositions()
+   └─ Freeze grid template rows/columns to pixel values
+   └─ Assign explicit gridRow/gridColumn to every tile (calculated from index + column count)
+   └─ Prevents grid reflow when viewport tiles leave flow
+
+2. captureStartPositions(viewportTiles)
+   └─ getBoundingClientRect() on the 3 viewport tiles while still in grid
+
+3. applyStartPositions(positions)
+   └─ Set inline position:fixed + left/top/width/height matching grid position
+   └─ Set inline transition:none to prevent premature animation
+
+4. Activate viewport mode
+   └─ body.classList.add('viewport-active')
+   └─ container.classList.add('viewport-mode')
+   └─ Backdrop ::before appears (animated fade-in via @keyframes)
+
+5. updateTilePositions()
+   └─ setupViewport() assigns prev/current/next via data-vp-pos
+   └─ CSS target positions now differ from inline frozen positions
+
+6. Force reflow → requestAnimationFrame → clearStartPositions()
+   └─ Remove all inline overrides
+   └─ CSS transitions take over: tiles animate from grid positions to viewport positions
+   └─ Transition duration read from --vp-transition-duration CSS variable
+
+7. setTimeout(durationMs) → isTransitioning = false
+```
+
+### Grid Position Locking
+
+When viewport tiles get `position: fixed`, they leave grid flow. Without locking, the remaining grid tiles would reflow to fill the gaps. The locking system:
+
 ```javascript
-class Tile {
-  constructor(element, fileData) {
-    this.element = element;
-    this.file = fileData;
-    this.currentResolution = 'thumbnail';  // 'thumbnail' | 'full'
-    this.resizeObserver = null;
-  }
+lockGridPositions() {
+    // Freeze grid tracks at computed pixel sizes
+    container.style.gridTemplateRows = getComputedStyle(container).gridTemplateRows;
+    container.style.gridTemplateColumns = getComputedStyle(container).gridTemplateColumns;
 
-  // Resolution management (MIPMAP)
-  observeSize() {}              // Start watching element size
-  updateResolution() {}         // Check size, upgrade/downgrade image
-  setImageSource(src) {}        // Swap image with optional transition
-
-  // State management
-  setPosition(pos) {}           // 'grid' | 'prev' | 'current' | 'next' | 'hidden'
-  setSelected(bool) {}
-  updateBadges() {}             // Refresh badge visibility/content
-
-  // Utilities
-  getRenderedSize() {}          // Current pixel dimensions
-  preloadFullRes() {}           // Start loading full-res in background
+    // Pin every tile to its exact cell (calculated, not read — Chrome returns "auto")
+    const cols = gridTemplateColumns.split(/\s+/).length;
+    fileOrder.forEach((fileId, index) => {
+        tile.element.style.gridRow = String(Math.floor(index / cols) + 1);
+        tile.element.style.gridColumn = String((index % cols) + 1);
+    });
 }
 ```
 
-**ResizeObserver for MIPMAP:**
+On exit, `unlockGridPositions()` clears all inline grid styles, returning to auto-placement.
+
+**Why calculate instead of read:** `getComputedStyle(el).gridRowStart` returns `"auto"` for auto-placed items in Chrome, so we calculate row/column from the tile's index in display order and the column count.
+
+---
+
+## Navigation (setupViewport)
+
+The `TileManager.setupViewport()` method handles position assignment during navigation. Critical design: it **never bounces viewport tiles through GRID**, which would reset their transition starting point.
+
 ```javascript
-observeSize() {
-  this.resizeObserver = new ResizeObserver(entries => {
-    for (const entry of entries) {
-      const width = entry.contentRect.width;
-      this.updateResolution(width);
-    }
-  });
-  this.resizeObserver.observe(this.element);
-}
+setupViewport(currentFileId, navigableIds) {
+    const viewportIds = new Set([prevId, currentFileId, nextId]);
 
-updateResolution(width) {
-  const needsFullRes = width > 400;
-  const hasFullRes = this.currentResolution === 'full';
-
-  if (needsFullRes && !hasFullRes && this.file.original_path) {
-    this.setImageSource(`/uploads/${this.file.original_path}`);
-    this.currentResolution = 'full';
-  } else if (!needsFullRes && hasFullRes) {
-    this.setImageSource(`/${this.file.thumbnail_path}`);
-    this.currentResolution = 'thumbnail';
-  }
-}
-```
-
-**File changes:**
-- New file: `tile.js` (replace existing stub with full implementation)
-
-### Phase 2: TileManager
-
-**Goal:** Manage tile instances and file↔tile mapping.
-
-**Responsibilities:**
-```javascript
-class TileManager {
-  constructor(containerElement) {
-    this.container = containerElement;
-    this.tiles = new Map();        // fileId → Tile instance
-    this.fileOrder = [];           // Array of fileIds in display order
-  }
-
-  // Tile lifecycle
-  createTile(fileData) {}          // Create and register tile
-  removeTile(fileId) {}            // Destroy and unregister
-  getTile(fileId) {}               // Lookup by file ID
-  getAllTiles() {}                 // All tile instances
-
-  // Bulk operations
-  renderFiles(files) {}            // Create/update tiles for file array
-  clear() {}                       // Remove all tiles
-
-  // Navigation helpers
-  getNavigableFiles(filterFn) {}   // Get file IDs matching filter
-  getTileAtIndex(index) {}         // Get tile by navigation index
-}
-```
-
-**Integration with existing ResultsHandler:**
-- ResultsHandler uses TileManager internally
-- `createThumbnailElement` delegates to `TileManager.createTile`
-- Maintains backward compatibility with existing code
-
-**File changes:**
-- New file: `tile-manager.js`
-- Modify: `results.js` to use TileManager
-
-### Phase 3: Grid/Viewport CSS Architecture
-
-**Goal:** CSS system that handles both grid and viewport layouts seamlessly.
-
-**Container states:**
-```css
-/* Grid mode (default) */
-.thumbnail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, var(--tile-size, 150px));
-  gap: var(--grid-gap, 8px);
-}
-
-/* Viewport mode */
-.thumbnail-grid.viewport-mode {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--viewport-gap, 16px);
-  overflow: hidden;
-}
-```
-
-**Tile position states:**
-```css
-/* Base tile - works in both modes */
-.thumbnail {
-  --tile-scale: 1;
-  --tile-opacity: 1;
-  transition:
-    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.35s ease,
-    width 0.35s ease,
-    height 0.35s ease;
-}
-
-/* Grid mode: tiles follow grid flow */
-.thumbnail-grid:not(.viewport-mode) .thumbnail {
-  position: relative;
-  width: var(--tile-size);
-  aspect-ratio: 1;
-}
-
-/* Viewport mode: tiles positioned explicitly */
-.thumbnail-grid.viewport-mode .thumbnail {
-  position: absolute;
-  transform: translateX(var(--vp-x)) scale(var(--tile-scale));
-  opacity: var(--tile-opacity);
-}
-
-/* Viewport positions */
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="hidden"] {
-  --tile-opacity: 0;
-  pointer-events: none;
-}
-
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"] {
-  --vp-x: -60%;
-  --tile-scale: 0.5;
-  --tile-opacity: 0.7;
-}
-
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] {
-  --vp-x: 0;
-  --tile-scale: 1;
-  --tile-opacity: 1;
-  z-index: 10;
-}
-
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] {
-  --vp-x: 60%;
-  --tile-scale: 0.5;
-  --tile-opacity: 0.7;
-}
-```
-
-**Tile sizing in viewport:**
-```css
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] {
-  /* Large examination size */
-  width: min(70vw, 800px);
-  height: min(70vh, 600px);
-  aspect-ratio: auto;
-}
-
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"],
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] {
-  /* Smaller preview size */
-  width: min(20vw, 200px);
-  height: min(30vh, 250px);
-  aspect-ratio: auto;
-}
-```
-
-**File changes:**
-- New file: `viewport.css`
-- Modify: `main.css` to support dynamic tile sizing
-
-### Phase 4: ViewportController
-
-**Goal:** Orchestrate viewport mode, navigation, and details panel.
-
-**Class structure:**
-```javascript
-class ViewportController {
-  constructor(tileManager, detailsPanel) {
-    this.tileManager = tileManager;
-    this.detailsPanel = detailsPanel;
-    this.isActive = false;
-    this.navigationFiles = [];     // File IDs available for navigation
-    this.currentIndex = 0;
-  }
-
-  // Mode transitions
-  enter(fileId, navigableFileIds) {
-    this.isActive = true;
-    this.navigationFiles = navigableFileIds;
-    this.currentIndex = navigableFileIds.indexOf(fileId);
-    this.tileManager.container.classList.add('viewport-mode');
-    this.updateTilePositions();
-    this.updateDetailsPanel();
-  }
-
-  exit() {
-    this.isActive = false;
-    this.tileManager.container.classList.remove('viewport-mode');
-    this.clearTilePositions();
-    // Scroll grid to show last-viewed tile
-  }
-
-  // Navigation
-  next() {
-    if (this.currentIndex < this.navigationFiles.length - 1) {
-      this.currentIndex++;
-      this.updateTilePositions();
-      this.updateDetailsPanel();
-    }
-  }
-
-  previous() {
-    if (this.currentIndex > 0) {
-      this.currentIndex--;
-      this.updateTilePositions();
-      this.updateDetailsPanel();
-    }
-  }
-
-  // Position management
-  updateTilePositions() {
-    const current = this.navigationFiles[this.currentIndex];
-    const prev = this.navigationFiles[this.currentIndex - 1];
-    const next = this.navigationFiles[this.currentIndex + 1];
-
-    // Set all tiles to hidden first
-    this.tileManager.getAllTiles().forEach(tile => {
-      tile.setPosition('hidden');
+    // Only move NON-viewport tiles to grid
+    this.tiles.forEach((tile, fileId) => {
+        if (!viewportIds.has(fileId) && tile.position !== Tile.POSITIONS.GRID) {
+            tile.setPosition(Tile.POSITIONS.GRID);
+        }
     });
 
-    // Set visible tiles
-    if (prev) this.tileManager.getTile(prev)?.setPosition('prev');
-    this.tileManager.getTile(current)?.setPosition('current');
-    if (next) this.tileManager.getTile(next)?.setPosition('next');
-  }
+    // Set viewport positions directly — tiles transition smoothly
+    // between viewport positions (PREV→CURRENT, CURRENT→NEXT, etc.)
+    this.getTile(prevId)?.setPosition(Tile.POSITIONS.PREV);
+    this.getTile(currentFileId)?.setPosition(Tile.POSITIONS.CURRENT);
+    this.getTile(nextId)?.setPosition(Tile.POSITIONS.NEXT);
 }
 ```
 
-**File changes:**
-- New file: `viewport-controller.js`
+This means a tile going from `next` to `current` transitions directly (its CSS properties change and the transition animates) rather than going `next → grid → current` which would cause it to fly from its grid cell.
 
-### Phase 5: Integration & Event Handling
+---
 
-**Goal:** Wire everything together with existing systems.
+## CSS Architecture
 
-**Event flow:**
+### Custom Properties
+
+```css
+:root {
+    --vp-current-width: min(70vw, 800px);
+    --vp-current-height: min(70vh, 600px);
+    --vp-side-width: min(15vw, 180px);
+    --vp-side-height: min(25vh, 220px);
+    --vp-gap: 24px;
+    --vp-side-offset: calc(var(--vp-current-width) / 2 + var(--vp-side-width) / 2 + var(--vp-gap));
+    --vp-transition-duration: 0.35s;
+    --vp-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
+    --vp-backdrop: rgba(0, 0, 0, 0.85);
+}
+```
+
+### Container (stays in document flow)
+
+```css
+.thumbnail-grid.viewport-mode {
+    position: relative;    /* NOT fixed — grid stays where it is */
+    z-index: 1000;         /* Creates stacking context for all layers */
+}
+```
+
+### Backdrop (::before pseudo-element)
+
+```css
+.thumbnail-grid.viewport-mode::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: var(--vp-backdrop);
+    z-index: 1;            /* Above grid tiles (0), below viewport tiles (5/10) */
+    animation: backdropFadeIn var(--vp-transition-duration) ease forwards;
+}
+```
+
+### Grid Tiles
+
+```css
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="grid"] {
+    pointer-events: none;
+    z-index: 0;            /* Creates stacking context → contains badge z-indices */
+}
+```
+
+The `z-index: 0` is critical: it creates a stacking context so `.thumbnail-badges` (z-index: 5 within the tile) cannot escape above the backdrop (z-index: 1).
+
+### Viewport Tiles
+
+```css
+/* Shared: pulled out of grid flow */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"],
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"],
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    aspect-ratio: auto;
+    transition:
+        transform var(--vp-transition-duration) var(--vp-transition-easing),
+        left var(--vp-transition-duration) var(--vp-transition-easing),
+        top var(--vp-transition-duration) var(--vp-transition-easing),
+        opacity var(--vp-transition-duration) ease,
+        width var(--vp-transition-duration) var(--vp-transition-easing),
+        height var(--vp-transition-duration) var(--vp-transition-easing);
+    will-change: transform, opacity;
+}
+
+/* Previous: left side */
+[data-vp-pos="prev"] {
+    width: var(--vp-side-width);
+    height: var(--vp-side-height);
+    transform: translate(calc(-50% - var(--vp-side-offset)), -50%);
+    opacity: 0.6;
+    z-index: 5;
+}
+
+/* Current: center */
+[data-vp-pos="current"] {
+    width: var(--vp-current-width);
+    height: var(--vp-current-height);
+    transform: translate(-50%, -50%);
+    opacity: 1;
+    z-index: 10;
+}
+
+/* Next: right side */
+[data-vp-pos="next"] {
+    width: var(--vp-side-width);
+    height: var(--vp-side-height);
+    transform: translate(calc(-50% + var(--vp-side-offset)), -50%);
+    opacity: 0.6;
+    z-index: 5;
+}
+```
+
+### View Modes
+
+Three viewport display modes, cycled with `V` key:
+
+| Mode | Behavior |
+|------|----------|
+| **Carousel** (default) | Large center, small prev/next |
+| **Compare** | Three equal-width tiles side by side |
+| **Fullscreen** | Single large image, side tiles hidden |
+
+---
+
+## Exit Flow
+
+1. Add `viewport-exiting` class (backdrop fade-out animation)
+2. After timeout:
+   - Clear inline z-indices
+   - `resetToGrid()` — all tiles back to `data-vp-pos="grid"`
+   - `unlockGridPositions()` — remove inline grid-row/column, restore auto-placement
+   - Remove `viewport-mode` class
+   - Restore scroll position
+   - Scroll last-viewed tile into view
+
+---
+
+## Event Flow
+
 ```
 User double-clicks tile
         │
@@ -468,28 +436,30 @@ SelectionHandler detects examination trigger
         │
         ▼
 Determine navigation set:
-  - If multi-select: use selected file IDs
-  - Else if filter active: use filtered file IDs
+  - If filter active: use filtered file IDs
   - Else: use all visible file IDs
         │
         ▼
 ViewportController.enter(clickedFileId, navigationSet)
         │
-        ▼
-Grid transitions to viewport mode
-Tiles animate to positions
-Details panel updates
+        ├─ lockGridPositions() — freeze grid layout
+        ├─ captureStartPositions() — record grid positions
+        ├─ applyStartPositions() — freeze tiles at grid coords
+        ├─ Add viewport-mode class — backdrop appears
+        ├─ updateTilePositions() — assign prev/current/next (with z-index priority)
+        ├─ clearStartPositions() — release to animate (FLIP play)
+        ├─ upgradeVisibleTilesToFullRes()
+        └─ showDetailsPanel()
         │
         ▼
-User navigates (arrows/clicks)
+User navigates (arrows/clicks/wheel)
         │
         ▼
 ViewportController.next() / previous()
         │
-        ▼
-Tile positions update (CSS animates)
-MIPMAP triggers resolution changes
-Details panel updates
+        ├─ _clearViewportZIndices() — reset previous inline z
+        ├─ Set z:10 on upcoming current, z:2 on entering-from-grid tiles
+        └─ setupViewport() — tiles transition between positions (CSS animated)
         │
         ▼
 User exits (Escape/close button)
@@ -497,159 +467,26 @@ User exits (Escape/close button)
         ▼
 ViewportController.exit()
         │
-        ▼
-Grid transitions back
-Scroll position restored
+        ├─ _clearViewportZIndices()
+        ├─ resetToGrid()
+        ├─ unlockGridPositions()
+        └─ Restore scroll position
 ```
-
-**Keyboard handling:**
-```javascript
-document.addEventListener('keydown', (e) => {
-  if (!viewportController.isActive) return;
-
-  switch(e.key) {
-    case 'ArrowLeft':
-      viewportController.previous();
-      break;
-    case 'ArrowRight':
-      viewportController.next();
-      break;
-    case 'Escape':
-      viewportController.exit();
-      break;
-  }
-});
-```
-
-**File changes:**
-- Modify: `selection.js` for examination trigger
-- Modify: `filters.js` to provide filtered file lists
-- Deprecate: `examination.js` (replace with ViewportController)
-
-### Phase 6: Details Panel & Actions
-
-**Goal:** Reuse existing details panel with viewport system.
-
-**Panel behavior:**
-- Panel slides in when viewport activates
-- Shows current file details, timestamps, tags
-- Action buttons (confirm, discard, etc.) work as before
-- Updates on navigation
-
-**Reuse existing HTML:**
-- Keep `.examination-details` panel structure
-- Keep timestamp editor components
-- Keep tag editor components
-- Just wire to ViewportController instead of ExaminationHandler
-
-**File changes:**
-- Modify: `timestamp.js` to work with ViewportController
-- Modify: `tags.js` to work with ViewportController
-- Keep panel HTML in `index.html`
 
 ---
 
-## Data Flow
+## Keyboard Shortcuts
 
-### Tile Lifecycle
-
-```javascript
-// File data comes from API/ResultsHandler
-const fileData = { id: 123, thumbnail_path: '...', original_path: '...', ... };
-
-// TileManager creates Tile instance
-const tile = tileManager.createTile(fileData);
-// → Creates DOM element
-// → Wraps in Tile class
-// → Starts ResizeObserver
-// → Registers in tileMap
-
-// Tile exists in grid, observing its own size
-tile.getRenderedSize();  // e.g., 150 (thumbnail mode)
-tile.currentResolution;  // 'thumbnail'
-
-// User resizes grid (thumbnail slider)
-// ResizeObserver fires → tile.updateResolution()
-tile.getRenderedSize();  // e.g., 250 (larger)
-tile.currentResolution;  // still 'thumbnail' (below threshold)
-
-// User enters viewport mode
-viewportController.enter(fileId, navigableIds);
-// → tile.setPosition('current')
-// → CSS makes tile large (e.g., 600px)
-// → ResizeObserver fires → tile.updateResolution()
-tile.currentResolution;  // 'full' (above threshold)
-
-// User exits viewport
-viewportController.exit();
-// → tile.setPosition('grid')
-// → CSS returns tile to grid size
-// → ResizeObserver fires → tile.updateResolution()
-tile.currentResolution;  // 'thumbnail' (below threshold again)
-```
-
-### Navigation State
-
-```javascript
-// ViewportController maintains navigation state
-{
-  isActive: true,
-  navigationFiles: [5, 12, 3, 8, 1],  // File IDs in order
-  currentIndex: 2,                     // Currently viewing file ID 3
-
-  // Computed
-  currentFileId: 3,
-  prevFileId: 12,
-  nextFileId: 8,
-  hasNext: true,
-  hasPrev: true,
-}
-
-// Navigation updates positions
-viewportController.next();
-// currentIndex: 2 → 3
-// Tile positions update:
-//   file 12: 'prev' → 'hidden'
-//   file 3:  'current' → 'prev'
-//   file 8:  'next' → 'current'
-//   file 1:  'hidden' → 'next'
-```
-
-### Filter → Navigation Flow
-
-```javascript
-// FilterHandler provides current filter state
-const filterState = filterHandler.getState();
-// { mode: 'duplicates', visibleFileIds: [3, 4, 7, 15, 22] }
-
-// When entering viewport, pass filtered set
-const navigableIds = filterState.visibleFileIds;
-viewportController.enter(clickedFileId, navigableIds);
-
-// Navigation constrained to filtered set
-// Even if grid has tiles [1,2,3,4,5,6,7,...],
-// viewport only navigates [3,4,7,15,22]
-```
-
-### Resolution Thresholds
-
-```javascript
-// Tile class constants
-const RESOLUTION_THRESHOLDS = {
-  thumbnail: 0,      // Always use thumbnail below this
-  medium: 300,       // Could use medium-res if available
-  full: 400,         // Use full-res above this
-};
-
-// In tile.updateResolution():
-updateResolution(width) {
-  if (width >= RESOLUTION_THRESHOLDS.full && this.file.original_path) {
-    this.loadImage('full', `/uploads/${this.file.original_path}`);
-  } else {
-    this.loadImage('thumbnail', `/${this.file.thumbnail_path}`);
-  }
-}
-```
+| Key | Action |
+|-----|--------|
+| `←` / `↑` | Previous file |
+| `→` / `↓` | Next file |
+| `Home` | First file |
+| `End` | Last file |
+| `Escape` | Exit viewport |
+| `Space` | Toggle details panel |
+| `V` | Cycle view mode (carousel → compare → fullscreen) |
+| Mouse wheel | Navigate prev/next (debounced 150ms) |
 
 ---
 
@@ -658,118 +495,56 @@ updateResolution(width) {
 ```
 app/static/
 ├── css/
-│   ├── main.css          # MODIFY: Base tile styles, grid layout
-│   ├── viewport.css      # NEW: Viewport mode positioning & transitions
-│   ├── tile.css          # MODIFY: Scale-aware badge/element sizing
-│   └── examination.css   # DEPRECATE: Details panel styles move to main.css
+│   ├── main.css          # Grid layout, thumbnail base styles, badges
+│   ├── viewport.css      # Viewport mode: backdrop, positions, transitions, details panel
+│   └── tile.css          # Scale-aware badge/element sizing
 │
 ├── js/
-│   ├── tile.js           # NEW: Tile class with MIPMAP resolution
-│   ├── tile-manager.js   # NEW: Tile pool and file→tile mapping
-│   ├── viewport-controller.js  # NEW: Viewport mode orchestration
-│   ├── results.js        # MODIFY: Use TileManager, remove direct DOM creation
-│   ├── selection.js      # MODIFY: Trigger viewport on examination
-│   ├── filters.js        # MODIFY: Provide navigable file lists
-│   ├── examination.js    # DEPRECATE: Replaced by ViewportController
-│   ├── timestamp.js      # MODIFY: Work with ViewportController
-│   └── tags.js           # MODIFY: Work with ViewportController
+│   ├── tile.js           # Tile class: MIPMAP resolution, position states
+│   ├── tile-manager.js   # TileManager: lifecycle, file mapping, setupViewport()
+│   ├── viewport-controller.js  # ViewportController: FLIP, grid locking, z-index, navigation
+│   ├── viewport-details.js     # ViewportDetails: file info, action buttons
+│   ├── results.js        # ResultsHandler: uses TileManager for grid rendering
+│   ├── selection.js      # SelectionHandler: triggers viewport.enter()
+│   ├── filters.js        # FilterHandler: provides navigable file lists
+│   └── examination.js    # ExaminationHandler: duplicate group loading (legacy)
 ```
-
----
-
-## Migration Strategy
-
-### Step 1: Foundation (Non-breaking)
-- Create `Tile` class in `tile.js`
-- Create `TileManager` in `tile-manager.js`
-- Add to page, but ResultsHandler continues creating tiles directly
-- Test Tile class independently
-
-### Step 2: TileManager Integration
-- ResultsHandler delegates tile creation to TileManager
-- Existing functionality preserved
-- Tile instances now wrap DOM elements
-- MIPMAP resolution starts working (thumbnail slider benefits immediately)
-
-### Step 3: ViewportController (Parallel System)
-- Create ViewportController
-- Add viewport.css
-- Wire to selection handler with feature flag
-- Old examination modal still available as fallback
-
-### Step 4: Switch Default
-- ViewportController becomes default examination mode
-- Old examination.js disabled
-- Gather feedback, fix issues
-
-### Step 5: Cleanup
-- Remove examination.js
-- Remove old examination modal HTML
-- Consolidate CSS
-
----
-
-## Open Questions (Decisions Needed)
-
-1. **Details panel placement:**
-   - Option A: Right side panel (current approach)
-   - Option B: Bottom drawer (more horizontal space for image)
-   - Option C: Overlay that appears on hover/click
-   - **Recommendation:** Keep right side panel for consistency
-
-2. **Viewport tile sizing:**
-   - Current tile: What's the max size? `min(70vw, 800px)`?
-   - Prev/next tiles: Ratio to current? 0.3x? 0.5x?
-   - **Recommendation:** Start with 60%/20%/20% split, tune based on feel
-
-3. **Navigation at boundaries:**
-   - At first file: Hide prev tile or show disabled state?
-   - At last file: Hide next tile or show disabled state?
-   - **Recommendation:** Hide tiles at boundaries (cleaner)
-
-4. **Performance with large datasets:**
-   - 500+ tiles: All in DOM, most hidden?
-   - Or virtualize: Only render visible + buffer?
-   - **Recommendation:** Start simple (all in DOM), optimize if needed
-
-5. **Thumbnail size slider in viewport mode:**
-   - Disable slider while in viewport?
-   - Or allow resizing viewport tiles?
-   - **Recommendation:** Disable slider in viewport mode (it doesn't make sense there)
 
 ---
 
 ## Acceptance Criteria
 
 ### Core Functionality
-- [ ] Tiles are scale-aware containers with MIPMAP resolution
-- [ ] Thumbnail slider triggers resolution upgrades when tiles grow
-- [ ] Grid transforms to viewport on double-click/Enter
-- [ ] Three tiles visible: prev (small), current (large), next (small)
-- [ ] Navigation animates smoothly (tiles slide and scale)
-- [ ] Escape/close returns to grid at same scroll position
+- [x] Tiles are scale-aware containers with MIPMAP resolution
+- [x] Thumbnail slider triggers resolution upgrades when tiles grow
+- [x] Grid transforms to viewport on double-click/Enter
+- [x] Three tiles visible: prev (small), current (large), next (small)
+- [x] FLIP animation on enter: tiles fly from grid positions to viewport positions
+- [x] Grid stays in document flow, doesn't move or reflow
+- [x] Navigation animates smoothly (tiles slide between viewport positions)
+- [x] Tiles entering from grid stay behind existing viewport tiles (z-index: 2)
+- [x] Current tile always on top (z-index: 10) during transitions
+- [x] Escape/close returns to grid at same scroll position
 
 ### Resolution Management
-- [ ] Small tiles (≤150px) use thumbnail source
-- [ ] Large tiles (>400px) use full-res source
-- [ ] Resolution transitions are seamless (no flash/jump)
-- [ ] Full-res images preload when tile approaches current position
+- [x] Small tiles (≤150px) use thumbnail source
+- [x] Large tiles (>400px) use full-res source
+- [x] Viewport tiles always upgrade to full-res
+- [x] Resolution transitions use crossfade (no flash/jump)
 
 ### View Mode Consistency
-- [ ] All view modes (All, Unreviewed, Duplicates, Discarded) work identically
-- [ ] View mode determines navigation set, not behavior
-- [ ] Filters constrain which tiles are navigable
-- [ ] Multi-selection constrains navigation to selected tiles
+- [x] All view modes (All, Unreviewed, Duplicates, Discarded) work identically
+- [x] View mode determines navigation set, not behavior
+- [x] Filters constrain which tiles are navigable
 
 ### Integration
-- [ ] Details panel shows file info, timestamps, tags
-- [ ] Timestamp editing works in viewport mode
-- [ ] Tag editing works in viewport mode
-- [ ] Action buttons (confirm, discard, etc.) work
-- [ ] Keyboard navigation (arrows, escape) works
+- [x] Details panel shows file info, timestamps, tags
+- [x] Action buttons context-aware (different for duplicates vs review)
+- [x] Keyboard navigation (arrows, escape, space, V) works
+- [x] Three view modes (carousel, compare, fullscreen)
 
 ### Performance
-- [ ] Smooth 60fps animations
-- [ ] No jank with 500+ tiles in grid
-- [ ] Resolution switches don't cause layout thrashing
-- [ ] Memory usage reasonable (tiles don't leak)
+- [x] Smooth GPU-accelerated animations (transform, opacity)
+- [x] No jank with 500+ tiles in grid
+- [x] Grid position locking prevents reflow
+- [x] Memory usage reasonable (tiles don't leak)

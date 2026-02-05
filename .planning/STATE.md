@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-04 11:00 UTC
+**Last Updated:** 2026-02-04
 
 ## Environment
 
@@ -13,15 +13,15 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Carousel Viewport System Complete (Out-of-band refactor)
+**Current Focus:** Phase 5 Complete, Viewport Refactor Complete — Ready for Phase 6 or Phase 7
 
 ## Current Position
 
-**Phase:** 5 of 7 - Duplicate Detection (Exact)
-**Plan:** 4 of ~4 (Phase complete)
-**Status:** Phase 5 complete
-**Last activity:** 2026-02-04 - Completed 05-04-PLAN.md (Duplicate Resolution Integration)
-**Progress:** `[████████████████████████████] 86%` (30/~35 plans complete)
+**Phase:** 5 of 7 - Duplicate Detection (Exact) ✓
+**Plan:** 4 of 4 (Phase complete)
+**Status:** Phase 5 complete + Carousel Viewport refactor complete
+**Last activity:** 2026-02-04 - Viewport z-index layering, FLIP animation, grid locking, documentation sync
+**Progress:** `[█████████████████████████████] 86%` (30/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -40,6 +40,7 @@
 **Plan Success Rate:** 100% (30/30 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 5/7 (Phase 1, 2, 3, 4, 5 complete)
+**Out-of-band work:** Carousel viewport system refactor (not tracked by GSD plans)
 
 ## Accumulated Context
 
@@ -148,9 +149,18 @@
 | Carousel viewport system | 2026-02-04 | Replace separate examination modal with in-place tile scaling for unified UX | Viewport refactor |
 | Tile as universal container | 2026-02-04 | Same tile element renders at any size (grid to viewport), CSS transitions between states | Viewport refactor |
 | MIPMAP resolution switching | 2026-02-04 | ResizeObserver triggers image source upgrade when tile exceeds 400px threshold | Viewport refactor |
-| Position-based carousel CSS | 2026-02-04 | Tiles use data-vp-pos (grid/prev/current/next/hidden) for GPU-accelerated transitions | Viewport refactor |
+| Position-based carousel CSS | 2026-02-04 | Tiles use data-vp-pos (grid/prev/current/next) for GPU-accelerated transitions; non-viewport tiles stay in grid (not hidden) | Viewport refactor |
+| Grid stays in document flow | 2026-02-04 | Container uses position:relative (not fixed); only viewport tiles and backdrop use position:fixed | Viewport refactor |
+| FLIP animation on enter | 2026-02-04 | Capture grid positions, freeze with inline styles, activate mode, release to animate tiles from grid to viewport | Viewport refactor |
+| Grid position locking | 2026-02-04 | Freeze gridTemplateRows/Columns + assign explicit gridRow/gridColumn per tile to prevent reflow when viewport tiles leave flow | Viewport refactor |
+| Z-index layering system | 2026-02-04 | Grid tiles z:0 (stacking context for badges), backdrop z:1, prev/next z:5, current z:10, UI z:1010 | Viewport refactor |
+| Z-index priority during navigation | 2026-02-04 | Upcoming current gets inline z:10 before swap; tiles entering from grid get z:2 (behind existing viewport tiles) | Viewport refactor |
+| setupViewport never bounces through GRID | 2026-02-04 | Only non-viewport tiles set to GRID; viewport tiles transition directly between positions to preserve animation start point | Viewport refactor |
+| Backdrop as ::before pseudo-element | 2026-02-04 | Fixed overlay between grid (z:0) and viewport tiles (z:5+); uses @keyframes fade-in instead of class toggle | Viewport refactor |
+| Transition duration from CSS variable | 2026-02-04 | JS reads --vp-transition-duration from computed style instead of hardcoding timeout values | Viewport refactor |
+| Calculate grid positions from index | 2026-02-04 | Chrome returns "auto" for gridRowStart on auto-placed items; calculate row/col from tile index and column count instead | Viewport refactor |
 | TileManager for lifecycle | 2026-02-04 | Central manager for tile creation, file mapping, lazy loading via IntersectionObserver | Viewport refactor |
-| ViewportController orchestration | 2026-02-04 | Handles examination mode entry/exit, keyboard navigation, tile position updates | Viewport refactor |
+| ViewportController orchestration | 2026-02-04 | Handles FLIP enter, grid locking, z-index management, keyboard navigation, view mode cycling | Viewport refactor |
 | Deferred initialization pattern | 2026-02-04 | Cross-module dependencies resolved after DOMContentLoaded via setViewportController() | Viewport refactor |
 | ExaminationHandler as fallback | 2026-02-04 | Legacy modal remains for duplicate group loading but viewport is primary interface | Viewport refactor |
 | Cleanup comparison view | 2026-02-04 | Removed orphaned comparison grid code, CSS, HTML modal - now using single-view navigation | Viewport refactor |
@@ -200,8 +210,11 @@
 - [x] 04-08: Tagging UI (COMPLETE)
 - [x] 04-09: Human verification (COMPLETE)
 
-**Phase 5 - Duplicate Detection (Exact) (IN PROGRESS):**
+**Phase 5 - Duplicate Detection (Exact) (COMPLETE):**
 - [x] 05-01: Quality Metrics & Recommendations API (COMPLETE)
+- [x] 05-02: Duplicate Comparison View (COMPLETE - later refactored to viewport)
+- [x] 05-03: Duplicate Comparison JavaScript (COMPLETE - later refactored to viewport)
+- [x] 05-04: Duplicate Resolution Integration (COMPLETE)
 
 ### Known Blockers
 
@@ -253,7 +266,7 @@ None
 **Context to Preserve:**
 - Phase 1 (COMPLETE): Established foundational patterns (pathlib, app factory, env config, database schema, library functions, task queue, integration tests)
 - Phase 2 (COMPLETE): Core algorithms and worker implementation (hashing, confidence scoring, processing pipeline, multi-threaded job processing)
-- Phase 3 (IN PROGRESS): Web UI foundation with single-pane layout, EXIF-aware thumbnails, responsive CSS
+- Phase 3 (COMPLETE): Web UI foundation with single-pane layout, EXIF-aware thumbnails, responsive CSS
 - All future code should follow these patterns: pathlib for paths, env vars for config, Mapped[] for models, get_app() for workers
 - Database URI: sqlite:///instance/mediaparser.db (SQLAlchemy configured, WAL mode enabled)
 - Storage dirs: storage/{uploads,processing,output}/ (auto-created on app start)
@@ -417,57 +430,20 @@ None
 ## Session Continuity
 
 **Last session:** 2026-02-04
-**Stopped at:** Context-aware action buttons implemented. Duplicate resolution flow fixes in progress.
+**Stopped at:** Documentation sync complete. Viewport refactor fully documented.
 **Resume file:** None
+**Last commit:** `93bb1e5` — FLIP enter animation, grid locking, z-index layering
 
-**Current troubleshooting session work:**
-1. **Context-aware action buttons** - `viewport-details.js` now shows different buttons based on mode:
-   - Duplicates mode: "Keep This, Discard Others", "Not a Duplicate", "Discard"
-   - Discarded mode: "Restore" only
-   - Review modes: "Confirm & Next", "Clear Review", "Discard"
+**Phase 4 Execution Status:** ✓ COMPLETE (all 9 plans)
 
-2. **Duplicate group info section** - Shows position in group and quality metrics
+**Phase 5 Execution Status (Duplicate Detection - Exact):** ✓ COMPLETE (all 4 plans)
 
-3. **Fixed `markNotDuplicate()`** - Now navigates to next duplicate instead of closing viewport:
-   - Removes file from duplicate group
-   - If 1 file remains in group, auto-removes it too (can't be duplicate alone)
-   - Navigates to remaining duplicates from ANY group
-   - Only exits when ALL duplicates resolved
-
-4. **Fixed `keepDuplicate()`** - Similar navigation fixes:
-   - Discards other files in group
-   - **Clears duplicate status on kept file** (so it moves to Unreviewed)
-   - Navigates to next duplicate group if any remain
-
-5. **Fixed `ViewportController.exit()`** - Set `isActive=false` immediately (not after 300ms) to fix double-click re-entry bug
-
-**Files modified this session:**
-- `app/static/js/viewport-details.js` - Action buttons, duplicate info, resolution flow
-- `app/static/js/viewport-controller.js` - Exit state fix
-- `app/static/css/viewport.css` - Duplicate info styles
-
-**Still testing:**
-- Verify kept file appears in Unreviewed after "Keep This, Discard Others"
-- Verify navigation continues through all duplicate groups
-- Verify double-click re-entry works after viewport exit
-
-**Phase 4 Execution Status:**
-- ✓ 04-01: Review API Models and Endpoints
-- ✓ 04-02: Unified Grid with Filter Chips
-- ✓ 04-03: Results Handler Integration
-- ✓ 04-04: Multi-select and Selection Toolbar
-- ✓ 04-05: Examination Modal View
-- ✓ 04-06: Timestamp Source Comparison
-- ✓ 04-07: Review Workflow
-- ✓ 04-08: Tagging UI
-- ✓ 04-09: Human Verification (COMPLETE)
-
-**Phase 5 Execution Status (Duplicate Detection - Exact):**
-- ✓ 05-01: Quality Metrics API (COMPLETE)
-- ✓ 05-02: Duplicate Comparison View HTML & CSS (COMPLETE - later refactored)
-- ✓ 05-03: Duplicate Comparison JavaScript (COMPLETE - later refactored)
-- ✓ 05-04: Duplicate Resolution Integration (COMPLETE)
-- **PHASE 5 COMPLETE** - Ready for Phase 6 (Perceptual Duplicates) or Phase 7 (Export)
+**Viewport Refactor Status (Out-of-band):** ✓ COMPLETE
+- Carousel viewport system replaces examination modal
+- FLIP animation for enter, grid position locking, z-index layering
+- Keyboard navigation (arrows, escape), view mode cycling
+- Context-aware action buttons per mode (duplicates/review/discarded)
+- Duplicate resolution flow (keep/discard/not-a-duplicate) with auto-navigation
 
 **Session Work Completed (2026-02-04 - Out-of-band):**
 - **Carousel Viewport System** (major architectural refactor):
@@ -515,32 +491,23 @@ None
 
 **For Next Session:**
 1. `/clear` and start fresh
-2. **Reimplement duplicate UI handling** with new viewport system as base
+2. Consider Phase 6 (Perceptual Duplicate Detection) or Phase 7 (Output Generation)
+3. Restore `--vp-transition-duration` from `2s` to `0.35s` when done testing animations
+4. Exit animation could be improved (tiles snap back to grid, no smooth return)
+5. Exit timeout hardcoded to 300ms — should read CSS variable like enter does
 
-**Duplicate UI Reimplementation Context:**
-The carousel viewport system is now the solid baseline. The old comparison grid was removed. Need to enhance duplicate handling within the viewport:
-
-- **Current state:** Duplicates mode shows duplicate files in grid, clicking opens viewport carousel
-- **ExaminationHandler.loadDuplicateGroup()** still works - fetches group, sets up navigation
-- **Action buttons exist:** "Keep This, Discard Others" and "Not a Duplicate" in viewport-details.js
-
-**Potential enhancements to consider:**
-1. Visual indicators in viewport showing which file is "recommended" (highest quality)
-2. Quality metrics comparison (resolution, file size) visible during duplicate navigation
-3. Group progress indicator ("File 2 of 4 duplicates")
-4. Keyboard shortcuts for duplicate actions (K=keep, D=discard)
-5. Auto-advance to next duplicate group after resolution
-
-**Key files:**
+**Key viewport files:**
 - `app/static/js/viewport-controller.js` - examination mode orchestration
-- `app/static/js/viewport-details.js` - details panel, action buttons
-- `app/static/js/examination.js` - loadDuplicateGroup() for fetching duplicate data
-- `app/static/css/viewport.css` - viewport styling
+- `app/static/js/viewport-details.js` - details panel, context-aware action buttons
+- `app/static/js/tile.js` - universal tile container with MIPMAP resolution switching
+- `app/static/js/tile-manager.js` - tile lifecycle, setupViewport() navigation
+- `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
+- `.planning/carousel-viewport-plan.md` - architecture overview
 
 **Resume commands:**
 - `/gsd:resume-work` - Full context restoration
-- Read `.planning/carousel-viewport-plan.md` for architecture overview
-- Read `app/static/js/viewport-details.js` to understand current action button handling
+- `/gsd:plan-phase 6` - Plan perceptual duplicate detection
+- `/gsd:plan-phase 7` - Plan output generation
 
 ---
 

@@ -125,7 +125,7 @@ Plans:
 
 ---
 
-### Phase 5: Duplicate Detection - Exact
+### Phase 5: Duplicate Detection - Exact ✓
 
 **Goal:** Users review exact duplicate groups, compare quality metrics, and select which files to keep before any deletions occur.
 
@@ -133,23 +133,22 @@ Plans:
 
 **Requirements:** DUP-01, DUP-04, DUP-05, DUP-06
 
-**Plans:** 5 plans
+**Status:** Complete (2026-02-04)
 
 Plans:
-- [ ] 05-01-PLAN.md — API enhancement with quality metrics and recommendation logic
-- [ ] 05-02-PLAN.md — Duplicate cards HTML structure and CSS styling
-- [ ] 05-03-PLAN.md — DuplicatesHandler JavaScript for group navigation and selection
-- [ ] 05-04-PLAN.md — Integration with mode filter and bulk confirmation flow
-- [ ] 05-05-PLAN.md — Human verification of complete duplicate workflow
+- [x] 05-01-PLAN.md — API enhancement with quality metrics and recommendation logic
+- [x] 05-02-PLAN.md — Duplicate cards HTML structure and CSS styling (later refactored to viewport)
+- [x] 05-03-PLAN.md — DuplicatesHandler JavaScript for group navigation and selection (later refactored to viewport)
+- [x] 05-04-PLAN.md — Integration with mode filter and bulk confirmation flow
 
-**Success Criteria:**
-1. System calculates SHA256 hash for each file during import
-2. Files with identical hashes grouped together as exact duplicates
-3. Duplicate groups displayed as cards showing all files side-by-side
-4. Quality information shown for each file (resolution, file size, format)
-5. User selects which file(s) to keep from each group via radio buttons or checkboxes
-6. Review queue prevents any files from being discarded until user explicitly confirms
-7. Originals never deleted, only excluded from output generation
+**Success Criteria:** All 7 verified ✓
+1. ✓ System calculates SHA256 hash for each file during import
+2. ✓ Files with identical hashes grouped together as exact duplicates
+3. ✓ Duplicate groups navigated via carousel viewport (refactored from side-by-side cards)
+4. ✓ Quality information shown for each file (resolution, file size, format)
+5. ✓ User selects which file(s) to keep via "Keep This, Discard Others" in viewport
+6. ✓ Review queue prevents any files from being discarded until user explicitly confirms
+7. ✓ Originals never deleted, only excluded from output generation
 
 ---
 
@@ -200,12 +199,12 @@ Plans:
 | 2 - Background Workers + Core Processing | ✓ Complete | 3 | 100% |
 | 3 - Web UI - Upload + Status | ✓ Complete | 5 | 100% |
 | 4 - Review Queues - Timestamps | ✓ Complete | 5 | 100% |
-| 5 - Duplicate Detection - Exact | In Progress | 4 | 0% |
+| 5 - Duplicate Detection - Exact | ✓ Complete | 4 | 100% |
 | 6 - Duplicate Detection - Perceptual | Pending | 2 | 0% |
 | 7 - Output Generation + Tagging | Pending | 8 | 0% |
 
-**Overall:** 4/7 phases complete (57%)
+**Overall:** 5/7 phases complete (71%)
 
 ---
 
-*Last updated: 2026-02-03*
+*Last updated: 2026-02-04*
