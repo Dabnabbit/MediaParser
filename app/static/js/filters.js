@@ -22,6 +22,7 @@ class FilterHandler {
         // Counts for display
         this.counts = {
             duplicates: 0,
+            similar: 0,
             unreviewed: 0,
             reviewed: 0,
             discards: 0,
@@ -99,6 +100,14 @@ class FilterHandler {
     setMode(mode) {
         if (this.currentMode === mode) return;
 
+        // Warn if trying to skip ahead in workflow
+        if (mode === 'similar' && this.counts.duplicates > 0) {
+            this._showModeWarning('Resolve duplicate groups first for best results');
+        }
+        if (mode === 'unreviewed' && (this.counts.duplicates > 0 || this.counts.similar > 0)) {
+            this._showModeWarning('Resolve duplicate and similar groups first for best results');
+        }
+
         this.currentMode = mode;
 
         // All modes now use the unified grid view - duplicates appear in grid like other files
@@ -151,6 +160,12 @@ class FilterHandler {
         const dupChip = document.querySelector('[data-mode="duplicates"]');
         if (dupChip) {
             dupChip.classList.toggle('has-items', this.counts.duplicates > 0);
+        }
+
+        // Highlight similar mode if there are unresolved similar groups
+        const simChip = document.querySelector('[data-mode="similar"]');
+        if (simChip) {
+            simChip.classList.toggle('has-items', this.counts.similar > 0);
         }
 
         // Emit counts updated event for other components
@@ -255,7 +270,7 @@ class FilterHandler {
         this.currentMode = 'unreviewed';
         this.visibleConfidence = new Set(['high', 'medium', 'low']);
         this.counts = {
-            duplicates: 0, unreviewed: 0, reviewed: 0, discards: 0, failed: 0,
+            duplicates: 0, similar: 0, unreviewed: 0, reviewed: 0, discards: 0, failed: 0,
             high: 0, medium: 0, low: 0, none: 0, total: 0
         };
         this.updateStyles();
@@ -264,14 +279,18 @@ class FilterHandler {
     /**
      * Auto-select the appropriate mode based on job state.
      * Called when a job completes or when resuming.
+     * Enforces sequential workflow: Duplicates → Similar → Unreviewed
      */
     autoSelectMode() {
-        // If there are duplicates, force duplicates mode first
+        // Enforce sequential resolution: Duplicates → Similar → Unreviewed
         if (this.counts.duplicates > 0) {
             this.setMode('duplicates');
             return 'duplicates';
         }
-        // Otherwise, go to unreviewed
+        if (this.counts.similar > 0) {
+            this.setMode('similar');
+            return 'similar';
+        }
         if (this.counts.unreviewed > 0) {
             this.setMode('unreviewed');
             return 'unreviewed';
@@ -279,6 +298,41 @@ class FilterHandler {
         // All done? Show reviewed
         this.setMode('reviewed');
         return 'reviewed';
+    }
+
+    /**
+     * Show a brief warning toast message
+     * @param {string} message
+     */
+    _showModeWarning(message) {
+        // Check if toast system exists
+        if (window.toast) {
+            window.toast(message, 'warning');
+            return;
+        }
+
+        // Fallback: create a simple toast
+        const toast = document.createElement('div');
+        toast.className = 'mode-warning-toast';
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--color-warning);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            animation: slideInRight 0.3s ease;
+        `;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
 }
 
