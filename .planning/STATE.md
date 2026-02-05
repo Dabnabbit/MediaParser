@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 6 of 7 - Duplicate Detection (Perceptual)
-**Plan:** 3 of 5 (API endpoints complete)
+**Plan:** 4 of 5 (Similar mode UI complete)
 **Status:** In progress
-**Last activity:** 2026-02-05 - Completed 06-03-PLAN.md (Two-tier duplicate detection API)
-**Progress:** `[███████████████████████████████] 94%` (33/~35 plans complete)
+**Last activity:** 2026-02-05 - Completed 06-04-PLAN.md (Similar mode UI integration)
+**Progress:** `[████████████████████████████████] 97%` (34/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,8 +36,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 33 plans in ~72 minutes (avg 2.2 min/plan) - Phase 1+2+3+4+5 complete, Phase 6 in progress
-**Plan Success Rate:** 100% (33/33 completed successfully)
+**Velocity:** 34 plans in ~76 minutes (avg 2.2 min/plan) - Phase 1+2+3+4+5 complete, Phase 6 in progress
+**Plan Success Rate:** 100% (34/34 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 5/7 (Phase 1, 2, 3, 4, 5 complete; Phase 6 in progress)
 **Out-of-band work:** Carousel viewport system refactor (not tracked by GSD plans)
@@ -185,6 +185,10 @@
 | Separate exact/similar confidence mapping | 2026-02-05 | Exact duplicates (0-5) always HIGH due to timestamp corroboration; similar (6-20) varies by distance | Phase 6: Confidence |
 | Similar groups allow keeping multiple files | 2026-02-05 | Unlike exact duplicates (pick one), similar groups (burst/panorama) may have multiple keepers | Phase 6: Resolution |
 | Separate endpoints for exact vs similar | 2026-02-05 | Different resolution semantics (pick-one vs pick-many) warrant different endpoints | Phase 6: API design |
+| Sequential workflow enforcement (Duplicates → Similar → Unreviewed) | 2026-02-05 | Auto-select modes in order with warning toasts when user skips ahead; respects user agency while guiding best practices | Phase 6: UI workflow |
+| Similar mode reuses viewport system | 2026-02-05 | Same ViewportController and details panel as duplicates with mode-specific action buttons for consistency | Phase 6: UI architecture |
+| Keep All marks as not-similar | 2026-02-05 | Clears similar_group_id instead of accepting, allows preserving entire burst sequences or panoramas | Phase 6: Resolution |
+| Group type badges color-coded | 2026-02-05 | Burst (blue), panorama (yellow), similar (gray) for visual distinction of grouping reason | Phase 6: UX design |
 
 ### Active TODOs
 
@@ -231,7 +235,7 @@
 - [x] 06-01: Alembic Setup + Schema Migration (COMPLETE)
 - [x] 06-02: Perceptual Detection Algorithm (COMPLETE)
 - [x] 06-03: Two-Tier Duplicate Detection API (COMPLETE)
-- [ ] 06-04: Similar Groups UI
+- [x] 06-04: Similar Mode UI Integration (COMPLETE)
 - [ ] 06-05: Integration Testing
 
 ### Known Blockers
@@ -524,11 +528,16 @@ None
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
 - `.planning/carousel-viewport-plan.md` - architecture overview
 
+**Last session:** 2026-02-05
+**Stopped at:** Completed 06-04-PLAN.md (Similar mode UI integration)
+**Resume file:** None
+
 **Resume commands:**
 - `/gsd:resume-work` - Full context restoration
-- `/gsd:plan-phase 6` - Plan perceptual duplicate detection
+- `/gsd:execute-phase 6` - Complete Phase 6 (06-05 testing remaining)
 - `/gsd:plan-phase 7` - Plan output generation
 
 ---
 
 *State initialized: 2026-02-02*
+*Last updated: 2026-02-05*
