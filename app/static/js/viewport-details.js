@@ -227,7 +227,8 @@ class ViewportDetailsPanel {
         if (!file) return;
 
         // If we only have basic data, fetch full details
-        if (!file.detected_timestamp && file.id) {
+        // Check for timestamp_options since that's not included in file listings
+        if (!file.timestamp_options && file.id) {
             try {
                 const response = await fetch(`/api/files/${file.id}`);
                 if (response.ok) {
