@@ -13,15 +13,15 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 5 Complete, Viewport Refactor Complete — Ready for Phase 6 or Phase 7
+**Current Focus:** Phase 6 In Progress - Perceptual Duplicate Detection
 
 ## Current Position
 
-**Phase:** 5 of 7 - Duplicate Detection (Exact) ✓
-**Plan:** 4 of 4 (Phase complete)
-**Status:** Phase 5 complete + Carousel Viewport refactor complete
-**Last activity:** 2026-02-05 - Navigation FLIP animation (enter/leave tiles), tile.css transition selector fix
-**Progress:** `[█████████████████████████████] 86%` (30/~35 plans complete)
+**Phase:** 6 of 7 - Duplicate Detection (Perceptual)
+**Plan:** 1 of 5 (Schema migration complete)
+**Status:** In progress
+**Last activity:** 2026-02-05 - Completed 06-01-PLAN.md (Alembic setup + schema migration)
+**Progress:** `[██████████████████████████████] 89%` (31/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,10 +36,10 @@
 
 ## Performance Metrics
 
-**Velocity:** 30 plans in ~62 minutes (avg 2.1 min/plan) - Phase 1+2+3+4+5 complete
-**Plan Success Rate:** 100% (30/30 completed successfully)
+**Velocity:** 31 plans in ~67 minutes (avg 2.2 min/plan) - Phase 1+2+3+4+5 complete, Phase 6 started
+**Plan Success Rate:** 100% (31/31 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
-**Phases Complete:** 5/7 (Phase 1, 2, 3, 4, 5 complete)
+**Phases Complete:** 5/7 (Phase 1, 2, 3, 4, 5 complete; Phase 6 in progress)
 **Out-of-band work:** Carousel viewport system refactor (not tracked by GSD plans)
 
 ## Accumulated Context
@@ -176,6 +176,9 @@
 | Deferred edge cases | 2026-02-04 | Skip cross-cluster duplicate detection for v1. Edits made weeks later handled manually. Optional "Deep Scan" later. | Phase 6: Scope |
 | FLIP animation for navigation | 2026-02-05 | Tiles entering/leaving viewport animate to/from their grid positions using FLIP technique; entering tiles frozen at grid rect then released, leaving tiles animated back to grid rect | Viewport refactor: smooth navigation |
 | Narrow tile.css transition selector | 2026-02-05 | `.thumbnail[data-vp-pos]` was too broad — applied transitions to grid tiles causing shoot-off bug; narrowed to only prev/current/next positions | Viewport refactor: bug fix |
+| String type for confidence columns | 2026-02-05 | Use String(10) instead of SQLEnum for exact_group_confidence and similar_group_confidence to avoid SQLite Enum complications | Phase 6: Schema |
+| Direct SQL for column rename | 2026-02-05 | Use ALTER TABLE RENAME COLUMN directly instead of batch_alter_table to avoid foreign key constraint errors | Phase 6: Migration |
+| Clear similar_group_id on discard | 2026-02-05 | Discarding a file clears both exact_group_id and similar_group_id to remove from all duplicate workflows | Phase 6: Consistency |
 
 ### Active TODOs
 
@@ -217,6 +220,13 @@
 - [x] 05-02: Duplicate Comparison View (COMPLETE - later refactored to viewport)
 - [x] 05-03: Duplicate Comparison JavaScript (COMPLETE - later refactored to viewport)
 - [x] 05-04: Duplicate Resolution Integration (COMPLETE)
+
+**Phase 6 - Duplicate Detection (Perceptual) (IN PROGRESS):**
+- [x] 06-01: Alembic Setup + Schema Migration (COMPLETE)
+- [ ] 06-02: Perceptual Detection Algorithm
+- [ ] 06-03: Similar Groups API
+- [ ] 06-04: Similar Groups UI
+- [ ] 06-05: Integration Testing
 
 ### Known Blockers
 
@@ -432,13 +442,15 @@ None
 ## Session Continuity
 
 **Last session:** 2026-02-05
-**Stopped at:** Navigation FLIP animation complete, project status files updated.
+**Stopped at:** Completed 06-01-PLAN.md (Alembic setup + schema migration)
 **Resume file:** None
-**Last commit:** `631a0fd` — FLIP animation for nav enter/leave, fix grid tile transition
+**Last commit:** `859549b` — Rename duplicate_group_id to exact_group_id across codebase
 
 **Phase 4 Execution Status:** ✓ COMPLETE (all 9 plans)
 
 **Phase 5 Execution Status (Duplicate Detection - Exact):** ✓ COMPLETE (all 4 plans)
+
+**Phase 6 Execution Status (Duplicate Detection - Perceptual):** Plan 06-01 COMPLETE (1/5 plans)
 
 **Viewport Refactor Status (Out-of-band):** ✓ COMPLETE
 - Carousel viewport system replaces examination modal
