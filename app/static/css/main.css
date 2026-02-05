@@ -1639,6 +1639,13 @@ body {
     border-radius: var(--border-radius);
     /* Stretch to fill grid height */
     align-self: stretch;
+    transition: opacity 0.2s ease;
+}
+
+/* Disabled state - visible but inactive to prevent layout shift */
+.position-slider.slider-disabled {
+    opacity: 0.3;
+    pointer-events: none;
 }
 
 .slider-track {

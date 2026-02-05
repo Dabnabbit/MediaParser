@@ -188,9 +188,10 @@ class PositionSliderHandler {
         // Recalculate window size based on current grid dimensions
         this.recalculateWindowSize();
 
-        // Show/hide slider
+        // Enable/disable slider (always visible to prevent layout shift)
         if (this.slider) {
-            this.slider.style.display = total > this.windowSize ? 'flex' : 'none';
+            const needsSlider = total > this.windowSize;
+            this.slider.classList.toggle('slider-disabled', !needsSlider);
         }
 
         // Update total label
