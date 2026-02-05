@@ -341,6 +341,7 @@ def _serialize_file_extended(f):
     return {
         'id': f.id,
         'original_filename': f.original_filename,
+        'original_path': f.original_path,  # Full resolution image path
         'detected_timestamp': f.detected_timestamp.isoformat() if f.detected_timestamp else None,
         'final_timestamp': f.final_timestamp.isoformat() if f.final_timestamp else None,
         'timestamp_source': f.timestamp_source,

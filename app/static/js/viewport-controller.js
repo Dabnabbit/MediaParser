@@ -115,6 +115,9 @@ class ViewportController {
         this.updateTilePositions();
         this.updateUI();
 
+        // Ensure visible tiles use full resolution
+        this.upgradeVisibleTilesToFullRes();
+
         // Add event listeners
         document.addEventListener('keydown', this.handleKeydown);
         container.addEventListener('click', this.handleClick);
@@ -456,20 +459,46 @@ class ViewportController {
 
     /**
      * Upgrade all visible tiles (prev, current, next) to full resolution
+     * @param {boolean} [delayed=false] - If true, also schedule a delayed re-check
      */
-    upgradeVisibleTilesToFullRes() {
+    upgradeVisibleTilesToFullRes(delayed = true) {
         const currentId = this.navigationFiles[this.currentIndex];
         const prevId = this.navigationFiles[this.currentIndex - 1];
         const nextId = this.navigationFiles[this.currentIndex + 1];
 
-        [prevId, currentId, nextId].forEach(fileId => {
-            if (fileId !== undefined) {
-                const tile = this.tileManager.getTile(fileId);
-                if (tile && tile.hasFullResSource()) {
-                    tile.setResolution('full');
-                }
-            }
+        console.log('[ViewportController] upgradeVisibleTilesToFullRes:', {
+            prevId, currentId, nextId, viewMode: this.viewMode
         });
+
+        const upgradeTiles = () => {
+            [prevId, currentId, nextId].forEach(fileId => {
+                if (fileId !== undefined) {
+                    const tile = this.tileManager.getTile(fileId);
+                    if (tile) {
+                        console.log(`[ViewportController] Tile ${fileId}:`, {
+                            hasFullRes: tile.hasFullResSource(),
+                            currentResolution: tile.currentResolution,
+                            position: tile.position
+                        });
+                        if (tile.hasFullResSource()) {
+                            tile.setResolution('full');
+                        }
+                    } else {
+                        console.warn(`[ViewportController] Tile not found for fileId: ${fileId}`);
+                    }
+                }
+            });
+        };
+
+        // Upgrade immediately
+        upgradeTiles();
+
+        // Also schedule a delayed upgrade after CSS transitions complete
+        // This ensures resolution is updated even if the initial call
+        // happens before the tile size has changed
+        if (delayed) {
+            setTimeout(upgradeTiles, 400); // Slightly longer than transition duration
+        }
     }
 
     /**

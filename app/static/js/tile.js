@@ -224,9 +224,14 @@ class Tile {
         const needsFullRes = width >= Tile.THRESHOLDS.FULL;
         const hasFullRes = this.currentResolution === 'full';
 
-        if (needsFullRes && !hasFullRes && this.hasFullResSource()) {
+        // In viewport mode (not grid), always prefer full resolution when tile is visible
+        const inViewport = this.isInViewport() && this.position !== Tile.POSITIONS.HIDDEN;
+        const shouldUpgrade = (needsFullRes || inViewport) && !hasFullRes && this.hasFullResSource();
+
+        if (shouldUpgrade) {
             this.setResolution('full');
-        } else if (!needsFullRes && hasFullRes) {
+        } else if (!needsFullRes && !inViewport && hasFullRes) {
+            // Only downgrade if NOT in viewport and size is below threshold
             this.setResolution('thumbnail');
         }
     }
@@ -239,6 +244,15 @@ class Tile {
         if (resolution === this.currentResolution) return;
 
         const src = resolution === 'full' ? this.getFullResSrc() : this.getThumbnailSrc();
+
+        // Debug logging for resolution changes
+        console.log(`[Tile ${this.file?.id}] Resolution: ${this.currentResolution} → ${resolution}`, {
+            src,
+            hasImageElement: !!this.imageElement,
+            isLoading: this.isImageLoading,
+            position: this.position
+        });
+
         this.setImageSource(src, resolution === 'full');
 
         const oldResolution = this.currentResolution;
@@ -255,10 +269,22 @@ class Tile {
      * @param {boolean} [crossfade=false] - Use crossfade transition
      */
     setImageSource(src, crossfade = false) {
-        if (!this.imageElement || this.isImageLoading) return;
+        if (!this.imageElement) {
+            console.warn(`[Tile ${this.file?.id}] setImageSource: No image element!`);
+            return;
+        }
+        if (this.isImageLoading) {
+            console.log(`[Tile ${this.file?.id}] setImageSource: Skipped, already loading`);
+            return;
+        }
 
         const currentSrc = this.imageElement.src;
-        if (currentSrc.endsWith(src) || currentSrc === src) return;
+        if (currentSrc.endsWith(src) || currentSrc === src) {
+            console.log(`[Tile ${this.file?.id}] setImageSource: Same src, skipped`);
+            return;
+        }
+
+        console.log(`[Tile ${this.file?.id}] setImageSource: ${currentSrc} → ${src} (crossfade: ${crossfade})`);
 
         if (crossfade) {
             this.crossfadeImage(src);
@@ -273,10 +299,12 @@ class Tile {
      */
     crossfadeImage(src) {
         this.isImageLoading = true;
+        console.log(`[Tile ${this.file?.id}] crossfadeImage: Loading ${src}`);
 
         // Preload new image
         const newImg = new Image();
         newImg.onload = () => {
+            console.log(`[Tile ${this.file?.id}] crossfadeImage: Loaded successfully, swapping`);
             // Add transition class
             this.imageElement.classList.add('tile-image-fade');
 
@@ -285,11 +313,12 @@ class Tile {
                 this.imageElement.src = src;
                 this.imageElement.classList.remove('tile-image-fade');
                 this.isImageLoading = false;
+                console.log(`[Tile ${this.file?.id}] crossfadeImage: Swap complete`);
             });
         };
-        newImg.onerror = () => {
+        newImg.onerror = (e) => {
             this.isImageLoading = false;
-            console.warn('Failed to load full-res image:', src);
+            console.error(`[Tile ${this.file?.id}] crossfadeImage: FAILED to load ${src}`, e);
         };
         newImg.src = src;
     }
@@ -350,13 +379,19 @@ class Tile {
             this.element.classList.remove('vp-grid', 'vp-prev', 'vp-current', 'vp-next', 'vp-hidden');
             this.element.classList.add(`vp-${position}`);
 
-            // Auto-upgrade resolution for current position
-            if (position === Tile.POSITIONS.CURRENT && this.hasFullResSource()) {
+            // Auto-upgrade resolution for visible viewport positions
+            // All visible tiles in viewport mode should use full resolution
+            if ((position === Tile.POSITIONS.CURRENT ||
+                 position === Tile.POSITIONS.PREV ||
+                 position === Tile.POSITIONS.NEXT) && this.hasFullResSource()) {
                 this.setResolution('full');
             }
-            // Preload full-res for adjacent tiles
-            else if (position === Tile.POSITIONS.PREV || position === Tile.POSITIONS.NEXT) {
-                this.preloadFullRes();
+            // Downgrade when going back to grid (if below threshold)
+            else if (position === Tile.POSITIONS.GRID) {
+                const width = this.getRenderedSize().width;
+                if (width < Tile.THRESHOLDS.FULL) {
+                    this.setResolution('thumbnail');
+                }
             }
         }
 
@@ -481,7 +516,11 @@ class Tile {
      * Check if full-res source is available
      */
     hasFullResSource() {
-        return !!(this.file?.original_path);
+        const has = !!(this.file?.original_path);
+        if (!has && this.file) {
+            console.warn(`[Tile ${this.file.id}] No original_path available`, this.file);
+        }
+        return has;
     }
 
     // ==========================================
