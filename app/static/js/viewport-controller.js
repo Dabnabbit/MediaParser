@@ -364,6 +364,7 @@ class ViewportController {
      * Update tile positions for current navigation state.
      * Sets inline z-indices before position changes so that:
      *   - The upcoming current tile is always on top (z:10)
+     *   - Tiles leaving the viewport stay above grid tiles during transition (z:3)
      *   - Tiles entering from the grid stay behind existing viewport tiles (z:2)
      *   - Other viewport tiles use CSS defaults (prev/next: z:5)
      */
@@ -371,12 +372,27 @@ class ViewportController {
         const currentId = this.navigationFiles[this.currentIndex];
         const prevId = this.navigationFiles[this.currentIndex - 1];
         const nextId = this.navigationFiles[this.currentIndex + 1];
+        const newViewportIds = new Set([prevId, currentId, nextId].filter(id => id !== undefined));
 
         // Clear inline z-indices from previous navigation so CSS takes over
         this._clearViewportZIndices();
+        this._viewportZTiles = [];
+
+        // Elevate tiles LEAVING the viewport — z:3 keeps them above the
+        // backdrop (z:2) so they visibly return to their grid slot,
+        // then drop to z:0 on arrival.
+        const leavingTiles = [];
+        this.tileManager.getAllTiles().forEach(tile => {
+            if (tile.position !== Tile.POSITIONS.GRID &&
+                !newViewportIds.has(tile.file?.id) &&
+                tile.element) {
+                tile.element.style.zIndex = '3';
+                this._viewportZTiles.push(tile);
+                leavingTiles.push(tile);
+            }
+        });
 
         // Promote upcoming current tile before the position swap
-        this._viewportZTiles = [];
         const currentTile = this.tileManager.getTile(currentId);
         if (currentTile?.element) {
             currentTile.element.style.zIndex = '10';
@@ -397,6 +413,21 @@ class ViewportController {
 
         // Use TileManager's setupViewport helper
         this.tileManager.setupViewport(currentId, this.navigationFiles);
+
+        // After transition completes, drop leaving tiles back to z:0
+        if (leavingTiles.length > 0) {
+            const durationStr = getComputedStyle(this.tileManager.container)
+                .getPropertyValue('--vp-transition-duration').trim();
+            const durationMs = parseFloat(durationStr) * (durationStr.includes('ms') ? 1 : 1000) || 350;
+
+            setTimeout(() => {
+                leavingTiles.forEach(tile => {
+                    if (tile?.element && tile.element.style.zIndex === '3') {
+                        tile.element.style.zIndex = '';
+                    }
+                });
+            }, durationMs);
+        }
     }
 
     /**
