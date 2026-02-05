@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 6 of 7 - Duplicate Detection (Perceptual)
-**Plan:** 1 of 5 (Schema migration complete)
+**Plan:** 2 of 5 (Perceptual algorithm complete)
 **Status:** In progress
-**Last activity:** 2026-02-05 - Completed 06-01-PLAN.md (Alembic setup + schema migration)
-**Progress:** `[██████████████████████████████] 89%` (31/~35 plans complete)
+**Last activity:** 2026-02-05 - Completed 06-02-PLAN.md (Perceptual detection algorithm)
+**Progress:** `[███████████████████████████████] 91%` (32/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,8 +36,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 31 plans in ~67 minutes (avg 2.2 min/plan) - Phase 1+2+3+4+5 complete, Phase 6 started
-**Plan Success Rate:** 100% (31/31 completed successfully)
+**Velocity:** 32 plans in ~70 minutes (avg 2.2 min/plan) - Phase 1+2+3+4+5 complete, Phase 6 in progress
+**Plan Success Rate:** 100% (32/32 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 5/7 (Phase 1, 2, 3, 4, 5 complete; Phase 6 in progress)
 **Out-of-band work:** Carousel viewport system refactor (not tracked by GSD plans)
@@ -179,6 +179,10 @@
 | String type for confidence columns | 2026-02-05 | Use String(10) instead of SQLEnum for exact_group_confidence and similar_group_confidence to avoid SQLite Enum complications | Phase 6: Schema |
 | Direct SQL for column rename | 2026-02-05 | Use ALTER TABLE RENAME COLUMN directly instead of batch_alter_table to avoid foreign key constraint errors | Phase 6: Migration |
 | Clear similar_group_id on discard | 2026-02-05 | Discarding a file clears both exact_group_id and similar_group_id to remove from all duplicate workflows | Phase 6: Consistency |
+| Hardware-accelerated Hamming distance | 2026-02-05 | Use int.bit_count() for perceptual hash comparison (Python 3.10+ POPCNT instruction) | Phase 6: Performance |
+| Timestamp-constrained perceptual matching | 2026-02-05 | O(n log n) clustering by timestamp before pairwise comparison (~2,500x faster than naive O(n²)) | Phase 6: Algorithm |
+| 5-second clustering window | 2026-02-05 | Timestamp proximity window for grouping related images (bursts, panoramas, format conversions) | Phase 6: Tuning |
+| Separate exact/similar confidence mapping | 2026-02-05 | Exact duplicates (0-5) always HIGH due to timestamp corroboration; similar (6-20) varies by distance | Phase 6: Confidence |
 
 ### Active TODOs
 
@@ -223,7 +227,7 @@
 
 **Phase 6 - Duplicate Detection (Perceptual) (IN PROGRESS):**
 - [x] 06-01: Alembic Setup + Schema Migration (COMPLETE)
-- [ ] 06-02: Perceptual Detection Algorithm
+- [x] 06-02: Perceptual Detection Algorithm (COMPLETE)
 - [ ] 06-03: Similar Groups API
 - [ ] 06-04: Similar Groups UI
 - [ ] 06-05: Integration Testing
@@ -442,15 +446,15 @@ None
 ## Session Continuity
 
 **Last session:** 2026-02-05
-**Stopped at:** Completed 06-01-PLAN.md (Alembic setup + schema migration)
+**Stopped at:** Completed 06-02-PLAN.md (Perceptual detection algorithm)
 **Resume file:** None
-**Last commit:** `859549b` — Rename duplicate_group_id to exact_group_id across codebase
+**Last commit:** `e5157ac` — Integrate perceptual detection into task pipeline
 
 **Phase 4 Execution Status:** ✓ COMPLETE (all 9 plans)
 
 **Phase 5 Execution Status (Duplicate Detection - Exact):** ✓ COMPLETE (all 4 plans)
 
-**Phase 6 Execution Status (Duplicate Detection - Perceptual):** Plan 06-01 COMPLETE (1/5 plans)
+**Phase 6 Execution Status (Duplicate Detection - Perceptual):** Plans 06-01, 06-02 COMPLETE (2/5 plans)
 
 **Viewport Refactor Status (Out-of-band):** ✓ COMPLETE
 - Carousel viewport system replaces examination modal
