@@ -398,11 +398,17 @@ class TileManager {
 
         const prevId = navOrder[currentIndex - 1];
         const nextId = navOrder[currentIndex + 1];
+        const viewportIds = new Set([prevId, currentFileId, nextId].filter(id => id !== undefined));
 
-        // Set all to hidden first
-        this.tiles.forEach(tile => tile.setPosition(Tile.POSITIONS.HIDDEN));
+        // Only move non-viewport tiles to grid — never bounce viewport tiles through GRID,
+        // as that would reset their transition starting point to the grid position
+        this.tiles.forEach((tile, fileId) => {
+            if (!viewportIds.has(fileId) && tile.position !== Tile.POSITIONS.GRID) {
+                tile.setPosition(Tile.POSITIONS.GRID);
+            }
+        });
 
-        // Set visible positions
+        // Set viewport positions directly (PREV→CURRENT, CURRENT→NEXT, etc. transition smoothly)
         if (prevId !== undefined) {
             this.getTile(prevId)?.setPosition(Tile.POSITIONS.PREV);
         }

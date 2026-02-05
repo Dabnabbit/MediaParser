@@ -94,26 +94,47 @@ class ViewportController {
         // Save scroll position for restoration
         this.lastScrollPosition = window.scrollY;
 
-        // Activate viewport mode
+        // Lock every tile's grid position so the grid doesn't reflow
+        // when viewport tiles leave flow via position:fixed
+        this.lockGridPositions();
+
+        // Capture viewport tiles' grid positions BEFORE mode switch
+        const currentTile = this.tileManager.getTile(fileId);
+        const prevTile = this.tileManager.getTile(this.navigationFiles[this.currentIndex - 1]);
+        const nextTile = this.tileManager.getTile(this.navigationFiles[this.currentIndex + 1]);
+        const viewportTiles = [currentTile, prevTile, nextTile].filter(Boolean);
+        const startPositions = this.captureStartPositions(viewportTiles);
+
+        // Freeze viewport tiles at their grid positions
+        this.applyStartPositions(startPositions);
+
+        // Activate viewport mode — grid stays intact behind the backdrop
         this.isActive = true;
         document.body.classList.add('viewport-active');
-
         const container = this.tileManager.container;
         container.classList.add('viewport-mode');
-        container.classList.add('viewport-entering');
-
-        // Remove entering class after animation and clear transition guard
-        setTimeout(() => {
-            container.classList.remove('viewport-entering');
-            this.isTransitioning = false;
-        }, 300);
 
         // Create UI elements
         this.createUI();
 
-        // Set tile positions
+        // Set tile positions (non-viewport tiles stay in GRID, viewport tiles get their positions)
         this.updateTilePositions();
         this.updateUI();
+
+        // Force reflow, then release the current tile to animate from grid to center
+        void container.offsetHeight;
+        requestAnimationFrame(() => {
+            this.clearStartPositions(startPositions);
+        });
+
+        // Read transition duration from CSS variable
+        const durationStr = getComputedStyle(container).getPropertyValue('--vp-transition-duration').trim();
+        const durationMs = parseFloat(durationStr) * (durationStr.includes('ms') ? 1 : 1000) || 350;
+
+        // Clear transition guard after animation completes
+        setTimeout(() => {
+            this.isTransitioning = false;
+        }, durationMs);
 
         // Ensure visible tiles use full resolution
         this.upgradeVisibleTilesToFullRes();
@@ -165,8 +186,10 @@ class ViewportController {
                 'view-carousel', 'view-compare', 'view-fullscreen'
             );
 
-            // Reset all tile positions to grid
+            // Reset all tile positions to grid and unlock grid positions
+            this._clearViewportZIndices();
             this.tileManager.resetToGrid();
+            this.unlockGridPositions();
 
             // Remove UI elements
             this.removeUI();
@@ -338,15 +361,56 @@ class ViewportController {
     // ==========================================
 
     /**
-     * Update tile positions for current navigation state
+     * Update tile positions for current navigation state.
+     * Sets inline z-indices before position changes so that:
+     *   - The upcoming current tile is always on top (z:10)
+     *   - Tiles entering from the grid stay behind existing viewport tiles (z:2)
+     *   - Other viewport tiles use CSS defaults (prev/next: z:5)
      */
     updateTilePositions() {
         const currentId = this.navigationFiles[this.currentIndex];
         const prevId = this.navigationFiles[this.currentIndex - 1];
         const nextId = this.navigationFiles[this.currentIndex + 1];
 
+        // Clear inline z-indices from previous navigation so CSS takes over
+        this._clearViewportZIndices();
+
+        // Promote upcoming current tile before the position swap
+        this._viewportZTiles = [];
+        const currentTile = this.tileManager.getTile(currentId);
+        if (currentTile?.element) {
+            currentTile.element.style.zIndex = '10';
+            this._viewportZTiles.push(currentTile);
+        }
+
+        // Demote tiles entering from grid — they animate in but should
+        // stay behind the existing viewport tiles during the transition
+        [prevId, nextId].forEach(id => {
+            if (id !== undefined) {
+                const tile = this.tileManager.getTile(id);
+                if (tile && tile.position === Tile.POSITIONS.GRID && tile.element) {
+                    tile.element.style.zIndex = '2';
+                    this._viewportZTiles.push(tile);
+                }
+            }
+        });
+
         // Use TileManager's setupViewport helper
         this.tileManager.setupViewport(currentId, this.navigationFiles);
+    }
+
+    /**
+     * Clear inline z-indices set during navigation transitions
+     */
+    _clearViewportZIndices() {
+        if (this._viewportZTiles) {
+            this._viewportZTiles.forEach(tile => {
+                if (tile?.element) {
+                    tile.element.style.zIndex = '';
+                }
+            });
+            this._viewportZTiles = null;
+        }
     }
 
     // ==========================================
@@ -742,6 +806,111 @@ class ViewportController {
     }
 
     // ==========================================
+    // FLIP Animation Helpers
+    // ==========================================
+
+    /**
+     * Capture starting positions of tiles before viewport mode
+     * @param {Tile[]} tiles - Array of tiles to capture
+     * @returns {Map} Map of tile -> {rect, element}
+     */
+    captureStartPositions(tiles) {
+        const positions = new Map();
+
+        tiles.forEach(tile => {
+            if (tile?.element) {
+                const rect = tile.element.getBoundingClientRect();
+                positions.set(tile, {
+                    rect,
+                    element: tile.element
+                });
+            }
+        });
+
+        return positions;
+    }
+
+    /**
+     * Apply captured positions as inline styles
+     * @param {Map} positions - Map from captureStartPositions
+     */
+    applyStartPositions(positions) {
+        positions.forEach(({ rect, element }) => {
+            // Set fixed position matching current screen location
+            element.style.position = 'fixed';
+            element.style.left = `${rect.left}px`;
+            element.style.top = `${rect.top}px`;
+            element.style.width = `${rect.width}px`;
+            element.style.height = `${rect.height}px`;
+            element.style.transform = 'none';
+            element.style.transition = 'none';
+        });
+    }
+
+    /**
+     * Clear inline positions to allow CSS transitions to take over
+     * @param {Map} positions - Map from captureStartPositions
+     */
+    clearStartPositions(positions) {
+        positions.forEach(({ element }) => {
+            element.style.position = '';
+            element.style.left = '';
+            element.style.top = '';
+            element.style.width = '';
+            element.style.height = '';
+            element.style.transform = '';
+            element.style.transition = '';
+        });
+    }
+
+    // ==========================================
+    // Grid Position Locking
+    // ==========================================
+
+    /**
+     * Lock the grid layout so tiles don't shift when viewport tiles
+     * leave flow. Freezes the grid template and assigns every tile
+     * to an explicit row/column based on display order.
+     */
+    lockGridPositions() {
+        const container = this.tileManager.container;
+        const cs = getComputedStyle(container);
+
+        // Lock grid tracks at their current pixel sizes
+        container.style.gridTemplateRows = cs.gridTemplateRows;
+        container.style.gridTemplateColumns = cs.gridTemplateColumns;
+
+        // Calculate column count from resolved template
+        const cols = cs.gridTemplateColumns.split(/\s+/).length;
+
+        // Pin every tile to its exact cell
+        const fileOrder = this.tileManager.getFileOrder();
+        fileOrder.forEach((fileId, index) => {
+            const tile = this.tileManager.getTile(fileId);
+            if (tile?.element) {
+                tile.element.style.gridRow = String(Math.floor(index / cols) + 1);
+                tile.element.style.gridColumn = String((index % cols) + 1);
+            }
+        });
+    }
+
+    /**
+     * Unlock grid positions, returning to auto-placement
+     */
+    unlockGridPositions() {
+        const container = this.tileManager.container;
+        container.style.gridTemplateRows = '';
+        container.style.gridTemplateColumns = '';
+
+        this.tileManager.getAllTiles().forEach(tile => {
+            if (tile.element) {
+                tile.element.style.gridRow = '';
+                tile.element.style.gridColumn = '';
+            }
+        });
+    }
+
+    // ==========================================
     // Navigation Set Management
     // ==========================================
 
@@ -786,7 +955,9 @@ class ViewportController {
                 'viewport-mode', 'viewport-entering', 'viewport-exiting', 'with-details',
                 'view-carousel', 'view-compare', 'view-fullscreen'
             );
+            this._clearViewportZIndices();
             this.tileManager.resetToGrid();
+            this.unlockGridPositions();
             this.removeUI();
             document.removeEventListener('keydown', this.handleKeydown);
             this.tileManager.container.removeEventListener('click', this.handleClick);

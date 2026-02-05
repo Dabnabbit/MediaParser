@@ -28,7 +28,7 @@ body.viewport-active {
     --vp-side-offset: calc(var(--vp-current-width) / 2 + var(--vp-side-width) / 2 + var(--vp-gap));
 
     /* Transition timing */
-    --vp-transition-duration: 0.35s;
+    --vp-transition-duration: 2s;  /* TEMP: slowed for testing, restore to 0.35s */
     --vp-transition-easing: cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Viewport background */
@@ -39,81 +39,75 @@ body.viewport-active {
    VIEWPORT MODE CONTAINER
    ============================================ */
 
-/* When viewport mode is active, the grid becomes a centered flex container */
+/* Grid stays exactly where it is in the page. Only the backdrop and viewport
+   tiles use position:fixed. The z-index creates a stacking context so the
+   ::before backdrop and viewport tiles are above other page content. */
 .thumbnail-grid.viewport-mode {
-    position: fixed;
-    inset: 0;
+    position: relative;
     z-index: 1000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: var(--vp-backdrop);
-    overflow: hidden;
-
-    /* Override grid layout */
-    grid-template-columns: none !important;
-    gap: 0 !important;
-
-    /* Prevent browser drag selection */
-    user-select: none;
-    -webkit-user-select: none;
 }
 
-/* Ensure container fills viewport */
+/* Backdrop overlay — sits between grid tiles (z-index: auto) and
+   viewport tiles (z-index: 5/10). Fades in over the transition duration. */
 .thumbnail-grid.viewport-mode::before {
     content: '';
-    position: absolute;
+    position: fixed;
     inset: 0;
     background: var(--vp-backdrop);
-    z-index: -1;
+    z-index: 1;
+    animation: backdropFadeIn var(--vp-transition-duration) ease forwards;
+}
+
+@keyframes backdropFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* ============================================
-   TILE BASE TRANSITIONS
+   GRID TILES IN VIEWPORT MODE
    ============================================ */
 
-/* All tiles get smooth transitions */
-.thumbnail-grid.viewport-mode .thumbnail {
-    position: absolute;
-    /* Center all tiles as base position */
+/* Grid tiles stay in their natural positions behind the backdrop.
+   z-index: 0 creates a stacking context so badges (z-index: 5) stay
+   contained within the tile, below the backdrop (z-index: 1). */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="grid"] {
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ============================================
+   VIEWPORT TILES (prev/current/next)
+   ============================================ */
+
+/* Viewport tiles are pulled out of grid flow with position: fixed,
+   placing them above the backdrop */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"],
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"],
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] {
+    position: fixed;
     left: 50%;
     top: 50%;
-    transform: translate(-50%, -50%);
+    aspect-ratio: auto;
     transition:
         transform var(--vp-transition-duration) var(--vp-transition-easing),
+        left var(--vp-transition-duration) var(--vp-transition-easing),
+        top var(--vp-transition-duration) var(--vp-transition-easing),
         opacity var(--vp-transition-duration) ease,
         width var(--vp-transition-duration) var(--vp-transition-easing),
         height var(--vp-transition-duration) var(--vp-transition-easing);
-
-    /* Reset grid-specific styles */
-    aspect-ratio: auto;
-
-    /* GPU acceleration */
     will-change: transform, opacity;
 }
 
-/* Image should fill tile and use contain for viewport */
-.thumbnail-grid.viewport-mode .thumbnail img {
+/* Viewport tile images use contain for proper display at large sizes */
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"] img,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] img,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] img {
     width: 100%;
     height: 100%;
     object-fit: contain;
     border-radius: var(--border-radius);
 }
 
-/* ============================================
-   VIEWPORT POSITION: HIDDEN (default for unpositioned tiles)
-   ============================================ */
-
-/* Hide tiles that are in grid position or have no explicit viewport position */
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="grid"],
-.thumbnail-grid.viewport-mode .thumbnail:not([data-vp-pos]),
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="hidden"],
-.thumbnail-grid.viewport-mode .thumbnail.vp-hidden {
-    opacity: 0;
-    pointer-events: none;
-    visibility: hidden;
-    transform: translate(-50%, -50%) scale(0.8);
-}
 
 /* ============================================
    VIEWPORT POSITION: PREVIOUS
@@ -631,20 +625,6 @@ body.viewport-active {
 /* ============================================
    ANIMATION STATES
    ============================================ */
-
-/* Entry animation */
-.thumbnail-grid.viewport-mode.viewport-entering {
-    animation: viewportFadeIn 0.3s ease forwards;
-}
-
-@keyframes viewportFadeIn {
-    from {
-        background: transparent;
-    }
-    to {
-        background: var(--vp-backdrop);
-    }
-}
 
 /* Exit animation */
 .thumbnail-grid.viewport-mode.viewport-exiting {
