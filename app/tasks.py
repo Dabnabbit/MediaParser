@@ -423,3 +423,257 @@ def enqueue_import_job(job_id: int) -> str:
     """
     result = process_import_job(job_id)
     return result.id  # Huey task ID
+
+
+@huey.task(retries=2, retry_delay=30)
+def process_export_job(job_id: int) -> dict:
+    """
+    Process an export job by copying non-discarded files to organized output directories.
+
+    Implements complete export pipeline:
+    1. Fetch job and associated files from database
+    2. Update job status to RUNNING
+    3. Query non-discarded files not yet exported
+    4. For each file:
+       - Generate output path (year-based or unknown/)
+       - Copy to output location with collision resolution
+       - Set File.output_path after successful copy
+    5. Track progress with pause/cancel support
+    6. Update job status to COMPLETED or FAILED
+
+    Args:
+        job_id: ID of the export Job record to process
+
+    Returns:
+        Dictionary with result info:
+        {
+            'job_id': int,
+            'status': str,
+            'processed': int,
+            'errors': int (if any)
+        }
+    """
+    from app.lib.export import generate_output_filename, copy_file_to_output
+
+    app = get_app()
+
+    with app.app_context():
+        from app import db
+
+        # Fetch job
+        job = db.session.get(Job, job_id)
+        if job is None:
+            logger.error(f"Export job {job_id} not found")
+            return {'error': f'Job {job_id} not found'}
+
+        # Check if this is a resume (job already has started_at)
+        is_resume = job.started_at is not None
+
+        debug_log(f"Export job {job_id} TASK START: is_resume={is_resume}, current progress_current={job.progress_current}, progress_total={job.progress_total}")
+
+        # Update to RUNNING
+        job.status = JobStatus.RUNNING
+        if not is_resume:
+            job.started_at = datetime.now(timezone.utc)
+            job.error_count = 0
+        db.session.commit()
+        debug_log(f"Export job {job_id} status set to RUNNING, committed")
+
+        try:
+            # Get output directory from settings or config
+            from app.models import Setting
+            output_dir_setting = Setting.query.filter_by(key='output_directory').first()
+            if output_dir_setting:
+                output_base = Path(output_dir_setting.value)
+            else:
+                output_base = Path(app.config['OUTPUT_FOLDER'])
+
+            logger.info(f"Export job {job_id}: output directory = {output_base}")
+
+            # Query files to export using windowed approach for memory efficiency
+            # Resume support: only process files without output_path set
+            files_to_export = File.query.join(File.jobs).filter(
+                Job.id == job_id,
+                File.discarded == False,
+                File.output_path.is_(None)  # Not yet exported
+            ).order_by(
+                File.final_timestamp.asc().nullslast(),
+                File.detected_timestamp.asc().nullslast(),
+                File.original_filename.asc()
+            ).all()
+
+            # Track how many were already processed (for resume)
+            all_files_count = File.query.join(File.jobs).filter(
+                Job.id == job_id,
+                File.discarded == False
+            ).count()
+            already_exported = all_files_count - len(files_to_export)
+
+            # Set progress total
+            job.progress_total = all_files_count
+
+            debug_log(f"Export job {job_id} FILE CHECK: all_files={all_files_count}, files_without_output={len(files_to_export)}, already_exported={already_exported}")
+
+            if already_exported > 0:
+                msg = f"Export job {job_id} RESUME: {already_exported}/{all_files_count} already exported, {len(files_to_export)} remaining"
+                logger.info(msg)
+                debug_log(msg)
+                job.progress_current = already_exported
+            else:
+                msg = f"Export job {job_id} START: {all_files_count} files to export"
+                logger.info(msg)
+                debug_log(msg)
+
+            db.session.commit()
+            debug_log(f"Export job {job_id} AFTER COMMIT: progress_current={job.progress_current}, progress_total={job.progress_total}")
+
+            if len(files_to_export) == 0:
+                logger.warning(f"Export job {job_id} has no files to export")
+                job.status = JobStatus.COMPLETED
+                job.completed_at = datetime.now(timezone.utc)
+                db.session.commit()
+                return {
+                    'job_id': job_id,
+                    'status': 'completed',
+                    'processed': already_exported
+                }
+
+            # Get batch commit size from config
+            batch_size = app.config.get('BATCH_COMMIT_SIZE', 10)
+
+            # Track processing state (offset by already exported for resume)
+            processed_count = already_exported
+            error_count = job.error_count or 0
+            pending_updates = []  # Track files for batch commit
+
+            # Process files sequentially (no threading needed for file copy)
+            for file_obj in files_to_export:
+                try:
+                    # Generate output path
+                    output_path = generate_output_filename(file_obj, output_base)
+
+                    # Get source path (prefer storage_path, fall back to original_path)
+                    source_path = Path(file_obj.storage_path or file_obj.original_path)
+
+                    # Copy file with collision resolution
+                    final_output_path = copy_file_to_output(source_path, output_path)
+
+                    # Set output_path on file object
+                    file_obj.output_path = str(final_output_path)
+
+                    # Track for batch commit
+                    pending_updates.append(file_obj.id)
+
+                    processed_count += 1
+
+                    # Update progress tracking
+                    job.progress_current = processed_count
+                    job.current_filename = file_obj.original_filename
+
+                    # Commit progress frequently for responsive UI (first 20 or every 5)
+                    if processed_count <= 20 or processed_count % 5 == 0:
+                        db.session.commit()
+
+                except Exception as e:
+                    # Track error on file and job
+                    error_count += 1
+                    job.error_count = error_count
+                    file_obj.processing_error = f"Export error: {str(e)[:500]}"
+                    logger.error(
+                        f"File export error [{error_count}/{processed_count}]: "
+                        f"{file_obj.original_filename} - {e}"
+                    )
+
+                    processed_count += 1
+                    job.progress_current = processed_count
+
+                    # Check error threshold
+                    if _should_halt_job(processed_count, error_count, ERROR_THRESHOLD, MIN_SAMPLE_SIZE):
+                        error_rate = error_count / processed_count
+                        job.status = JobStatus.HALTED
+                        job.error_message = (
+                            f"Error rate {error_count}/{processed_count} "
+                            f"({error_rate:.1%}) exceeded {ERROR_THRESHOLD:.1%} threshold"
+                        )
+                        job.completed_at = datetime.now(timezone.utc)
+                        db.session.commit()
+                        logger.error(f"Export job {job_id} halted due to error threshold")
+                        return {
+                            'job_id': job_id,
+                            'status': 'halted',
+                            'processed': processed_count,
+                            'errors': error_count
+                        }
+
+                # Batch commit for performance
+                if len(pending_updates) >= batch_size:
+                    db.session.commit()
+                    pending_updates = []
+
+                # Check for cancellation/pause AFTER processing each file
+                db.session.refresh(job)
+                if job.status in (JobStatus.CANCELLED, JobStatus.PAUSED):
+                    pending_count = len(pending_updates)
+                    debug_log(f"Export job {job_id} PAUSE DETECTED: status={job.status.value}, processed_count={processed_count}, pending_updates={pending_count}")
+                    if pending_updates:
+                        db.session.commit()
+                        debug_log(f"Export job {job_id} PAUSE: committed {pending_count} pending updates")
+                    job.progress_current = processed_count
+                    db.session.commit()
+                    debug_log(f"Export job {job_id} PAUSE FINAL: progress_current={job.progress_current}, progress_total={job.progress_total}")
+                    msg = f"Export job {job_id} {job.status.value} at {processed_count}/{job.progress_total} (committed {pending_count} pending)"
+                    logger.info(msg)
+                    debug_log(msg)
+                    return {
+                        'job_id': job_id,
+                        'status': job.status.value,
+                        'processed': processed_count
+                    }
+
+            # Commit any remaining pending updates
+            if pending_updates:
+                db.session.commit()
+
+            # Finalize job - ensure progress reflects actual count
+            job.status = JobStatus.COMPLETED
+            job.completed_at = datetime.now(timezone.utc)
+            job.current_filename = None
+            job.progress_current = processed_count  # Ensure final count is saved
+            db.session.commit()
+            debug_log(f"Export job {job_id} COMPLETED: progress_current={job.progress_current}, progress_total={job.progress_total}")
+            logger.info(
+                f"Export job {job_id} completed successfully: "
+                f"{processed_count} files exported, {error_count} errors"
+            )
+
+            return {
+                'job_id': job_id,
+                'status': 'completed',
+                'processed': processed_count,
+                'errors': error_count
+            }
+
+        except Exception as e:
+            # Mark failed
+            job.status = JobStatus.FAILED
+            job.error_message = str(e)[:500]  # Truncate long errors
+            job.completed_at = datetime.now(timezone.utc)
+            db.session.commit()
+            logger.error(f"Export job {job_id} failed with exception: {e}", exc_info=True)
+
+            # Re-raise so Huey handles retry
+            raise
+
+
+def enqueue_export_job(job_id: int) -> str:
+    """
+    Helper function to enqueue an export job from web app.
+
+    Args:
+        job_id: ID of the export Job record to process
+
+    Returns:
+        Huey task ID (can be used to check status)
+    """
+    result = process_export_job(job_id)
+    return result.id  # Huey task ID

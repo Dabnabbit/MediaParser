@@ -934,3 +934,66 @@ def get_job_summary(job_id):
         # Total
         'total': total_count
     }), 200
+
+
+@jobs_bp.route('/api/jobs/<int:job_id>/export', methods=['POST'])
+def trigger_export(job_id):
+    """
+    Trigger export for a completed import job.
+
+    Creates a new export job linked to the same files as the import job,
+    then enqueues it for processing by the Huey worker.
+
+    Args:
+        job_id: ID of the completed import job
+
+    Returns:
+        JSON with new export job details
+    """
+    from app.tasks import enqueue_export_job
+
+    # Verify source job exists and is an import job
+    source_job = db.session.get(Job, job_id)
+
+    if source_job is None:
+        return jsonify({'error': f'Job {job_id} not found'}), 404
+
+    if source_job.job_type != 'import':
+        return jsonify({
+            'error': 'Export can only be triggered from import jobs',
+            'job_type': source_job.job_type
+        }), 400
+
+    if source_job.status != JobStatus.COMPLETED:
+        return jsonify({
+            'error': f'Cannot export from job in {source_job.status.value} state',
+            'required_status': 'completed'
+        }), 400
+
+    # Create new export job
+    export_job = Job(
+        job_type='export',
+        status=JobStatus.PENDING
+    )
+    db.session.add(export_job)
+    db.session.flush()  # Get the ID
+
+    # Associate the same files as the import job
+    export_job.files = source_job.files
+
+    # Count non-discarded files for reporting
+    file_count = sum(1 for f in export_job.files if not f.discarded)
+
+    db.session.commit()
+
+    # Enqueue the export job
+    task_id = enqueue_export_job(export_job.id)
+
+    logger.info(f"Export job {export_job.id} created and enqueued for import job {job_id} ({file_count} files)")
+
+    return jsonify({
+        'job_id': export_job.id,
+        'status': 'queued',
+        'file_count': file_count,
+        'task_id': task_id
+    }), 200
