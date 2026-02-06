@@ -18,7 +18,9 @@
      * Create viewport UI elements
      */
     proto.createUI = function() {
-        const container = this.tileManager.container;
+        // Append UI elements to document.body (not the grid container) so they
+        // live in the root stacking context. The grid container has z-index: 1000
+        // which would cap child z-indices below the details panel (z-index: 1005).
 
         // Close button
         this.closeButton = document.createElement('button');
@@ -26,7 +28,7 @@
         this.closeButton.innerHTML = '&times;';
         this.closeButton.title = 'Close (Escape)';
         this.closeButton.addEventListener('click', () => this.exit());
-        container.appendChild(this.closeButton);
+        document.body.appendChild(this.closeButton);
 
         // View mode toggle
         this.modeToggle = document.createElement('div');
@@ -59,12 +61,12 @@
                 this.setViewMode(btn.dataset.mode);
             }
         });
-        container.appendChild(this.modeToggle);
+        document.body.appendChild(this.modeToggle);
 
         // Counter
         this.counter = document.createElement('div');
         this.counter.className = 'viewport-counter';
-        container.appendChild(this.counter);
+        document.body.appendChild(this.counter);
 
         // Keyboard hints
         this.hints = document.createElement('div');
@@ -75,7 +77,7 @@
             <span class="viewport-hint"><kbd>V</kbd> View</span>
             <span class="viewport-hint"><kbd>Esc</kbd> Close</span>
         `;
-        container.appendChild(this.hints);
+        document.body.appendChild(this.hints);
     };
 
     /**
@@ -131,9 +133,13 @@
 
         this.viewMode = mode;
 
-        // In compare mode, all visible tiles need full resolution
+        // In compare mode, all visible tiles need full resolution + solver layout
         if (mode === ViewportController.VIEW_MODES.COMPARE) {
             this.upgradeVisibleTilesToFullRes();
+            this._setupCompareResize();
+            requestAnimationFrame(() => this.updateCompareLayout());
+        } else {
+            this._clearCompareLayout();
         }
 
         // Update toggle button states
@@ -310,6 +316,10 @@
                 file: this.getCurrentFile()
             }
         }));
+
+        if (this.viewMode === ViewportController.VIEW_MODES.COMPARE) {
+            setTimeout(() => this.updateCompareLayout(), 50);
+        }
     };
 
     /**
@@ -320,6 +330,9 @@
         window.dispatchEvent(new CustomEvent('viewportToggleDetails', {
             detail: { visible: true, file: this.getCurrentFile() }
         }));
+        if (this.viewMode === ViewportController.VIEW_MODES.COMPARE) {
+            setTimeout(() => this.updateCompareLayout(), 50);
+        }
     };
 
     /**
@@ -330,5 +343,8 @@
         window.dispatchEvent(new CustomEvent('viewportToggleDetails', {
             detail: { visible: false, file: this.getCurrentFile() }
         }));
+        if (this.viewMode === ViewportController.VIEW_MODES.COMPARE) {
+            setTimeout(() => this.updateCompareLayout(), 50);
+        }
     };
 })();

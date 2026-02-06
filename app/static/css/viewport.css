@@ -429,48 +429,23 @@ body.viewport-active {
 /* Carousel mode is the default - no additional classes needed */
 
 /* ============================================
-   VIEW MODE: COMPARE (equal size tiles)
+   VIEW MODE: COMPARE (dynamic layout solver)
    ============================================ */
 
-/* Compare mode: 3 equal tiles filling available width */
-.thumbnail-grid.viewport-mode.view-compare {
-    --vp-compare-gap: 12px;
-    --vp-compare-padding: 40px;
-    /* Each tile takes ~1/3 of available width minus gaps and padding */
-    --vp-compare-tile-width: calc((100vw - var(--vp-compare-padding) * 2 - var(--vp-compare-gap) * 2) / 3);
-    --vp-compare-tile-height: min(70vh, 600px);
-}
-
-/* All three tiles same size */
+/* Compare tiles: solver sets position/size via inline styles.
+   CSS provides opacity and prevents default transform interference. */
 .thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="prev"],
 .thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="current"],
 .thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="next"],
 .thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev,
 .thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-current,
 .thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-next {
-    width: var(--vp-compare-tile-width);
-    height: var(--vp-compare-tile-height);
     opacity: 1;
 }
 
-/* Position tiles side by side: prev | current | next */
-.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="prev"],
-.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-prev {
-    left: var(--vp-compare-padding);
-    transform: translate(0, -50%);
-}
-
-.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="current"],
-.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-current {
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-vp-pos="next"],
-.thumbnail-grid.viewport-mode.view-compare .thumbnail.vp-next {
-    left: auto;
-    right: var(--vp-compare-padding);
-    transform: translate(0, -50%);
+/* Solver-managed tiles: override any CSS transform so inline left/top works */
+.thumbnail-grid.viewport-mode.view-compare .thumbnail[data-compare-managed] {
+    transform: none !important;
 }
 
 /* Show filename on all tiles in compare mode */
@@ -502,23 +477,6 @@ body.viewport-active {
 .thumbnail-grid.viewport-mode.view-fullscreen.with-details .thumbnail[data-vp-pos="current"],
 .thumbnail-grid.viewport-mode.view-fullscreen.with-details .thumbnail.vp-current {
     width: min(calc(90vw - 380px), 1000px);
-}
-
-/* Adjust compare mode for details panel */
-.thumbnail-grid.viewport-mode.view-compare.with-details {
-    /* Recalculate for reduced width (subtract 380px panel) */
-    --vp-compare-tile-width: calc((100vw - 380px - var(--vp-compare-padding) * 2 - var(--vp-compare-gap) * 2) / 3);
-}
-
-/* Reposition tiles within the reduced space */
-.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail[data-vp-pos="current"],
-.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail.vp-current {
-    left: calc((100vw - 380px) / 2);
-}
-
-.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail[data-vp-pos="next"],
-.thumbnail-grid.viewport-mode.view-compare.with-details .thumbnail.vp-next {
-    right: calc(380px + var(--vp-compare-padding));
 }
 
 /* ============================================
@@ -938,11 +896,11 @@ body.viewport-details-open .thumbnail-grid.viewport-mode {
     padding-right: 360px;
 }
 
-body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-close {
+body.viewport-details-open > .viewport-close {
     right: 380px;
 }
 
-body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-counter {
+body.viewport-details-open > .viewport-counter {
     transform: translateX(calc(-50% - 180px));
 }
 
@@ -964,7 +922,7 @@ body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-counter {
         left: calc((100vw - 340px) / 2);
     }
 
-    body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-close {
+    body.viewport-details-open > .viewport-close {
         right: 340px;
     }
 }
@@ -997,11 +955,11 @@ body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-counter {
         top: calc((50vh) / 2);
     }
 
-    body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-close {
+    body.viewport-details-open > .viewport-close {
         right: 20px;
     }
 
-    body.viewport-details-open .thumbnail-grid.viewport-mode .viewport-counter {
+    body.viewport-details-open > .viewport-counter {
         transform: translateX(-50%);
         bottom: calc(50vh + 20px);
     }

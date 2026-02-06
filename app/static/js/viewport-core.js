@@ -172,6 +172,9 @@ class ViewportController {
 
         const container = this.tileManager.container;
 
+        // Clear compare layout before exit animation
+        this._clearCompareLayout();
+
         // Add exit animation class
         container.classList.add('viewport-exiting');
 

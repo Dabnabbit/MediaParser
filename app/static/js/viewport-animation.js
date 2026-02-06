@@ -191,6 +191,12 @@
                     tile.element.style.opacity = '0';
                 }
             });
+
+            // In compare mode, apply solver layout in the same frame so
+            // entering tiles animate from frozen grid position to solver position
+            if (this.viewMode === ViewportController.VIEW_MODES.COMPARE) {
+                this.updateCompareLayout();
+            }
         });
 
         // Track leaving tiles for cleanup
