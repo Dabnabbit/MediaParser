@@ -1114,6 +1114,10 @@ def finalize_job(job_id):
             'required_status': 'completed'
         }), 400
 
+    # Resolve output directory before cleanup (Setting table is not deleted)
+    output_dir_setting = Setting.query.filter_by(key='output_directory').first()
+    output_directory = output_dir_setting.value if output_dir_setting else str(current_app.config['OUTPUT_FOLDER'])
+
     # Collect file IDs from this export job
     file_ids = [f.id for f in export_job.files]
     if not file_ids:
@@ -1234,5 +1238,6 @@ def finalize_job(job_id):
 
     return jsonify({
         'finalized': True,
-        'stats': stats
+        'stats': stats,
+        'output_directory': output_directory
     }), 200

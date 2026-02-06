@@ -190,6 +190,10 @@
                         <span class="seg-label">Unreviewed</span>
                         <span class="seg-count" data-count="unreviewed">0</span>
                     </button>
+                    <button class="mode-segment export-segment collapsed" data-mode="export" title="Export &amp; Finalize">
+                        <span class="seg-icon">&#x2913;</span>
+                        <span class="seg-label">Export</span>
+                    </button>
                 </div>
                 <!-- Layer 4: Reviewed overlay (grows from left over segments) -->
                 <button class="reviewed-overlay seg-empty" id="reviewed-overlay" data-mode="reviewed" title="Reviewed files">
@@ -199,7 +203,6 @@
                 </button>
             </div>
             <span class="progress-text" id="job-progress-text">0%</span>
-            <button class="btn btn-primary btn-sm export-inline-btn" id="export-btn" style="display: none;">Export &amp; Finalize</button>
         </div>
 
         <!-- Phase breadcrumb -->
@@ -210,6 +213,15 @@
             <span class="phase-sep">&mdash;</span>
             <span class="phase" data-phase="review">Review</span>
         </div>
+    </div>
+
+    <!-- Finalize Complete Card -->
+    <div class="finalize-complete" id="finalize-complete" style="display: none;">
+        <div class="finalize-icon">&#x2713;</div>
+        <h3>Export Complete</h3>
+        <p class="finalize-stats" id="finalize-stats"></p>
+        <p class="finalize-path">Output directory:<br><code id="finalize-output-path"></code></p>
+        <button class="btn btn-primary" id="finalize-new-btn">New Import</button>
     </div>
 
     <!-- Results: Unified Grid with Filter Bar -->

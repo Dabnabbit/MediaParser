@@ -58,9 +58,6 @@ class ResultsHandler {
             this.resultsContainer.style.display = 'none';
         }
 
-        // Hide export button
-        this.hideExportButton();
-
         // Clear tiles via TileManager
         if (this.tileManager) {
             this.tileManager.clear();
@@ -190,12 +187,11 @@ class ResultsHandler {
             this.resultsContainer.style.display = 'block';
         }
 
-        // Store jobId for export section (shown later when review is complete)
-        this._importJobId = jobId;
-
         // Reset filter handler and load fresh counts
         if (window.filterHandler) {
             window.filterHandler.reset();
+            // Set importJobId AFTER reset (reset clears it)
+            window.filterHandler.importJobId = jobId;
         }
 
         // Load summary first to get counts, then auto-select mode
@@ -209,32 +205,6 @@ class ResultsHandler {
 
         // Load files for the selected mode
         this.loadFiles();
-    }
-
-    /**
-     * Show export section with export button
-     */
-    showExportSection(importJobId) {
-        // Show inline export button in workflow bar
-        const exportBtn = document.getElementById('export-btn');
-        if (exportBtn) {
-            exportBtn.style.display = '';
-            if (!exportBtn.dataset.wired) {
-                exportBtn.dataset.wired = 'true';
-                exportBtn.addEventListener('click', () => {
-                    if (window.progressHandler) {
-                        window.progressHandler.startExport(importJobId);
-                    }
-                });
-            }
-        }
-    }
-
-    hideExportButton() {
-        const exportBtn = document.getElementById('export-btn');
-        if (exportBtn) {
-            exportBtn.style.display = 'none';
-        }
     }
 
     /**

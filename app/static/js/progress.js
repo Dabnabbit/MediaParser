@@ -250,6 +250,10 @@ class ProgressHandler {
             this.jobSummary.style.display = 'none';
         }
 
+        // Hide finalize card if visible
+        const finalizeCard = document.getElementById('finalize-complete');
+        if (finalizeCard) finalizeCard.style.display = 'none';
+
         // Reset results
         if (window.resultsHandler) {
             window.resultsHandler.reset();
@@ -720,6 +724,7 @@ class ProgressHandler {
         console.log(`Export complete: ${exported} exported, ${errorCount} errors`);
 
         // Auto-finalize: clean up all working data
+        let finalizeResult = null;
         try {
             const response = await fetch(`/api/jobs/${exportJobId}/finalize`, {
                 method: 'POST',
@@ -727,8 +732,8 @@ class ProgressHandler {
             });
 
             if (response.ok) {
-                const result = await response.json();
-                console.log('Finalize result:', result.stats);
+                finalizeResult = await response.json();
+                console.log('Finalize result:', finalizeResult.stats);
             } else {
                 console.warn('Finalize failed, export still succeeded');
             }
@@ -741,8 +746,60 @@ class ProgressHandler {
         localStorage.removeItem('exportJobId');
         localStorage.removeItem('currentJobId');
 
-        // Reset UI to idle
-        this.resetToIdle();
+        // If finalize failed, fall back to immediate reset
+        if (!finalizeResult) {
+            this.resetToIdle();
+            return;
+        }
+
+        // Show completion card instead of resetting to idle
+        this.hideSegments();
+
+        // Hide workflow bar, results, summary, metrics
+        if (this.jobProgress) this.jobProgress.style.display = 'none';
+        if (this.metricsRow) this.metricsRow.style.display = 'none';
+        if (this.jobSummary) this.jobSummary.style.display = 'none';
+        const resultsContainer = document.getElementById('results-container');
+        if (resultsContainer) resultsContainer.style.display = 'none';
+        if (this.jobControls) this.jobControls.style.display = 'none';
+        if (this.statusBadge) this.statusBadge.style.display = 'none';
+        if (this.jobTitle) this.jobTitle.textContent = 'Export Complete';
+
+        // Set finalized state so card is visible but upload area is not
+        if (this.jobSection) {
+            this.jobSection.dataset.state = 'finalized';
+            this.jobSection.dataset.status = '';
+        }
+
+        // Populate and show the finalize card
+        const card = document.getElementById('finalize-complete');
+        const statsEl = document.getElementById('finalize-stats');
+        const pathEl = document.getElementById('finalize-output-path');
+        const newBtn = document.getElementById('finalize-new-btn');
+
+        if (statsEl) {
+            let statsText = `${exported} file${exported !== 1 ? 's' : ''} exported`;
+            if (errorCount > 0) {
+                statsText += `, ${errorCount} error${errorCount !== 1 ? 's' : ''}`;
+            }
+            statsEl.textContent = statsText;
+        }
+
+        if (pathEl) {
+            pathEl.textContent = finalizeResult.output_directory || 'storage/output';
+        }
+
+        if (card) {
+            card.style.display = 'block';
+        }
+
+        // Wire "New Import" button
+        if (newBtn) {
+            newBtn.onclick = () => {
+                if (card) card.style.display = 'none';
+                this.resetToIdle();
+            };
+        }
     }
 
     showWorkerWarning() {

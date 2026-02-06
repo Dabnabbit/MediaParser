@@ -38,9 +38,13 @@ class FilterHandler {
         this.sortField = 'detected_timestamp';
         this.sortOrder = 'asc';
 
+        // Import job ID for export (set by results.js on showResults)
+        this.importJobId = null;
+
         // Cache DOM elements
         this.filterBar = document.getElementById('filter-bar');
-        this.modeChips = document.querySelectorAll('.mode-segment');
+        this.modeChips = document.querySelectorAll('.mode-segment:not(.export-segment)');
+        this.exportSegment = document.querySelector('.export-segment');
         this.confidenceChips = document.querySelectorAll('.confidence-filters .filter-chip');
         this.indicatorDiscarded = document.getElementById('indicator-discarded');
         this.indicatorFailed = document.getElementById('indicator-failed');
@@ -184,8 +188,10 @@ class FilterHandler {
                 seg.classList.remove('seg-small');
             }
 
-            // Attention pulse for duplicates/similar when not active
-            const needsAttention = (mode === 'duplicates' || mode === 'similar') && count > 0;
+            // Attention pulse for duplicates/similar only when NOT the active mode
+            const needsAttention = (mode === 'duplicates' || mode === 'similar')
+                                && count > 0
+                                && mode !== this.currentMode;
             seg.classList.toggle('has-items', needsAttention);
         });
 
@@ -211,15 +217,56 @@ class FilterHandler {
             this.indicatorFailed.style.display = (this.counts.failed || 0) > 0 ? 'inline-flex' : 'none';
         }
 
-        // Show/hide export button reactively based on review completion
+        // Show/hide export segment reactively based on review completion
         const allReviewed = (this.counts.duplicates || 0) === 0
                          && (this.counts.similar || 0) === 0
                          && (this.counts.unreviewed || 0) === 0
                          && (this.counts.reviewed || 0) > 0;
-        if (allReviewed && window.resultsHandler?._importJobId) {
-            window.resultsHandler.showExportSection(window.resultsHandler._importJobId);
-        } else if (window.resultsHandler) {
-            window.resultsHandler.hideExportButton();
+
+        if (this.exportSegment) {
+            if (allReviewed && this.importJobId) {
+                // Cap reviewed overlay to ~90% to leave room for export segment
+                if (this.reviewedOverlay) {
+                    this.reviewedOverlay.style.width = '90%';
+                    // Trigger shimmer once when transitioning to all-reviewed
+                    if (!this._shimmerFired) {
+                        this._shimmerFired = true;
+                        // Add class on next frame so width is committed first
+                        requestAnimationFrame(() => {
+                            this.reviewedOverlay.classList.add('all-reviewed');
+                        });
+                    }
+                }
+                if (this.modeSegmentsContainer) {
+                    this.modeSegmentsContainer.style.left = '90%';
+                    this.modeSegmentsContainer.style.width = '10%';
+                }
+                // Un-collapse and show export segment
+                this.exportSegment.classList.remove('collapsed');
+                this.exportSegment.style.flexGrow = '1';
+                if (!this.exportSegment.classList.contains('ready')) {
+                    this.exportSegment.classList.add('ready');
+                }
+                // Wire click handler once
+                if (!this.exportSegment.dataset.wired) {
+                    this.exportSegment.dataset.wired = 'true';
+                    this.exportSegment.addEventListener('click', () => {
+                        if (window.progressHandler && this.importJobId) {
+                            window.progressHandler.startExport(this.importJobId);
+                        }
+                    });
+                }
+            } else {
+                // Collapse export segment, restore normal reviewed overlay width
+                this.exportSegment.classList.add('collapsed');
+                this.exportSegment.classList.remove('ready');
+                this.exportSegment.style.flexGrow = '0';
+                // Remove shimmer so it re-triggers next time
+                this._shimmerFired = false;
+                if (this.reviewedOverlay) {
+                    this.reviewedOverlay.classList.remove('all-reviewed');
+                }
+            }
         }
 
         // Emit counts updated event for other components
@@ -319,16 +366,25 @@ class FilterHandler {
             duplicates: 0, similar: 0, unreviewed: 0, reviewed: 0, discards: 0, failed: 0,
             high: 0, medium: 0, low: 0, none: 0, total: 0
         };
+        this.importJobId = null;
+        this._shimmerFired = false;
+
         // Reset segment sizing
         this.modeChips.forEach(seg => {
             seg.style.flexGrow = '0';
             seg.classList.add('collapsed');
             seg.classList.remove('seg-small', 'has-items');
         });
+        // Reset export segment
+        if (this.exportSegment) {
+            this.exportSegment.classList.add('collapsed');
+            this.exportSegment.classList.remove('ready');
+            this.exportSegment.style.flexGrow = '0';
+        }
         // Reset reviewed overlay
         if (this.reviewedOverlay) {
             this.reviewedOverlay.style.width = '0%';
-            this.reviewedOverlay.classList.remove('active', 'seg-small', 'full-width');
+            this.reviewedOverlay.classList.remove('active', 'seg-small', 'full-width', 'all-reviewed');
             this.reviewedOverlay.classList.add('seg-empty');
         }
         // Reset mode segments positioning
