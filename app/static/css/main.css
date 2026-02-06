@@ -528,10 +528,23 @@ body {
     position: relative;
 }
 
-.progress-bar-fill {
+.progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
     height: 100%;
-    background-color: var(--color-primary);
-    transition: width 0.3s ease, background-color 0.3s ease, opacity 0.4s ease;
+    width: 0%;
+    transition: width 0.3s ease, opacity 0.4s ease;
+}
+
+.upload-fill {
+    background-color: var(--color-uploading);
+    z-index: 1;
+}
+
+.processing-fill {
+    background-color: var(--color-running);
+    z-index: 2;
 }
 
 .progress-text {
@@ -558,16 +571,19 @@ body {
    ======================================== */
 .mode-segments {
     position: absolute;
-    inset: 0;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
     display: flex;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.4s ease;
-    z-index: 1;
+    transition: opacity 0.4s ease, left 0.4s ease, width 0.4s ease;
+    z-index: 3;
 }
 
-/* When in review state, show segments and hide fill */
-#workflow-track[data-state="review"] .progress-bar-fill {
+/* When in review state, show segments and hide fills */
+#workflow-track[data-state="review"] .progress-fill {
     opacity: 0;
 }
 
@@ -601,8 +617,12 @@ body {
 .mode-segment[data-mode="duplicates"] { background: var(--color-mode-duplicates); }
 .mode-segment[data-mode="similar"]    { background: var(--color-mode-similar); }
 .mode-segment[data-mode="unreviewed"] { background: var(--color-mode-unreviewed); }
-.mode-segment[data-mode="reviewed"]   { background: var(--color-mode-reviewed); }
 /* Discarded/Failed are shown as summary indicators, not bar segments */
+
+/* Subtle dividers between mode segments */
+.mode-segment + .mode-segment:not(.collapsed) {
+    border-left: 1px solid rgba(255, 255, 255, 0.3);
+}
 
 /* Active segment */
 .mode-segment.active {
@@ -646,6 +666,60 @@ body {
 .mode-segment.seg-small .seg-label {
     display: none;
 }
+
+/* ========================================
+   Reviewed Overlay (grows from left over segments)
+   ======================================== */
+.reviewed-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 0%;
+    background: var(--color-mode-reviewed);
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 0 6px;
+    border: none;
+    cursor: pointer;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: width 0.4s ease, opacity 0.3s ease;
+    border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm);
+}
+
+/* Show in review state */
+#workflow-track[data-state="review"] .reviewed-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* When reviewed fills 100%, round both corners */
+.reviewed-overlay.full-width {
+    border-radius: var(--border-radius-sm);
+}
+
+/* Active/hover states matching mode segments */
+.reviewed-overlay.active {
+    filter: brightness(1.15);
+    box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.4);
+}
+.reviewed-overlay:hover {
+    filter: brightness(1.1);
+}
+
+/* Hide content when too small */
+.reviewed-overlay.seg-small .seg-label { display: none; }
+#workflow-track .reviewed-overlay.seg-empty { pointer-events: none; opacity: 0; }
 
 /* ========================================
    Workflow Phase Breadcrumb
@@ -698,17 +772,9 @@ body {
     box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
 }
 
-[data-section="job"][data-status="UPLOADING"] .progress-bar-fill {
-    background-color: var(--color-uploading);
-}
-
 [data-section="job"][data-status="RUNNING"] {
     border-color: var(--color-running);
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-[data-section="job"][data-status="RUNNING"] .progress-bar-fill {
-    background-color: var(--color-running);
 }
 
 [data-section="job"][data-status="COMPLETED"] {
@@ -716,28 +782,15 @@ body {
     box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
 }
 
-[data-section="job"][data-status="COMPLETED"] .progress-bar-fill {
-    background-color: var(--color-completed);
-}
-
 [data-section="job"][data-status="PAUSED"] {
     border-color: var(--color-paused);
     box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
-}
-
-[data-section="job"][data-status="PAUSED"] .progress-bar-fill {
-    background-color: var(--color-paused);
 }
 
 [data-section="job"][data-status="FAILED"],
 [data-section="job"][data-status="HALTED"] {
     border-color: var(--color-failed);
     box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
-}
-
-[data-section="job"][data-status="FAILED"] .progress-bar-fill,
-[data-section="job"][data-status="HALTED"] .progress-bar-fill {
-    background-color: var(--color-failed);
 }
 
 /* Job Header */

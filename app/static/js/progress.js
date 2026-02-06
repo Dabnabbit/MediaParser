@@ -23,9 +23,11 @@ class ProgressHandler {
         this.statusText = document.getElementById('job-status-text');
         this.uploadArea = document.getElementById('upload-area');
 
-        // Progress elements
+        // Progress elements (layered fills)
         this.jobProgress = document.getElementById('job-progress');
-        this.progressFill = document.getElementById('job-progress-fill');
+        this.uploadFill = document.getElementById('upload-fill');
+        this.processingFill = document.getElementById('processing-fill');
+        this.reviewedOverlay = document.getElementById('reviewed-overlay');
         this.progressText = document.getElementById('job-progress-text');
         this.workflowTrack = document.getElementById('workflow-track');
         this.modeSegments = document.getElementById('mode-segments');
@@ -87,9 +89,9 @@ class ProgressHandler {
      * Morph progress bar into mode segments (crossfade animation)
      */
     morphToModes() {
-        // Fill to 100% green first
-        if (this.progressFill) {
-            this.progressFill.style.width = '100%';
+        // Fill processing to 100% first
+        if (this.processingFill) {
+            this.processingFill.style.width = '100%';
         }
 
         // After a brief pause, trigger the CSS crossfade
@@ -98,7 +100,7 @@ class ProgressHandler {
                 this.workflowTrack.dataset.state = 'review';
             }
             this.setPhase('review');
-        }, 400);
+        }, 300);
     }
 
     /**
@@ -108,12 +110,15 @@ class ProgressHandler {
         if (this.workflowTrack) {
             this.workflowTrack.dataset.state = 'review';
         }
-        if (this.progressFill) {
-            this.progressFill.style.transition = 'none';
-            this.progressFill.style.width = '100%';
-            void this.progressFill.offsetHeight;
-            this.progressFill.style.transition = '';
-        }
+        // Set both fills to 100% instantly (no transition needed, they'll be hidden by review state)
+        [this.uploadFill, this.processingFill].forEach(fill => {
+            if (fill) {
+                fill.style.transition = 'none';
+                fill.style.width = '100%';
+                void fill.offsetHeight;
+                fill.style.transition = '';
+            }
+        });
         this.setPhase('review');
     }
 
@@ -207,13 +212,22 @@ class ProgressHandler {
         // Hide mode segments and reset workflow track
         this.hideSegments();
 
-        // Reset progress bar
-        if (this.progressFill) {
-            this.progressFill.style.transition = 'none';
-            this.progressFill.style.width = '0%';
-            this.progressFill.style.opacity = '';
-            void this.progressFill.offsetHeight;
-            this.progressFill.style.transition = '';
+        // Reset layered fills
+        [this.uploadFill, this.processingFill].forEach(fill => {
+            if (fill) {
+                fill.style.transition = 'none';
+                fill.style.width = '0%';
+                fill.style.opacity = '';
+                void fill.offsetHeight;
+                fill.style.transition = '';
+            }
+        });
+        // Reset reviewed overlay
+        if (this.reviewedOverlay) {
+            this.reviewedOverlay.style.transition = 'none';
+            this.reviewedOverlay.style.width = '0%';
+            void this.reviewedOverlay.offsetHeight;
+            this.reviewedOverlay.style.transition = '';
         }
         if (this.progressText) {
             this.progressText.textContent = '0%';
@@ -303,13 +317,15 @@ class ProgressHandler {
         if (this.filesProcessed) {
             this.filesProcessed.textContent = `0 / ${fileCount}`;
         }
-        if (this.progressFill) {
-            // Disable transition and force reflow to prevent animation
-            this.progressFill.style.transition = 'none';
-            this.progressFill.style.width = '0%';
-            void this.progressFill.offsetHeight;
-            this.progressFill.style.transition = '';
-        }
+        // Reset both fills
+        [this.uploadFill, this.processingFill].forEach(fill => {
+            if (fill) {
+                fill.style.transition = 'none';
+                fill.style.width = '0%';
+                void fill.offsetHeight;
+                fill.style.transition = '';
+            }
+        });
         if (this.progressText) {
             this.progressText.textContent = '0%';
         }
@@ -343,12 +359,12 @@ class ProgressHandler {
         if (this.isProcessingPhase) {
             return; // Block upload progress updates after we've started processing
         }
-        if (this.progressFill) {
+        if (this.uploadFill) {
             // No animation for upload progress - uploads are fast and animation causes visual confusion
-            this.progressFill.style.transition = 'none';
-            this.progressFill.style.width = percent + '%';
-            void this.progressFill.offsetHeight;
-            this.progressFill.style.transition = '';
+            this.uploadFill.style.transition = 'none';
+            this.uploadFill.style.width = percent + '%';
+            void this.uploadFill.offsetHeight;
+            this.uploadFill.style.transition = '';
         }
         if (this.progressText) {
             this.progressText.textContent = `Uploading ${percent}%`;
@@ -376,12 +392,13 @@ class ProgressHandler {
         // Set processing state
         this.setState('processing');
 
-        // Reset progress bar from upload (100%) to processing (0%) without animation
-        if (this.progressFill) {
-            this.progressFill.style.transition = 'none';
-            this.progressFill.style.width = '0%';
-            void this.progressFill.offsetHeight;
-            this.progressFill.style.transition = '';
+        // Upload fill stays at 100% — processing fill layers on top
+        // Reset only processing fill to 0%
+        if (this.processingFill) {
+            this.processingFill.style.transition = 'none';
+            this.processingFill.style.width = '0%';
+            void this.processingFill.offsetHeight;
+            this.processingFill.style.transition = '';
         }
         if (this.progressText) {
             this.progressText.textContent = '0%';
@@ -502,22 +519,12 @@ class ProgressHandler {
             this.jobSection.dataset.status = displayStatus;
         }
 
-        // Progress bar
+        // Progress bar — target processing fill (upload fill stays at 100%)
         const progress = data.progress_total > 0
             ? Math.round((data.progress_current / data.progress_total) * 100)
             : 0;
-        if (this.progressFill) {
-            // Get current width to detect backwards movement (e.g., upload 100% -> processing 0%)
-            const currentWidth = parseFloat(this.progressFill.style.width) || 0;
-            if (progress < currentWidth) {
-                // Disable transition and force reflow to prevent animation
-                this.progressFill.style.transition = 'none';
-                this.progressFill.style.width = progress + '%';
-                void this.progressFill.offsetHeight;
-                this.progressFill.style.transition = '';
-            } else {
-                this.progressFill.style.width = progress + '%';
-            }
+        if (this.processingFill) {
+            this.processingFill.style.width = progress + '%';
         }
         if (this.progressText) {
             this.progressText.textContent = progress + '%';

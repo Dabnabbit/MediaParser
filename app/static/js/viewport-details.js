@@ -585,7 +585,28 @@ class ViewportDetailsPanel {
             this.currentFile.reviewed_at = null;
             this.currentFile.final_timestamp = null;
 
-            this.renderFileDetails();
+            // Update the tile's cached data and badge
+            const viewportController = window.selectionHandler?.viewportController;
+            const tile = viewportController?.tileManager?.getTile(this.currentFile.id);
+            if (tile) {
+                tile.updateFile({ reviewed_at: null, final_timestamp: null });
+            }
+
+            // Remove from navigation set and advance (or exit if none left)
+            if (viewportController) {
+                const fileId = this.currentFile.id;
+                const navFiles = viewportController.navigationFiles.filter(id => id !== fileId);
+                if (navFiles.length > 0) {
+                    viewportController.updateNavigationSet(navFiles);
+                    // Update details panel with the new current file
+                    const newFile = viewportController.getCurrentFile();
+                    if (newFile) this.loadFile(newFile);
+                } else {
+                    this.exitViewportAndRefresh();
+                    return;
+                }
+            }
+
             window.resultsHandler?.loadSummary();
 
         } catch (error) {

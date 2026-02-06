@@ -44,6 +44,8 @@ class FilterHandler {
         this.confidenceChips = document.querySelectorAll('.confidence-filters .filter-chip');
         this.indicatorDiscarded = document.getElementById('indicator-discarded');
         this.indicatorFailed = document.getElementById('indicator-failed');
+        this.reviewedOverlay = document.getElementById('reviewed-overlay');
+        this.modeSegmentsContainer = document.getElementById('mode-segments');
 
         this.initEventListeners();
         this.loadState();
@@ -66,6 +68,9 @@ class FilterHandler {
                 this.setMode(mode);
             });
         });
+
+        // Reviewed overlay click
+        this.reviewedOverlay?.addEventListener('click', () => this.setMode('reviewed'));
 
         // Summary indicator clicks (discarded/failed)
         [this.indicatorDiscarded, this.indicatorFailed].forEach(btn => {
@@ -115,6 +120,11 @@ class FilterHandler {
             chip.classList.toggle('active', isActive);
         });
 
+        // Update reviewed overlay active state
+        if (this.reviewedOverlay) {
+            this.reviewedOverlay.classList.toggle('active', this.currentMode === 'reviewed');
+        }
+
         // Update summary indicators (discarded/failed)
         if (this.indicatorDiscarded) {
             this.indicatorDiscarded.classList.toggle('active', this.currentMode === 'discarded');
@@ -141,29 +151,33 @@ class FilterHandler {
             });
         });
 
-        // Map bar-segment mode names to count keys (only workflow stages)
+        // Map bar-segment mode names to count keys (non-reviewed workflow stages only)
         const modeCountMap = {
-            reviewed: 'reviewed',
             duplicates: 'duplicates',
             similar: 'similar',
             unreviewed: 'unreviewed'
         };
 
-        // Calculate total across bar segments for proportional sizing
-        const total = Object.values(modeCountMap).reduce((sum, key) => sum + (this.counts[key] || 0), 0);
+        // Total across all bar segments (including reviewed for proportional sizing)
+        const total = (this.counts.reviewed || 0) + (this.counts.duplicates || 0)
+                    + (this.counts.similar || 0) + (this.counts.unreviewed || 0);
+
+        // Non-reviewed total for segment proportional sizing
+        const nonReviewedTotal = (this.counts.duplicates || 0) + (this.counts.similar || 0) + (this.counts.unreviewed || 0);
 
         // Update mode segments: flex-grow, collapsed state, small state
         this.modeChips.forEach(seg => {
             const mode = seg.dataset.mode;
             const countKey = modeCountMap[mode];
+            if (!countKey) return; // Skip if not in map
             const count = this.counts[countKey] || 0;
 
             // Proportional flex-grow (minimum 1 for non-zero to ensure visibility)
             if (count > 0) {
                 seg.style.flexGrow = Math.max(count, 1);
                 seg.classList.remove('collapsed');
-                // Small segment: less than 8% of total, hide label
-                seg.classList.toggle('seg-small', total > 0 && (count / total) < 0.08);
+                // Small segment: less than 8% of non-reviewed total, hide label
+                seg.classList.toggle('seg-small', nonReviewedTotal > 0 && (count / nonReviewedTotal) < 0.08);
             } else {
                 seg.style.flexGrow = '0';
                 seg.classList.add('collapsed');
@@ -174,6 +188,20 @@ class FilterHandler {
             const needsAttention = (mode === 'duplicates' || mode === 'similar') && count > 0;
             seg.classList.toggle('has-items', needsAttention);
         });
+
+        // Update reviewed overlay width and reposition mode segments
+        const reviewedPct = total > 0 ? ((this.counts.reviewed || 0) / total) * 100 : 0;
+        if (this.reviewedOverlay) {
+            this.reviewedOverlay.style.width = reviewedPct + '%';
+            this.reviewedOverlay.classList.toggle('seg-empty', reviewedPct === 0);
+            this.reviewedOverlay.classList.toggle('seg-small', reviewedPct > 0 && reviewedPct < 8);
+            this.reviewedOverlay.classList.toggle('full-width', reviewedPct >= 99.5);
+        }
+        // Push mode segments to the right of the reviewed overlay
+        if (this.modeSegmentsContainer) {
+            this.modeSegmentsContainer.style.left = reviewedPct + '%';
+            this.modeSegmentsContainer.style.width = (100 - reviewedPct) + '%';
+        }
 
         // Show/hide summary indicators for side-channel modes
         if (this.indicatorDiscarded) {
@@ -286,6 +314,17 @@ class FilterHandler {
             seg.classList.add('collapsed');
             seg.classList.remove('seg-small', 'has-items');
         });
+        // Reset reviewed overlay
+        if (this.reviewedOverlay) {
+            this.reviewedOverlay.style.width = '0%';
+            this.reviewedOverlay.classList.remove('active', 'seg-small', 'full-width');
+            this.reviewedOverlay.classList.add('seg-empty');
+        }
+        // Reset mode segments positioning
+        if (this.modeSegmentsContainer) {
+            this.modeSegmentsContainer.style.left = '0';
+            this.modeSegmentsContainer.style.width = '100%';
+        }
         // Hide summary indicators
         if (this.indicatorDiscarded) this.indicatorDiscarded.style.display = 'none';
         if (this.indicatorFailed) this.indicatorFailed.style.display = 'none';

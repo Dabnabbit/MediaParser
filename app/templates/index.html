@@ -169,22 +169,18 @@
     <div class="job-progress" id="job-progress">
         <div class="progress-row">
             <div class="progress-bar progress-bar-lg" id="workflow-track">
-                <!-- Layer 1: Progress fill (upload/processing phases) -->
-                <div class="progress-bar-fill" id="job-progress-fill" style="width: 0%;"></div>
-                <!-- Layer 2: Mode segments (review phase) - hidden initially -->
-                <!-- Ordered left→right: done → needs work (green fills from left as you progress) -->
+                <!-- Layer 1: Upload fill (purple) -->
+                <div class="progress-fill upload-fill" id="upload-fill"></div>
+                <!-- Layer 2: Processing fill (blue, overlays upload) -->
+                <div class="progress-fill processing-fill" id="processing-fill"></div>
+                <!-- Layer 3: Mode segments (review phase) -->
                 <div class="mode-segments" id="mode-segments">
-                    <button class="mode-segment" data-mode="reviewed" title="Reviewed files">
-                        <span class="seg-icon">&#x2713;</span>
-                        <span class="seg-label">Reviewed</span>
-                        <span class="seg-count" data-count="reviewed">0</span>
-                    </button>
                     <button class="mode-segment" data-mode="duplicates" title="Duplicate groups">
                         <span class="seg-icon">&#x29C9;</span>
                         <span class="seg-label">Dupes</span>
                         <span class="seg-count" data-count="duplicates">0</span>
                     </button>
-                    <button class="mode-segment" data-mode="similar" title="Perceptually similar files">
+                    <button class="mode-segment" data-mode="similar" title="Perceptually similar">
                         <span class="seg-icon">&#x2248;</span>
                         <span class="seg-label">Similar</span>
                         <span class="seg-count" data-count="similar">0</span>
@@ -195,6 +191,12 @@
                         <span class="seg-count" data-count="unreviewed">0</span>
                     </button>
                 </div>
+                <!-- Layer 4: Reviewed overlay (grows from left over segments) -->
+                <button class="reviewed-overlay seg-empty" id="reviewed-overlay" data-mode="reviewed" title="Reviewed files">
+                    <span class="seg-icon">&#x2713;</span>
+                    <span class="seg-label">Reviewed</span>
+                    <span class="seg-count" data-count="reviewed">0</span>
+                </button>
             </div>
             <span class="progress-text" id="job-progress-text">0%</span>
         </div>

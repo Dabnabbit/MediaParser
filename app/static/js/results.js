@@ -88,6 +88,11 @@ class ResultsHandler {
             this.loadFiles();
         });
 
+        // Reload grid when viewport exits (reflects any changes made during examination)
+        window.addEventListener('viewportExit', () => {
+            this.loadFiles();
+        });
+
         // Tile size slider - live update + sync scrollbar after resize
         const tileSizeSlider = document.getElementById('tile-size-slider');
         if (tileSizeSlider) {
