@@ -41,6 +41,9 @@ class FilterHandler {
         // Import job ID for export (set by results.js on showResults)
         this.importJobId = null;
 
+        // Strict workflow progression (loaded from localStorage, toggled via debug panel)
+        this.strictMode = localStorage.getItem('strictWorkflow') === 'true';
+
         // Cache DOM elements
         this.filterBar = document.getElementById('filter-bar');
         this.modeChips = document.querySelectorAll('.mode-segment:not(.export-segment)');
@@ -97,6 +100,11 @@ class FilterHandler {
     setMode(mode) {
         if (this.currentMode === mode) return;
 
+        // Strict workflow: block switching to later stages if earlier ones have items
+        if (this.strictMode && this._isModeLocked(mode)) {
+            return;
+        }
+
         this.currentMode = mode;
 
         // All modes now use the unified grid view - duplicates appear in grid like other files
@@ -104,6 +112,23 @@ class FilterHandler {
         this.updateStyles();
         this.saveState();
         this.emitChange();
+    }
+
+    /**
+     * Check if a mode is locked under strict workflow progression.
+     * Order: duplicates → similar → unreviewed
+     * A stage is locked if any prior stage still has items.
+     */
+    _isModeLocked(mode) {
+        if (mode === 'similar') {
+            return (this.counts.duplicates || 0) > 0;
+        }
+        if (mode === 'unreviewed') {
+            return (this.counts.duplicates || 0) > 0
+                || (this.counts.similar || 0) > 0;
+        }
+        // reviewed, discarded, failed, export — never locked
+        return false;
     }
 
     toggleConfidence(level) {
@@ -193,6 +218,10 @@ class FilterHandler {
                                 && count > 0
                                 && mode !== this.currentMode;
             seg.classList.toggle('has-items', needsAttention);
+
+            // Strict workflow: lock segments that can't be accessed yet
+            const locked = this.strictMode && this._isModeLocked(mode) && count > 0;
+            seg.classList.toggle('locked', locked);
         });
 
         // Update reviewed overlay width and reposition mode segments

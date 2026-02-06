@@ -63,6 +63,20 @@ class SettingsHandler {
         if (this.clearAllBtn) {
             this.clearAllBtn.addEventListener('click', () => this.clearAll());
         }
+
+        // Strict workflow toggle
+        const strictToggle = document.getElementById('strict-workflow-toggle');
+        if (strictToggle) {
+            strictToggle.checked = localStorage.getItem('strictWorkflow') === 'true';
+            strictToggle.addEventListener('change', () => {
+                localStorage.setItem('strictWorkflow', strictToggle.checked);
+                // Notify filter handler immediately
+                if (window.filterHandler) {
+                    window.filterHandler.strictMode = strictToggle.checked;
+                    window.filterHandler.updateCounts(window.filterHandler.counts);
+                }
+            });
+        }
     }
 
     /**
