@@ -521,6 +521,38 @@ class ViewportDetailsPanel {
     // Actions
     // ==========================================
 
+    /**
+     * After a file action (confirm, unreview, discard, restore), update the tile,
+     * remove it from the navigation set, advance to the next file, and refresh counts.
+     * @param {Object} tileUpdates - Partial file data to merge into the tile
+     * @returns {boolean} false if viewport was exited (caller should return early)
+     */
+    applyAndAdvance(tileUpdates) {
+        const viewportController = window.selectionHandler?.viewportController;
+
+        // Update the tile's cached data and badge
+        const tile = viewportController?.tileManager?.getTile(this.currentFile.id);
+        if (tile) {
+            tile.updateFile(tileUpdates);
+        }
+
+        // Remove from nav set and advance (or exit if none left)
+        if (viewportController) {
+            const navFiles = viewportController.navigationFiles.filter(id => id !== this.currentFile.id);
+            if (navFiles.length > 0) {
+                viewportController.updateNavigationSet(navFiles);
+                const newFile = viewportController.getCurrentFile();
+                if (newFile) this.loadFile(newFile);
+            } else {
+                this.exitViewportAndRefresh();
+                return false;
+            }
+        }
+
+        window.resultsHandler?.loadSummary();
+        return true;
+    }
+
     async confirmAndNext() {
         if (!this.currentFile) return;
 
@@ -531,7 +563,6 @@ class ViewportDetailsPanel {
         }
 
         try {
-            // Get selected timestamp from timestamp handler or use detected
             const selectedTimestamp = window.timestampHandler?.getSelectedTimestamp();
             const timestampToSave = selectedTimestamp || {
                 value: this.currentFile.detected_timestamp,
@@ -553,10 +584,7 @@ class ViewportDetailsPanel {
             this.currentFile.reviewed_at = updated.reviewed_at;
             this.currentFile.final_timestamp = updated.final_timestamp;
 
-            // Update UI and move to next
-            this.renderFileDetails();
-            this.navigateToNext();
-            window.resultsHandler?.loadSummary();
+            if (!this.applyAndAdvance({ reviewed_at: updated.reviewed_at, final_timestamp: updated.final_timestamp })) return;
 
         } catch (error) {
             console.error('Error confirming:', error);
@@ -585,29 +613,7 @@ class ViewportDetailsPanel {
             this.currentFile.reviewed_at = null;
             this.currentFile.final_timestamp = null;
 
-            // Update the tile's cached data and badge
-            const viewportController = window.selectionHandler?.viewportController;
-            const tile = viewportController?.tileManager?.getTile(this.currentFile.id);
-            if (tile) {
-                tile.updateFile({ reviewed_at: null, final_timestamp: null });
-            }
-
-            // Remove from navigation set and advance (or exit if none left)
-            if (viewportController) {
-                const fileId = this.currentFile.id;
-                const navFiles = viewportController.navigationFiles.filter(id => id !== fileId);
-                if (navFiles.length > 0) {
-                    viewportController.updateNavigationSet(navFiles);
-                    // Update details panel with the new current file
-                    const newFile = viewportController.getCurrentFile();
-                    if (newFile) this.loadFile(newFile);
-                } else {
-                    this.exitViewportAndRefresh();
-                    return;
-                }
-            }
-
-            window.resultsHandler?.loadSummary();
+            if (!this.applyAndAdvance({ reviewed_at: null, final_timestamp: null })) return;
 
         } catch (error) {
             console.error('Error unreviewing:', error);
@@ -634,9 +640,8 @@ class ViewportDetailsPanel {
             if (!response.ok) throw new Error('Failed to discard');
 
             this.currentFile.discarded = true;
-            this.renderFileDetails();
-            this.navigateToNext();
-            window.resultsHandler?.loadSummary();
+
+            if (!this.applyAndAdvance({ discarded: true })) return;
 
         } catch (error) {
             console.error('Error discarding:', error);
@@ -661,8 +666,8 @@ class ViewportDetailsPanel {
             if (!response.ok) throw new Error('Failed to restore');
 
             this.currentFile.discarded = false;
-            this.renderFileDetails();
-            window.resultsHandler?.loadSummary();
+
+            if (!this.applyAndAdvance({ discarded: false })) return;
 
         } catch (error) {
             console.error('Error restoring:', error);
