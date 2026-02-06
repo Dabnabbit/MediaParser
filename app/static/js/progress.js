@@ -716,6 +716,136 @@ class ProgressHandler {
             return `${minutes}:${String(secs).padStart(2, '0')}`;
         }
     }
+
+    async startExport(importJobId) {
+        try {
+            // Trigger export
+            const response = await fetch(`/api/jobs/${importJobId}/export`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                if (error.unresolved_exact_groups || error.unresolved_similar_groups) {
+                    const msg = `${error.message}\n\nUnresolved duplicates: ${error.unresolved_exact_groups || 0}\nUnresolved similar: ${error.unresolved_similar_groups || 0}`;
+                    if (confirm(msg + '\n\nForce export anyway?')) {
+                        return this.startExport(importJobId, true);
+                    }
+                    return;
+                }
+                alert(`Export failed: ${error.error || 'Unknown error'}`);
+                return;
+            }
+
+            const data = await response.json();
+            this.exportJobId = data.job_id;
+            localStorage.setItem('exportJobId', data.job_id);
+
+            // Start polling the export job
+            this.startPolling(data.job_id);
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Failed to start export');
+        }
+    }
+
+    async showExportSummary(exportJobId) {
+        try {
+            const response = await fetch(`/api/jobs/${exportJobId}`);
+            if (!response.ok) return;
+
+            const job = await response.json();
+
+            // Count exported files
+            const filesResponse = await fetch(`/api/jobs/${exportJobId}/files?mode=reviewed&limit=1`);
+            const filesData = await filesResponse.json();
+            const exportedCount = filesData.total || 0;
+
+            // Show export summary in the summary section
+            if (this.jobSummary) {
+                const summaryContent = this.jobSummary.querySelector('.summary-row') || this.jobSummary;
+                const exportInfo = document.createElement('div');
+                exportInfo.className = 'export-summary-info';
+                exportInfo.innerHTML = `
+                    <div class="export-summary-stats">
+                        <strong>${exportedCount}</strong> files exported
+                        ${job.error_count > 0 ? `<span class="export-errors">• ${job.error_count} errors</span>` : ''}
+                    </div>
+                `;
+                summaryContent.appendChild(exportInfo);
+            }
+
+            // Show source cleanup options
+            this.showSourceCleanupOptions(exportJobId);
+        } catch (error) {
+            console.error('Error showing export summary:', error);
+        }
+    }
+
+    showSourceCleanupOptions(exportJobId) {
+        const cleanupSection = document.getElementById('source-cleanup');
+        if (!cleanupSection) return;
+
+        cleanupSection.style.display = 'block';
+
+        // Wire up cleanup buttons if not already done
+        const keepBtn = document.getElementById('keep-sources-btn');
+        const deleteBtn = document.getElementById('delete-sources-btn');
+
+        if (keepBtn && !keepBtn.dataset.wired) {
+            keepBtn.dataset.wired = 'true';
+            keepBtn.addEventListener('click', () => this.handleSourceCleanup(exportJobId, 'keep'));
+        }
+
+        if (deleteBtn && !deleteBtn.dataset.wired) {
+            deleteBtn.dataset.wired = 'true';
+            deleteBtn.addEventListener('click', () => this.handleSourceCleanup(exportJobId, 'delete'));
+        }
+    }
+
+    async handleSourceCleanup(exportJobId, action) {
+        if (action === 'delete') {
+            if (!confirm('Delete all source files? This cannot be undone!')) {
+                return;
+            }
+        }
+
+        try {
+            const response = await fetch(`/api/jobs/${exportJobId}/cleanup-sources`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ action })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                alert(`Cleanup failed: ${error.error || 'Unknown error'}`);
+                return;
+            }
+
+            const result = await response.json();
+
+            if (action === 'delete') {
+                alert(`Cleanup complete:\n${result.deleted} deleted\n${result.failed} failed\n${result.kept} kept`);
+            } else {
+                alert('Source files preserved');
+            }
+
+            // Hide cleanup section
+            const cleanupSection = document.getElementById('source-cleanup');
+            if (cleanupSection) {
+                cleanupSection.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Cleanup error:', error);
+            alert('Failed to cleanup sources');
+        }
+    }
 }
 
 // Initialize when DOM is ready

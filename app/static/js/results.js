@@ -58,6 +58,12 @@ class ResultsHandler {
             this.resultsContainer.style.display = 'none';
         }
 
+        // Hide export section
+        const exportSection = document.getElementById('export-section');
+        if (exportSection) {
+            exportSection.style.display = 'none';
+        }
+
         // Clear tiles via TileManager
         if (this.tileManager) {
             this.tileManager.clear();
@@ -173,6 +179,9 @@ class ResultsHandler {
             this.resultsContainer.style.display = 'block';
         }
 
+        // Show export section with export button
+        this.showExportSection(jobId);
+
         // Reset filter handler and load fresh counts
         if (window.filterHandler) {
             window.filterHandler.reset();
@@ -189,6 +198,27 @@ class ResultsHandler {
 
         // Load files for the selected mode
         this.loadFiles();
+    }
+
+    /**
+     * Show export section with export button
+     */
+    showExportSection(importJobId) {
+        const exportSection = document.getElementById('export-section');
+        if (!exportSection) return;
+
+        exportSection.style.display = 'block';
+
+        // Wire up export button if not already done
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn && !exportBtn.dataset.wired) {
+            exportBtn.dataset.wired = 'true';
+            exportBtn.addEventListener('click', () => {
+                if (window.progressHandler) {
+                    window.progressHandler.startExport(importJobId);
+                }
+            });
+        }
     }
 
     /**

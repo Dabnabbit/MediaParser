@@ -209,6 +209,22 @@
         </div>
     </div>
 
+    <!-- Export Section (shown after review complete) -->
+    <div class="export-section" id="export-section" style="display: none;">
+        <div class="export-controls" id="export-controls">
+            <button id="export-btn" class="btn btn-primary">Export Files</button>
+            <p class="export-description">Copy reviewed files to output directory with corrected timestamps and tags.</p>
+        </div>
+        <div id="source-cleanup" class="source-cleanup" style="display: none;">
+            <h3>Source Files</h3>
+            <p>Export complete. What would you like to do with the original source files?</p>
+            <div class="cleanup-actions">
+                <button id="keep-sources-btn" class="btn btn-secondary">Keep Source Files</button>
+                <button id="delete-sources-btn" class="btn btn-danger">Delete Source Files</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Results: Unified Grid with Filter Bar -->
     <div class="results-container" id="results-container" style="display: none;">
         <!-- Selection Toolbar (appears when files selected) -->

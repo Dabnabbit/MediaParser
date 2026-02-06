@@ -2039,3 +2039,67 @@ body {
 .mode-segment.has-items {
     animation: pulse 2s infinite;
 }
+
+/* ========================================
+   Export Section
+   ======================================== */
+.export-section {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    border-top: 1px solid var(--color-border);
+}
+
+.export-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.export-description {
+    color: var(--color-text-muted);
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.source-cleanup {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: 0.5rem;
+}
+
+.source-cleanup h3 {
+    margin: 0 0 var(--spacing-sm) 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.source-cleanup p {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--color-text-muted);
+}
+
+.cleanup-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.export-summary-info {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+}
+
+.export-summary-stats {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--color-text-muted);
+}
+
+.export-errors {
+    color: var(--color-danger);
+}
