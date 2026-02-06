@@ -281,6 +281,14 @@ body.viewport-active {
     opacity: 0.8;
 }
 
+/* Carousel mode: arrows always subtly visible on prev/next tiles */
+.thumbnail-grid.viewport-mode:not(.view-compare):not(.view-fullscreen) .thumbnail[data-vp-pos="prev"]::after,
+.thumbnail-grid.viewport-mode:not(.view-compare):not(.view-fullscreen) .thumbnail[data-vp-pos="next"]::after,
+.thumbnail-grid.viewport-mode:not(.view-compare):not(.view-fullscreen) .thumbnail.vp-prev::after,
+.thumbnail-grid.viewport-mode:not(.view-compare):not(.view-fullscreen) .thumbnail.vp-next::after {
+    opacity: 0.4;
+}
+
 /* ============================================
    VIEWPORT NAVIGATION ARROWS (standalone buttons)
    ============================================ */
@@ -329,8 +337,8 @@ body.viewport-details-open > .viewport-nav-arrow.nav-next {
     right: 392px;
 }
 
-/* Hide nav arrows in compare mode (tiles are directly clickable) */
-body.viewport-active .viewport-nav-arrow.compare-hidden {
+/* Hide nav arrows when not needed (carousel/compare have clickable tiles) */
+.viewport-nav-arrow.arrows-hidden {
     display: none;
 }
 

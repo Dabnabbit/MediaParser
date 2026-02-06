@@ -161,10 +161,10 @@
             this._clearCompareLayout();
         }
 
-        // Toggle nav arrows: hide in compare (tiles are clickable), show otherwise
-        const isCompare = mode === ViewportController.VIEW_MODES.COMPARE;
-        this.navPrev?.classList.toggle('compare-hidden', isCompare);
-        this.navNext?.classList.toggle('compare-hidden', isCompare);
+        // Nav arrows: show only in fullscreen (carousel and compare have clickable tiles)
+        const hideArrows = mode !== ViewportController.VIEW_MODES.FULLSCREEN;
+        this.navPrev?.classList.toggle('arrows-hidden', hideArrows);
+        this.navNext?.classList.toggle('arrows-hidden', hideArrows);
 
         // Update toggle button states
         if (this.modeToggle) {
