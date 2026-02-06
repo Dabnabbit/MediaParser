@@ -391,13 +391,19 @@ body.viewport-details-open > .viewport-nav-arrow.nav-next {
 
 .viewport-hints {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 1010;
     display: flex;
     gap: 8px;
     opacity: 0.6;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.3s ease;
+}
+
+/* Shift with counter when details panel is open */
+body.viewport-details-open > .viewport-hints {
+    transform: translateX(calc(-50% - 180px));
 }
 
 .viewport-hints:hover {

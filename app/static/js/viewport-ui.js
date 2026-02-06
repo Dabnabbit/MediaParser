@@ -91,6 +91,7 @@
             <span class="viewport-hint"><kbd>&larr;</kbd> Prev</span>
             <span class="viewport-hint"><kbd>&rarr;</kbd> Next</span>
             <span class="viewport-hint"><kbd>V</kbd> View</span>
+            <span class="viewport-hint"><kbd>Space</kbd> Details</span>
             <span class="viewport-hint"><kbd>Esc</kbd> Close</span>
         `;
         document.body.appendChild(this.hints);
