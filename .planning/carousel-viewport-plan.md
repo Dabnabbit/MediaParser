@@ -1,20 +1,34 @@
 # Carousel Viewport Implementation Plan
 
 **STATUS: IMPLEMENTED** (2026-02-04)
+**REFACTORED:** (2026-02-05) - Large files split for maintainability
 
 All 6 phases completed. Orphaned code from old examination system cleaned up.
 FLIP enter animation, grid position locking, and z-index layering added.
 
-**Files Created:**
+> **Note:** This document references the original file names. See below for the refactored structure.
+
+**Files Created (original):**
 - `app/static/js/tile.js` - Tile class with MIPMAP resolution
 - `app/static/js/tile-manager.js` - TileManager for lifecycle management
-- `app/static/js/viewport-controller.js` - ViewportController for examination mode
+- ~~`app/static/js/viewport-controller.js`~~ → Split 2026-02-05 (see below)
 - `app/static/js/viewport-details.js` - Details panel for viewport
 - `app/static/css/viewport.css` - Viewport-specific CSS
 
+**Refactored (2026-02-05):**
+- `viewport-controller.js` split into 4 modules:
+  - `viewport-core.js` - Class, state, enter/exit lifecycle
+  - `viewport-animation.js` - FLIP animation logic
+  - `viewport-navigation.js` - next/prev/goTo navigation
+  - `viewport-ui.js` - UI elements, event handlers
+- `selection.js` split into 3 modules:
+  - `selection-core.js` - State, viewport integration, UI
+  - `selection-events.js` - Click/keyboard handlers
+  - `selection-actions.js` - Bulk API actions
+
 **Files Modified:**
 - `app/static/js/results.js` - Integrated TileManager
-- `app/static/js/selection.js` - Integrated ViewportController
+- ~~`app/static/js/selection.js`~~ → Split into 3 modules (see above)
 - `app/templates/base.html` - Script ordering, CSS includes
 - `app/static/js/examination.js` - Simplified, removed comparison view
 - `app/static/css/examination.css` - Removed comparison styles
@@ -22,6 +36,8 @@ FLIP enter animation, grid position locking, and z-index layering added.
 **Files Deleted:**
 - `app/static/js/duplicates.js`
 - `app/static/css/duplicates.css`
+- `app/static/js/viewport-controller.js` (replaced by split modules)
+- `app/static/js/selection.js` (replaced by split modules)
 
 ---
 

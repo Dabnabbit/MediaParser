@@ -20,7 +20,7 @@
 **Phase:** 6 of 7 - Duplicate Detection (Perceptual)
 **Plan:** 4 of 5 (Similar mode UI complete)
 **Status:** In progress
-**Last activity:** 2026-02-05 - Completed 06-04-PLAN.md (Similar mode UI integration)
+**Last activity:** 2026-02-05 - Frontend module refactoring (out-of-band housekeeping)
 **Progress:** `[████████████████████████████████] 97%` (34/~35 plans complete)
 
 **Completed Requirements (Phase 2):**
@@ -366,12 +366,15 @@ None
   - Thumbnail sizes: compact (100px), medium (150px), large (200px) presets
   - Badges: left side for type info (confidence, video), right side for status (reviewed, failed)
   - Filter integration: filterChange custom event triggers grid reload
-  - Click handling: delegated to selection.js (results.js does NOT handle clicks)
+  - Click handling: delegated to SelectionHandler (results.js does NOT handle clicks)
   - Pagination: prev/next controls for jobs with >100 files
   - Placeholder: app/static/img/placeholder.svg for missing thumbnails
   - API integration: /api/jobs/:id/files with filter/sort params, /api/jobs/:id/summary for counts
-- Selection patterns (04-04, updated for viewport):
-  - app/static/js/selection.js: SelectionHandler class for multi-select
+- Selection patterns (04-04, refactored 2026-02-05):
+  - Split into 3 modules for maintainability:
+    - selection-core.js: SelectionHandler class, state management, UI updates
+    - selection-events.js: Click/keyboard event handlers (prototype extension)
+    - selection-actions.js: Bulk API actions (prototype extension)
   - Owns all .thumbnail-grid click handling (event delegation)
   - selectedIds Set tracks selected file IDs
   - Shift-click for range selection, Ctrl/Cmd-click for toggle
@@ -392,7 +395,11 @@ None
     - Lazy loading: IntersectionObserver for offscreen tiles
     - Bulk operations: renderFiles(), destroyAll()
     - Navigation helpers: setupViewport() for prev/current/next positioning
-  - app/static/js/viewport-controller.js: ViewportController class for examination
+  - ViewportController (refactored 2026-02-05 into 4 modules for maintainability):
+    - viewport-core.js: Class definition, state, enter/exit lifecycle
+    - viewport-animation.js: FLIP animation logic, grid locking
+    - viewport-navigation.js: next/prev/goTo navigation methods
+    - viewport-ui.js: UI elements, event handlers, view modes
     - Mode management: enter(fileId, navigableIds), exit()
     - Navigation: next(), previous() with keyboard support (arrows, escape)
     - Position updates: updateTilePositions() manages carousel state
@@ -469,10 +476,27 @@ None
 - Context-aware action buttons per mode (duplicates/review/discarded)
 - Duplicate resolution flow (keep/discard/not-a-duplicate) with auto-navigation
 
+**Session Work Completed (2026-02-05 - Out-of-band):**
+- **Frontend Module Refactoring** (reduce context overhead for debugging):
+  - Split viewport-controller.js (1169 lines) into 4 focused modules:
+    - viewport-core.js (331): Class, state, enter/exit lifecycle
+    - viewport-animation.js (350): FLIP animation logic
+    - viewport-navigation.js (177): next/prev/goTo navigation
+    - viewport-ui.js (347): UI elements, event handlers
+  - Split selection.js (811 lines) into 3 focused modules:
+    - selection-core.js (392): State, viewport integration, UI
+    - selection-events.js (223): Click/keyboard handlers
+    - selection-actions.js (284): Bulk API actions
+  - Fixed missing data-index on Tile elements (broke shift-click range selection)
+  - Uses prototype extension pattern (no build tooling required)
+  - Updated STRUCTURE.md and STATE.md to reflect new file structure
+  - Reverted uncommitted auto-scroll experiment (will approach fresh later)
+
 **Session Work Completed (2026-02-04 - Out-of-band):**
 - **Carousel Viewport System** (major architectural refactor):
   - Replaced separate examination modal with in-place tile scaling
-  - New files: tile.js, tile-manager.js, viewport-controller.js, viewport-details.js, viewport.css
+  - New files: tile.js, tile-manager.js, viewport-details.js, viewport.css
+  - ViewportController split into 4 modules (2026-02-05): viewport-core.js, viewport-animation.js, viewport-navigation.js, viewport-ui.js
   - MIPMAP-style resolution switching: thumbnails → full-res based on rendered size
   - CSS-based carousel: position states (grid/prev/current/next) with GPU-accelerated transitions
   - TileManager: tile lifecycle, file↔tile mapping, lazy loading via IntersectionObserver
@@ -520,13 +544,21 @@ None
 4. ~~Exit animation could be improved (tiles snap back to grid, no smooth return)~~ — Partially addressed: navigation enter/leave tiles now FLIP animate to/from grid positions; full exit (Escape) still snaps
 5. Exit timeout hardcoded to 300ms — should read CSS variable like enter does
 
-**Key viewport files:**
-- `app/static/js/viewport-controller.js` - examination mode orchestration
+**Key viewport files (refactored 2026-02-05):**
+- ViewportController (split into 4 modules):
+  - `app/static/js/viewport-core.js` - class, state, enter/exit lifecycle
+  - `app/static/js/viewport-animation.js` - FLIP animation logic
+  - `app/static/js/viewport-navigation.js` - next/prev/goTo navigation
+  - `app/static/js/viewport-ui.js` - UI elements, event handlers
+- SelectionHandler (split into 3 modules):
+  - `app/static/js/selection-core.js` - class, state, UI updates
+  - `app/static/js/selection-events.js` - click/keyboard handlers
+  - `app/static/js/selection-actions.js` - bulk API actions
 - `app/static/js/viewport-details.js` - details panel, context-aware action buttons
 - `app/static/js/tile.js` - universal tile container with MIPMAP resolution switching
 - `app/static/js/tile-manager.js` - tile lifecycle, setupViewport() navigation
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
-- `.planning/carousel-viewport-plan.md` - architecture overview
+- `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
 **Last session:** 2026-02-05
 **Stopped at:** Completed 06-04-PLAN.md (Similar mode UI integration)

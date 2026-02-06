@@ -1,7 +1,7 @@
 # Codebase Structure
 
 **Analysis Date:** 2026-02-02
-**Updated:** 2026-02-02 (WSL migration, Flask app structure)
+**Updated:** 2026-02-05 (Frontend module refactoring)
 
 > **Note:** Structure significantly expanded with Flask web application (Phases 1-3).
 > Original CLI script preserved as `PhotoTimeFixer.py` for reference.
@@ -29,13 +29,15 @@
 │   │   ├── settings.py       # Settings API
 │   │   └── upload.py         # File upload endpoints
 │   ├── static/               # Frontend assets
-│   │   ├── css/main.css      # Styles
-│   │   ├── js/               # JavaScript modules
-│   │   │   ├── upload.js     # Upload handling
-│   │   │   ├── progress.js   # Progress polling
-│   │   │   ├── results.js    # Results display
-│   │   │   └── settings.js   # Settings panel
-│   │   └── img/              # Static images
+│   │   ├── css/              # Stylesheets
+│   │   │   ├── main.css      # Core layout, forms, filters
+│   │   │   ├── tile.css      # Thumbnail tiles and viewport positions
+│   │   │   ├── viewport.css  # Carousel viewport mode styles
+│   │   │   ├── examination.css # Details panel utilities
+│   │   │   ├── timeline.css  # Timeline visualization
+│   │   │   └── tags.css      # Tag input and autocomplete
+│   │   ├── js/               # JavaScript modules (see Frontend Modules below)
+│   │   └── img/              # Static images (placeholder.svg)
 │   ├── templates/            # Jinja2 templates
 │   └── tasks.py              # Huey background tasks
 ├── instance/                  # Instance-specific data (not committed)
@@ -51,6 +53,72 @@
 ├── PhotoTimeFixer.py         # Original CLI script (reference)
 ├── old/                      # Archived code
 └── tests/                    # Test suite
+```
+
+## Frontend JavaScript Modules
+
+**Updated:** 2026-02-05
+
+The frontend uses a modular JavaScript architecture with handler classes. Large modules are split into focused files using prototype extension pattern (no build tooling required).
+
+```
+app/static/js/
+├── Core Infrastructure
+│   ├── theme.js              (78)   # Theme toggle (loads early, no defer)
+│   ├── settings.js           (373)  # Settings panel handler
+│   └── upload.js             (233)  # Upload form and drag-drop
+│
+├── Job Processing
+│   └── progress.js           (637)  # Job progress polling and UI
+│
+├── Tile System
+│   ├── tile.js               (667)  # Tile class with MIPMAP resolution
+│   └── tile-manager.js       (450)  # TileManager for tile lifecycle
+│
+├── Viewport Controller (split for maintainability)
+│   ├── viewport-core.js      (331)  # Class, state, enter/exit lifecycle
+│   ├── viewport-animation.js (350)  # FLIP animation logic
+│   ├── viewport-navigation.js(177)  # next/prev/goTo navigation
+│   └── viewport-ui.js        (347)  # UI elements, event handlers
+│
+├── Grid and Filtering
+│   ├── filters.js            (400)  # FilterHandler for chip-based filtering
+│   ├── results.js            (515)  # ResultsHandler for grid rendering
+│   └── slider.js             (393)  # Position scrubber for windowed loading
+│
+├── Selection Handler (split for maintainability)
+│   ├── selection-core.js     (392)  # State, viewport integration, UI
+│   ├── selection-events.js   (223)  # Click/keyboard event handlers
+│   └── selection-actions.js  (284)  # Bulk API actions
+│
+├── Details and Examination
+│   ├── viewport-details.js   (1004) # File details panel in viewport mode
+│   └── examination.js        (214)  # ExaminationDataService for API calls
+│
+└── File Operations
+    ├── timestamp.js          (306)  # Timestamp editor with candidates
+    └── tags.js               (343)  # Tag editor with autocomplete
+```
+
+**Module Load Order** (defined in base.html):
+1. theme.js (no defer - prevents flash)
+2. settings.js, upload.js, progress.js
+3. Tile system: tile.js → tile-manager.js
+4. Viewport: viewport-core.js → viewport-animation.js → viewport-navigation.js → viewport-ui.js
+5. Grid: filters.js → results.js → slider.js
+6. Selection: selection-core.js → selection-events.js → selection-actions.js
+7. Details: viewport-details.js → examination.js
+8. File ops: timestamp.js → tags.js
+
+**Prototype Extension Pattern:**
+Split modules use IIFEs that extend the base class prototype:
+```javascript
+// viewport-navigation.js
+(function() {
+    const proto = ViewportController.prototype;
+    proto.next = function() { ... };
+    proto.previous = function() { ... };
+})();
 ```
 
 ## Directory Purposes
