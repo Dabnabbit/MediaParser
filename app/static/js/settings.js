@@ -1,14 +1,16 @@
 /**
  * Settings UI interaction handler.
  *
- * Manages settings panel visibility, loading current settings from API,
+ * Manages settings drawer visibility, loading current settings from API,
  * saving updated settings with validation, and resetting to defaults.
  */
 
 class SettingsHandler {
     constructor() {
-        this.panel = document.getElementById('settings-panel');
-        this.toggleBtn = document.getElementById('settings-toggle');
+        this.drawer = document.getElementById('settings-drawer');
+        this.backdrop = document.getElementById('settings-drawer-backdrop');
+        this.gearBtn = document.getElementById('settings-gear-btn');
+        this.closeBtn = document.getElementById('settings-drawer-close');
         this.outputDirInput = document.getElementById('output-directory');
         this.resetOutputDirBtn = document.getElementById('reset-output-dir-btn');
         this.saveBtn = document.getElementById('save-settings-btn');
@@ -36,11 +38,27 @@ class SettingsHandler {
      * Initialize event listeners for settings UI.
      */
     initializeEventListeners() {
-        // Toggle panel visibility (click on header or button)
-        const header = document.getElementById('settings-header');
-        if (header) {
-            header.addEventListener('click', () => this.togglePanel());
+        // Open drawer
+        if (this.gearBtn) {
+            this.gearBtn.addEventListener('click', () => this.openDrawer());
         }
+
+        // Close drawer
+        if (this.closeBtn) {
+            this.closeBtn.addEventListener('click', () => this.closeDrawer());
+        }
+
+        // Backdrop click to close
+        if (this.backdrop) {
+            this.backdrop.addEventListener('click', () => this.closeDrawer());
+        }
+
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isOpen()) {
+                this.closeDrawer();
+            }
+        });
 
         // Reset button
         this.resetOutputDirBtn.addEventListener('click', () => this.resetSetting('output_directory'));
@@ -80,20 +98,26 @@ class SettingsHandler {
     }
 
     /**
-     * Toggle settings panel visibility.
+     * Check if drawer is currently open.
      */
-    togglePanel() {
-        const isExpanded = this.toggleBtn.getAttribute('aria-expanded') === 'true';
+    isOpen() {
+        return this.drawer && this.drawer.classList.contains('visible');
+    }
 
-        if (isExpanded) {
-            // Collapse
-            this.panel.style.display = 'none';
-            this.toggleBtn.setAttribute('aria-expanded', 'false');
-        } else {
-            // Expand
-            this.panel.style.display = 'block';
-            this.toggleBtn.setAttribute('aria-expanded', 'true');
-        }
+    /**
+     * Open settings drawer.
+     */
+    openDrawer() {
+        if (this.backdrop) this.backdrop.classList.add('visible');
+        if (this.drawer) this.drawer.classList.add('visible');
+    }
+
+    /**
+     * Close settings drawer.
+     */
+    closeDrawer() {
+        if (this.backdrop) this.backdrop.classList.remove('visible');
+        if (this.drawer) this.drawer.classList.remove('visible');
     }
 
     /**
