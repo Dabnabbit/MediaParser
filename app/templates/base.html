@@ -100,6 +100,11 @@
                 <div class="settings-error" id="settings-error" style="display: none;">
                     <span id="settings-error-text"></span>
                 </div>
+                <label class="settings-toggle-label" for="strict-workflow-toggle">
+                    <input type="checkbox" id="strict-workflow-toggle">
+                    <span>Strict workflow progression</span>
+                    <span class="settings-toggle-hint">Lock stages until prior ones are resolved</span>
+                </label>
             </div>
 
             <!-- Debug Section (only shown in debug mode) -->
@@ -121,13 +126,6 @@
                         <span class="debug-label">Storage:</span>
                         <span class="debug-value" id="storage-size">-</span>
                     </div>
-                </div>
-                <div class="debug-toggles">
-                    <label class="debug-toggle-label">
-                        <input type="checkbox" id="strict-workflow-toggle">
-                        <span>Strict workflow progression</span>
-                        <span class="debug-toggle-hint">Lock stages until prior ones are resolved</span>
-                    </label>
                 </div>
                 <div class="debug-actions">
                     <button type="button" class="btn btn-secondary btn-sm" id="clear-db-btn">Clear Database</button>
