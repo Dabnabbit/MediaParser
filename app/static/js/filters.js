@@ -322,12 +322,8 @@ class FilterHandler {
                 this.exportSegment.style.flexGrow = '1';
                 if (!this.exportSegment.classList.contains('ready')) {
                     this.exportSegment.classList.add('ready');
-                    console.log('[BURST] export ready — scheduling particle burst');
                     // Delay burst until segment has transitioned into view
-                    setTimeout(() => {
-                        console.log('[BURST] firing burstParticles now');
-                        this.burstParticles(this.exportSegment);
-                    }, 350);
+                    setTimeout(() => this.burstParticles(this.exportSegment), 350);
                 }
                 // Wire click handler once
                 if (!this.exportSegment.dataset.wired) {
@@ -510,45 +506,139 @@ class FilterHandler {
     }
 
     /**
-     * Spawn particle burst from an element's position.
+     * Spawn celebration particles from an element's position.
+     * Randomly picks between confetti and fireworks styles.
+     * Uses a single canvas overlay — zero DOM churn.
      */
     burstParticles(el) {
+        const style = Math.random() < 0.5 ? 'confetti' : 'fireworks';
         const rect = el.getBoundingClientRect();
         const cx = rect.left + rect.width / 2;
         const cy = rect.top + rect.height / 2;
-        console.log('[BURST] element rect:', rect, 'center:', cx, cy);
-        const colors = ['#fbbf24', '#fde68a', '#f59e0b', '#fff', '#fcd34d', '#fb923c'];
-        const count = 28;
+        const colors = ['#ef4444', '#f59e0b', '#fbbf24', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#fff'];
 
-        for (let i = 0; i < count; i++) {
-            const particle = document.createElement('div');
-            const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.6;
-            const distance = 50 + Math.random() * 80;
-            const dx = Math.cos(angle) * distance;
-            const dy = Math.sin(angle) * distance - 25;
-            const size = 4 + Math.random() * 5;
-            const color = colors[Math.floor(Math.random() * colors.length)];
-            const duration = 0.6 + Math.random() * 0.4;
-            const delay = Math.random() * 0.12;
+        // Create canvas overlay
+        const canvas = document.createElement('canvas');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        canvas.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:10000;';
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
 
-            particle.style.cssText = `
-                position: fixed;
-                left: ${cx}px;
-                top: ${cy}px;
-                width: ${size}px;
-                height: ${size}px;
-                background: ${color};
-                border-radius: 50%;
-                pointer-events: none;
-                z-index: 10000;
-                opacity: 0;
-                --dx: ${dx}px;
-                --dy: ${dy}px;
-                animation: exportParticle ${duration}s ease-out ${delay}s both;
-            `;
-            document.body.appendChild(particle);
-            particle.addEventListener('animationend', () => particle.remove());
+        // Spawn particles as plain data
+        const particles = [];
+        if (style === 'fireworks') {
+            const shellColors = [];
+            for (let c = 0; c < 2 + Math.floor(Math.random() * 2); c++)
+                shellColors.push(colors[Math.floor(Math.random() * colors.length)]);
+            for (let i = 0; i < 36; i++) {
+                const angle = (Math.PI * 2 * i / 36) + (Math.random() - 0.5) * 0.3;
+                const speed = 100 + Math.random() * 80;
+                particles.push({
+                    x: cx, y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 160,
+                    size: 3 + Math.random() * 3,
+                    color: shellColors[Math.floor(Math.random() * shellColors.length)],
+                    opacity: 1, spin: 0, spinRate: 0, shape: 'circle',
+                });
+            }
+        } else {
+            for (let i = 0; i < 32; i++) {
+                const angle = (Math.PI * 2 * i / 32) + (Math.random() - 0.5) * 0.6;
+                const speed = 80 + Math.random() * 120;
+                particles.push({
+                    x: cx, y: cy,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 180,
+                    w: 3 + Math.random() * 5, h: 6 + Math.random() * 8,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    opacity: 1,
+                    spin: 0, spinRate: (Math.random() - 0.5) * 720,
+                    shape: 'rect',
+                });
+            }
         }
+
+        const gravity = style === 'fireworks' ? 200 : 500;
+        const fadeRate = style === 'fireworks' ? 0.5 : 0.7;
+        const drag = style === 'fireworks' ? 0.8 : 0.5;
+        // Fireworks: semi-transparent clear gives trail effect
+        const trailLen = style === 'fireworks' ? 16 : 0;
+
+        let last = performance.now();
+        const tick = (now) => {
+            const dt = Math.min((now - last) / 1000, 0.05);
+            last = now;
+
+            // Update physics
+            let alive = false;
+            for (const p of particles) {
+                if (p.opacity <= 0) continue;
+                p.vy += gravity * dt;
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.spin += p.spinRate * dt;
+                p.opacity -= dt * fadeRate;
+                p.vx *= (1 - dt * drag);
+                p.vy *= (1 - dt * drag * 0.3);
+                if (p.opacity > 0) {
+                    alive = true;
+                    // Store position history for trails
+                    if (trailLen) {
+                        if (!p.trail) p.trail = [];
+                        p.trail.push({ x: p.x, y: p.y });
+                        if (p.trail.length > trailLen) p.trail.shift();
+                    }
+                }
+            }
+
+            // Full clear every frame — no residue
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw trails first (behind particles)
+            if (trailLen) {
+                for (const p of particles) {
+                    if (p.opacity <= 0 || !p.trail) continue;
+                    for (let t = 0; t < p.trail.length; t++) {
+                        const frac = (t + 1) / p.trail.length;
+                        ctx.globalAlpha = p.opacity * frac * 0.6;
+                        ctx.fillStyle = p.color;
+                        ctx.beginPath();
+                        ctx.arc(p.trail[t].x, p.trail[t].y, p.size * (0.3 + frac * 0.7), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // Draw sharp particles on top
+            for (const p of particles) {
+                if (p.opacity <= 0) continue;
+
+                ctx.save();
+                ctx.globalAlpha = p.opacity;
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.spin * Math.PI / 180);
+
+                if (p.shape === 'circle') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                }
+                ctx.restore();
+            }
+
+            if (alive) {
+                requestAnimationFrame(tick);
+            } else {
+                canvas.remove();
+            }
+        };
+        requestAnimationFrame(tick);
     }
 
 }
