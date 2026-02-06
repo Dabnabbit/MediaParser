@@ -99,10 +99,7 @@ class FilterHandler {
 
     toggleConfidence(level) {
         if (this.visibleConfidence.has(level)) {
-            // Don't allow hiding all confidence levels
-            if (this.visibleConfidence.size > 1) {
-                this.visibleConfidence.delete(level);
-            }
+            this.visibleConfidence.delete(level);
         } else {
             this.visibleConfidence.add(level);
         }
@@ -130,6 +127,7 @@ class FilterHandler {
         this.confidenceChips.forEach(chip => {
             const isActive = this.visibleConfidence.has(chip.dataset.filter);
             chip.classList.toggle('active', isActive);
+            chip.classList.toggle('hidden-filter', !isActive);
         });
     }
 

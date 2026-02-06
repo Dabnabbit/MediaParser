@@ -116,6 +116,8 @@ class ResultsHandler {
         this.isLoading = true;
 
         try {
+            const allChipsOff = window.filterHandler && window.filterHandler.visibleConfidence.size === 0;
+
             const filterParams = window.filterHandler?.getQueryParams() || new URLSearchParams();
             filterParams.set('offset', 0);
             filterParams.set('limit', 10000);
@@ -125,8 +127,10 @@ class ResultsHandler {
 
             const data = await response.json();
 
-            this.allFiles = data.files || [];
-            this.totalFiles = data.total || 0;
+            // If all confidence chips are off, show empty grid but still use
+            // the API response for counts (so chips update on mode switch)
+            this.allFiles = allChipsOff ? [] : (data.files || []);
+            this.totalFiles = allChipsOff ? 0 : (data.total || 0);
 
             this.renderGrid();
 

@@ -348,9 +348,15 @@ class TileManager {
             this.container.style.gridTemplateColumns = '';
         }
 
-        // Reset virtual scroll
+        // Reset virtual scroll state so recalculateLayout() won't
+        // early-return when the same file set is loaded again
         if (this.virtualScroll) {
             this.virtualScroll.clearExemptions();
+            this.virtualScroll.files = [];
+            this.virtualScroll.startIdx = 0;
+            this.virtualScroll.endIdx = 0;
+            this.virtualScroll.totalRows = 0;
+            this.virtualScroll.columns = 1;
         }
     }
 
