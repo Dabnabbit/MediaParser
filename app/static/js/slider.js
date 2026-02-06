@@ -25,13 +25,20 @@ class PositionSliderHandler {
     }
 
     /**
-     * Watch for grid resize and update thumb sizing
+     * Watch for grid resize and update thumb sizing.
+     * RAF-throttled to avoid layout thrashing from rapid
+     * ResizeObserver callbacks during virtual scroll recalculation.
      */
     initResizeObserver() {
         if (!this.grid) return;
 
+        this._syncRafId = null;
         this.resizeObserver = new ResizeObserver(() => {
-            this.syncThumb();
+            if (this._syncRafId) return;
+            this._syncRafId = requestAnimationFrame(() => {
+                this._syncRafId = null;
+                this.syncThumb();
+            });
         });
         this.resizeObserver.observe(this.grid);
     }
@@ -120,34 +127,37 @@ class PositionSliderHandler {
     }
 
     /**
-     * Called after grid content changes to show/hide slider and size thumb
+     * Called after grid content changes to show/hide slider and size thumb.
+     * Batches all layout reads before writes to avoid forced reflows.
      */
     syncThumb() {
         if (!this.grid || !this.slider) return;
 
-        const contentOverflows = this.grid.scrollHeight > this.grid.clientHeight + 1;
+        // --- Batch all layout READS ---
+        const scrollHeight = this.grid.scrollHeight;
+        const clientHeight = this.grid.clientHeight;
+        const scrollTop = this.grid.scrollTop;
+        const trackHeight = this.track ? this.track.clientHeight : 0;
+        const contentOverflows = scrollHeight > clientHeight + 1;
 
-        // Show slider, but disable if no overflow
+        // --- All layout WRITES ---
         this.slider.style.display = 'flex';
         this.slider.classList.toggle('slider-disabled', !contentOverflows);
 
-        if (contentOverflows) {
-            this.sizeThumb();
-            this.syncThumbPosition();
+        if (contentOverflows && this.track && this.thumb) {
+            // Size thumb
+            const viewportRatio = clientHeight / scrollHeight;
+            const thumbHeight = Math.max(this.minThumbHeight, Math.round(viewportRatio * trackHeight));
+            this.thumb.style.height = `${thumbHeight}px`;
+
+            // Position thumb
+            const maxScroll = scrollHeight - clientHeight;
+            if (maxScroll > 0) {
+                const progress = scrollTop / maxScroll;
+                const usableHeight = trackHeight - thumbHeight;
+                this.thumb.style.top = `${progress * usableHeight}px`;
+            }
         }
-    }
-
-    /**
-     * Size thumb proportional to viewport/content ratio
-     */
-    sizeThumb() {
-        if (!this.grid || !this.track || !this.thumb) return;
-
-        const viewportRatio = this.grid.clientHeight / this.grid.scrollHeight;
-        const trackHeight = this.track.clientHeight;
-        const thumbHeight = Math.max(this.minThumbHeight, Math.round(viewportRatio * trackHeight));
-
-        this.thumb.style.height = `${thumbHeight}px`;
     }
 
     /**
@@ -156,7 +166,9 @@ class PositionSliderHandler {
     syncThumbPosition() {
         if (!this.grid || !this.track || !this.thumb) return;
 
-        const maxScroll = this.grid.scrollHeight - this.grid.clientHeight;
+        const scrollHeight = this.grid.scrollHeight;
+        const clientHeight = this.grid.clientHeight;
+        const maxScroll = scrollHeight - clientHeight;
         if (maxScroll <= 0) return;
 
         const progress = this.grid.scrollTop / maxScroll;

@@ -326,9 +326,11 @@ class Tile {
         // Preload new image
         const newImg = new Image();
         newImg.onload = () => {
+            if (!this.imageElement) { this.isImageLoading = false; return; }
             this.imageElement.classList.add('tile-image-fade');
 
             requestAnimationFrame(() => {
+                if (!this.imageElement) { this.isImageLoading = false; return; }
                 this.imageElement.src = src;
                 this.imageElement.classList.remove('tile-image-fade');
                 this.isImageLoading = false;

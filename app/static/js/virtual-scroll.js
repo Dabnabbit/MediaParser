@@ -61,16 +61,25 @@ class VirtualScrollManager {
         };
         container.addEventListener('scroll', this._onScroll, { passive: true });
 
-        // Container ResizeObserver — only triggers on actual container size changes
+        // Container ResizeObserver — handles width and height changes separately.
+        // Width change → recalculateLayout (columns depend on width)
+        // Height change → handleScroll (visible range depends on height)
         this._lastWidth = 0;
+        this._lastHeight = 0;
         this._resizeObserver = new ResizeObserver((entries) => {
             if (this._rendering) return;
-            // Only recalculate on width changes (height doesn't affect columns)
             const entry = entries[0];
             const w = entry.contentRect.width;
+            const h = entry.contentRect.height;
+
             if (w !== this._lastWidth) {
                 this._lastWidth = w;
+                this._lastHeight = h;
                 this.recalculateLayout();
+            } else if (h !== this._lastHeight) {
+                this._lastHeight = h;
+                // Height changed but width didn't — just update visible range
+                this.handleScroll();
             }
         });
         this._resizeObserver.observe(container);
@@ -88,49 +97,67 @@ class VirtualScrollManager {
     /**
      * Recalculate layout metrics from CSS and container dimensions.
      * Called on tile size change, window resize, or new file set.
+     * Skips DOM updates and re-render if layout hasn't actually changed.
      */
     recalculateLayout() {
-        if (!this.container) return;
+        if (!this.container || this._recalculating) return;
+        this._recalculating = true;
 
-        if (this.files.length === 0) {
-            this.columns = 1;
-            this.totalRows = 0;
-            this.startIdx = 0;
-            this.endIdx = 0;
-            // Clear explicit grid template
-            this.container.style.gridTemplateRows = '';
-            return;
+        try {
+            if (this.files.length === 0) {
+                this.columns = 1;
+                this.totalRows = 0;
+                this.startIdx = 0;
+                this.endIdx = 0;
+                this.container.style.gridTemplateRows = '';
+                return;
+            }
+
+            // Read --tile-size and gap from computed style
+            const cs = getComputedStyle(this.container);
+            const tileSize = parseFloat(cs.getPropertyValue('--tile-size')) || 150;
+            const gap = parseFloat(cs.gap) || parseFloat(cs.getPropertyValue('gap')) || 8;
+
+            // Read actual padding for width calculation
+            const padLeft = parseFloat(cs.paddingLeft) || 8;
+            const padRight = parseFloat(cs.paddingRight) || 44;
+
+            // Available width for columns
+            const containerWidth = this.container.clientWidth - padLeft - padRight;
+
+            // Column count: same formula CSS auto-fill uses
+            const columns = Math.max(1, Math.floor((containerWidth + gap) / (tileSize + gap)));
+            const totalRows = Math.ceil(this.files.length / columns);
+
+            // Skip DOM updates if layout hasn't changed
+            if (columns === this.columns && totalRows === this.totalRows &&
+                tileSize === this.tileSize && gap === this.gap) {
+                return;
+            }
+
+            this.tileSize = tileSize;
+            this.gap = gap;
+            this.padLeft = padLeft;
+            this.padRight = padRight;
+            this.columns = columns;
+            this.rowHeight = tileSize + gap;
+            this.totalRows = totalRows;
+
+            // Set explicit grid rows for the full virtual height.
+            // Empty rows still occupy space, creating the scroll area.
+            this.container.style.gridTemplateRows = `repeat(${this.totalRows}, var(--tile-size))`;
+
+            // Also lock column template to match our calculated count
+            this.container.style.gridTemplateColumns = `repeat(${this.columns}, var(--tile-size))`;
+
+            // Reset range to force re-render
+            this.startIdx = -1;
+            this.endIdx = -1;
+
+            this.handleScroll();
+        } finally {
+            this._recalculating = false;
         }
-
-        // Read --tile-size and gap from computed style
-        const cs = getComputedStyle(this.container);
-        this.tileSize = parseFloat(cs.getPropertyValue('--tile-size')) || 150;
-        this.gap = parseFloat(cs.gap) || parseFloat(cs.getPropertyValue('gap')) || 8;
-
-        // Read actual padding for width calculation
-        this.padLeft = parseFloat(cs.paddingLeft) || 8;
-        this.padRight = parseFloat(cs.paddingRight) || 44;
-
-        // Available width for columns
-        const containerWidth = this.container.clientWidth - this.padLeft - this.padRight;
-
-        // Column count: same formula CSS auto-fill uses
-        this.columns = Math.max(1, Math.floor((containerWidth + this.gap) / (this.tileSize + this.gap)));
-        this.rowHeight = this.tileSize + this.gap;
-        this.totalRows = Math.ceil(this.files.length / this.columns);
-
-        // Set explicit grid rows for the full virtual height.
-        // Empty rows still occupy space, creating the scroll area.
-        this.container.style.gridTemplateRows = `repeat(${this.totalRows}, var(--tile-size))`;
-
-        // Also lock column template to match our calculated count
-        this.container.style.gridTemplateColumns = `repeat(${this.columns}, var(--tile-size))`;
-
-        // Reset range to force re-render
-        this.startIdx = -1;
-        this.endIdx = -1;
-
-        this.handleScroll();
     }
 
     /**
