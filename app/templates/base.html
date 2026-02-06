@@ -35,7 +35,11 @@
     <!-- Tile system (must load before results.js) -->
     <script src="{{ url_for('static', filename='js/tile.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/tile-manager.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/viewport-controller.js') }}" defer></script>
+    <!-- Viewport controller (split for maintainability) -->
+    <script src="{{ url_for('static', filename='js/viewport-core.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/viewport-animation.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/viewport-navigation.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/viewport-ui.js') }}" defer></script>
     <!-- Grid and filtering -->
     <script src="{{ url_for('static', filename='js/filters.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/results.js') }}" defer></script>
