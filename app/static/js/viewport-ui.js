@@ -63,16 +63,17 @@
         });
         document.body.appendChild(this.modeToggle);
 
-        // Navigation arrows (visible in carousel + fullscreen, hidden in compare)
+        // Navigation arrows (only visible in fullscreen mode)
+        const hideArrows = this.viewMode !== ViewportController.VIEW_MODES.FULLSCREEN;
         this.navPrev = document.createElement('button');
-        this.navPrev.className = 'viewport-nav-arrow nav-prev';
+        this.navPrev.className = 'viewport-nav-arrow nav-prev' + (hideArrows ? ' arrows-hidden' : '');
         this.navPrev.innerHTML = '\u2039'; // ‹
         this.navPrev.title = 'Previous';
         this.navPrev.addEventListener('click', () => this.prev());
         document.body.appendChild(this.navPrev);
 
         this.navNext = document.createElement('button');
-        this.navNext.className = 'viewport-nav-arrow nav-next';
+        this.navNext.className = 'viewport-nav-arrow nav-next' + (hideArrows ? ' arrows-hidden' : '');
         this.navNext.innerHTML = '\u203A'; // ›
         this.navNext.title = 'Next';
         this.navNext.addEventListener('click', () => this.next());

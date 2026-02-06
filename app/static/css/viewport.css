@@ -18,13 +18,13 @@ body.viewport-active {
 
 :root {
     /* Viewport dimensions */
-    --vp-current-width: min(70vw, 800px);
-    --vp-current-height: min(70vh, 600px);
-    --vp-side-width: min(15vw, 180px);
-    --vp-side-height: min(25vh, 220px);
+    --vp-current-width: min(65vw, 740px);
+    --vp-current-height: min(68vh, 580px);
+    --vp-side-width: min(17vw, 200px);
+    --vp-side-height: min(28vh, 240px);
 
     /* Viewport positioning */
-    --vp-gap: 24px;
+    --vp-gap: 16px;
     --vp-side-offset: calc(var(--vp-current-width) / 2 + var(--vp-side-width) / 2 + var(--vp-gap));
 
     /* Transition timing */
@@ -248,9 +248,9 @@ body.viewport-active {
 .thumbnail-grid.viewport-mode .thumbnail.vp-prev::after {
     content: '\2039';  /* Single left angle quote */
     position: absolute;
-    left: 50%;
+    right: 22%;
     top: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateY(-50%);
     font-size: 3rem;
     color: white;
     opacity: 0;
@@ -263,9 +263,9 @@ body.viewport-active {
 .thumbnail-grid.viewport-mode .thumbnail.vp-next::after {
     content: '\203A';  /* Single right angle quote */
     position: absolute;
-    left: 50%;
+    left: 22%;
     top: 50%;
-    transform: translate(-50%, -50%);
+    transform: translateY(-50%);
     font-size: 3rem;
     color: white;
     opacity: 0;
@@ -279,14 +279,6 @@ body.viewport-active {
 .thumbnail-grid.viewport-mode .thumbnail.vp-prev:hover::after,
 .thumbnail-grid.viewport-mode .thumbnail.vp-next:hover::after {
     opacity: 0.8;
-}
-
-/* Carousel mode: arrows always subtly visible on prev/next tiles */
-.thumbnail-grid.viewport-mode:not(.view-compare):not(.view-fullscreen) .thumbnail[data-vp-pos="prev"]::after,
-.thumbnail-grid.viewport-mode:not(.view-compare):not(.view-fullscreen) .thumbnail[data-vp-pos="next"]::after,
-.thumbnail-grid.viewport-mode:not(.view-compare):not(.view-fullscreen) .thumbnail.vp-prev::after,
-.thumbnail-grid.viewport-mode:not(.view-compare):not(.view-fullscreen) .thumbnail.vp-next::after {
-    opacity: 0.4;
 }
 
 /* ============================================
@@ -580,19 +572,19 @@ body.viewport-details-open > .viewport-nav-arrow.nav-next {
 
 @media (max-width: 1200px) {
     :root {
-        --vp-current-width: min(65vw, 700px);
-        --vp-current-height: min(65vh, 550px);
-        --vp-side-width: min(12vw, 150px);
-        --vp-side-height: min(20vh, 180px);
+        --vp-current-width: min(58vw, 620px);
+        --vp-current-height: min(62vh, 500px);
+        --vp-side-width: min(15vw, 170px);
+        --vp-side-height: min(24vh, 200px);
     }
 }
 
 @media (max-width: 900px) {
     :root {
-        --vp-current-width: min(80vw, 600px);
-        --vp-current-height: min(60vh, 500px);
-        --vp-side-width: min(10vw, 100px);
-        --vp-side-height: min(15vh, 120px);
+        --vp-current-width: min(65vw, 520px);
+        --vp-current-height: min(55vh, 450px);
+        --vp-side-width: min(13vw, 130px);
+        --vp-side-height: min(20vh, 160px);
     }
 
     /* Hide side tiles on smaller screens */
