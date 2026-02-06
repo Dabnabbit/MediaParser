@@ -697,8 +697,8 @@ class ViewportDetailsPanel {
                 body: JSON.stringify({ file_ids: [currentId] })
             });
 
-            // Exit viewport and refresh
-            this.exitViewportAndRefresh();
+            // Advance to next group (or exit and switch mode if none remain)
+            this.advanceToNextGroup();
 
         } catch (error) {
             console.error('Error keeping duplicate:', error);
@@ -818,8 +818,8 @@ class ViewportDetailsPanel {
             const result = await response.json();
             console.log('Similar group resolved:', result);
 
-            // Exit viewport and refresh
-            this.exitViewportAndRefresh();
+            // Advance to next group (or exit and switch mode if none remain)
+            this.advanceToNextGroup();
 
         } catch (error) {
             console.error('Error keeping similar file:', error);
@@ -859,8 +859,8 @@ class ViewportDetailsPanel {
             const result = await response.json();
             console.log('All similar files kept:', result);
 
-            // Exit viewport and refresh
-            this.exitViewportAndRefresh();
+            // Advance to next group (or exit and switch mode if none remain)
+            this.advanceToNextGroup();
 
         } catch (error) {
             console.error('Error keeping all similar files:', error);
@@ -952,6 +952,59 @@ class ViewportDetailsPanel {
         }
         window.resultsHandler?.loadFiles();
         window.resultsHandler?.loadSummary();
+    }
+
+    /**
+     * After resolving a group, advance to the next group in the current mode.
+     * If no more groups remain, exit viewport and auto-switch mode.
+     */
+    async advanceToNextGroup() {
+        const viewportController = window.selectionHandler?.viewportController;
+        const currentMode = window.filterHandler?.getCurrentMode();
+
+        // Exit the viewport
+        if (viewportController) {
+            viewportController.exit();
+        }
+
+        // Wait for exit animation (300ms) + buffer
+        await new Promise(resolve => setTimeout(resolve, 350));
+
+        // Reload summary to get updated counts
+        await window.resultsHandler?.loadSummary();
+
+        // Check if there are remaining groups in the current mode
+        const counts = window.filterHandler?.counts;
+        const hasMoreInCurrentMode =
+            (currentMode === 'duplicates' && counts?.duplicates > 0) ||
+            (currentMode === 'similar' && counts?.similar > 0);
+
+        if (hasMoreInCurrentMode) {
+            // Reload files, then open the next group
+            await window.resultsHandler?.loadFiles();
+
+            const files = window.resultsHandler?.allFiles || [];
+            let firstGroupFile = null;
+
+            if (currentMode === 'duplicates') {
+                firstGroupFile = files.find(f => f.exact_group_id);
+            } else if (currentMode === 'similar') {
+                firstGroupFile = files.find(f => f.similar_group_id);
+            }
+
+            if (firstGroupFile && window.selectionHandler) {
+                window.selectionHandler.openExamination(firstGroupFile.id);
+                return;
+            }
+        }
+
+        // No more groups in current mode - reload files and auto-switch
+        if (window.filterHandler) {
+            window.filterHandler.autoSelectMode();
+            // Mode change triggers loadFiles via filterChange event
+        } else {
+            window.resultsHandler?.loadFiles();
+        }
     }
 
     // ==========================================
