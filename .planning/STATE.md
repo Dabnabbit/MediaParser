@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-05
+**Last Updated:** 2026-02-06
 
 ## Environment
 
@@ -13,15 +13,15 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 6 In Progress - Perceptual Duplicate Detection
+**Current Focus:** Phase 7 In Progress - Output Generation + Tagging
 
 ## Current Position
 
-**Phase:** 6 of 7 - Duplicate Detection (Perceptual)
-**Plan:** 4 of 5 (Similar mode UI complete)
+**Phase:** 7 of 7 - Output Generation + Tagging
+**Plan:** 1 of 5 (Export task engine complete)
 **Status:** In progress
-**Last activity:** 2026-02-05 - Frontend module refactoring (out-of-band housekeeping)
-**Progress:** `[████████████████████████████████] 97%` (34/~35 plans complete)
+**Last activity:** 2026-02-06 - Completed 07-01-PLAN.md (Export task engine)
+**Progress:** `[█████████████████████████████████] 97%` (35/~36 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -147,6 +147,9 @@
 | Mode-based view switching | 2026-02-04 | Duplicates mode hides grid and shows comparison; other modes reverse | 05-04: Mode integration |
 | Auto-switch to unreviewed mode | 2026-02-04 | When duplicates count reaches 0 after resolution, switch to unreviewed mode | 05-04: Mode transitions |
 | Carousel viewport system | 2026-02-04 | Replace separate examination modal with in-place tile scaling for unified UX | Viewport refactor |
+| Write to both IPTC:Keywords and XMP:Subject | 2026-02-06 | Broadest compatibility with photo management tools (Google Photos, Apple Photos, etc.) | 07-02: Tag format selection |
+| Batch metadata writes in single ExifTool context | 2026-02-06 | 50% reduction in subprocess overhead when writing both timestamps and tags | 07-02: Write optimization |
+| QuickTime tags for video files | 2026-02-06 | Video files need QuickTime-specific timestamps in addition to EXIF | 07-02: Video metadata |
 | Tile as universal container | 2026-02-04 | Same tile element renders at any size (grid to viewport), CSS transitions between states | Viewport refactor |
 | MIPMAP resolution switching | 2026-02-04 | ResizeObserver triggers image source upgrade when tile exceeds 400px threshold | Viewport refactor |
 | Position-based carousel CSS | 2026-02-04 | Tiles use data-vp-pos (grid/prev/current/next) for GPU-accelerated transitions; non-viewport tiles stay in grid (not hidden) | Viewport refactor |
@@ -189,6 +192,12 @@
 | Similar mode reuses viewport system | 2026-02-05 | Same ViewportController and details panel as duplicates with mode-specific action buttons for consistency | Phase 6: UI architecture |
 | Keep All marks as not-similar | 2026-02-05 | Clears similar_group_id instead of accepting, allows preserving entire burst sequences or panoramas | Phase 6: Resolution |
 | Group type badges color-coded | 2026-02-05 | Burst (blue), panorama (yellow), similar (gray) for visual distinction of grouping reason | Phase 6: UX design |
+| Year-based folder organization | 2026-02-06 | Single-level year folders (YYYY/) for output files | 07-01: Output structure |
+| YYYYMMDD_HHMMSS.ext filename format | 2026-02-06 | ISO-8601-like compact format for exported filenames | 07-01: Filename standard |
+| Counter suffix for collisions | 2026-02-06 | Append _001, _002 for same-timestamp files | 07-01: Collision resolution |
+| unknown/ subfolder for no-timestamp files | 2026-02-06 | Separate folder for files needing manual timestamp assignment | 07-01: Export edge cases |
+| Export as separate job type | 2026-02-06 | New Job record preserves import history, enables retry without re-import | 07-01: Job architecture |
+| File.output_path tracks export status | 2026-02-06 | Database field enables pause/resume for export jobs | 07-01: Resume support |
 
 ### Active TODOs
 
@@ -560,14 +569,14 @@ None
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
-**Last session:** 2026-02-05
-**Stopped at:** Completed 06-04-PLAN.md (Similar mode UI integration)
+**Last session:** 2026-02-06
+**Stopped at:** Completed 07-01-PLAN.md (Export task engine)
 **Resume file:** None
 
 **Resume commands:**
 - `/gsd:resume-work` - Full context restoration
-- `/gsd:execute-phase 6` - Complete Phase 6 (06-05 testing remaining)
-- `/gsd:plan-phase 7` - Plan output generation
+- `/gsd:execute-phase 7` - Continue Phase 7 (plans 02-05 remaining)
+- Next plan: 07-02 (Metadata tagging integration)
 
 ---
 
