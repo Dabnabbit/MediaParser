@@ -765,25 +765,25 @@ class ViewportDetailsPanel {
                     id => id !== this.currentFile.id
                 );
 
-                if (newNavFiles.length === 0) {
-                    // No more duplicates to review
-                    this.exitViewportAndRefresh();
-                } else if (newNavFiles.length === 1) {
-                    // Only one file left - it's no longer a duplicate
-                    // Remove its duplicate status too
-                    await fetch('/api/files/bulk/not-duplicate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ file_ids: newNavFiles })
-                    });
-                    this.exitViewportAndRefresh();
+                if (newNavFiles.length <= 1) {
+                    // 0 or 1 file left — group is resolved
+                    if (newNavFiles.length === 1) {
+                        // Last file can't be a "duplicate" alone — clear its group
+                        await fetch('/api/files/bulk/not-duplicate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ file_ids: newNavFiles })
+                        });
+                    }
+                    // Advance to next duplicate group (or auto-switch mode)
+                    this.advanceToNextGroup();
                 } else {
-                    // Continue with remaining files
+                    // 2+ files remain — continue within the group
                     viewportController.updateNavigationSet(newNavFiles);
+                    const newFile = viewportController.getCurrentFile();
+                    if (newFile) this.loadFile(newFile);
                 }
             }
-
-            window.resultsHandler?.loadSummary();
 
         } catch (error) {
             console.error('Error removing from duplicate group:', error);
@@ -927,25 +927,25 @@ class ViewportDetailsPanel {
                     id => id !== this.currentFile.id
                 );
 
-                if (newNavFiles.length === 0) {
-                    // No more similar files to review
-                    this.exitViewportAndRefresh();
-                } else if (newNavFiles.length === 1) {
-                    // Only one file left - it's no longer similar
-                    // Remove its similar status too
-                    await fetch('/api/files/bulk/not-similar', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ file_ids: newNavFiles })
-                    });
-                    this.exitViewportAndRefresh();
+                if (newNavFiles.length <= 1) {
+                    // 0 or 1 file left — group is resolved
+                    if (newNavFiles.length === 1) {
+                        // Last file can't be "similar" alone — clear its group
+                        await fetch('/api/files/bulk/not-similar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ file_ids: newNavFiles })
+                        });
+                    }
+                    // Advance to next similar group (or auto-switch mode)
+                    this.advanceToNextGroup();
                 } else {
-                    // Continue with remaining files
+                    // 2+ files remain — continue within the group
                     viewportController.updateNavigationSet(newNavFiles);
+                    const newFile = viewportController.getCurrentFile();
+                    if (newFile) this.loadFile(newFile);
                 }
             }
-
-            window.resultsHandler?.loadSummary();
 
         } catch (error) {
             console.error('Error removing from similar group:', error);

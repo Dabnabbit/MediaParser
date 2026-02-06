@@ -53,6 +53,11 @@ class FilterHandler {
         this.indicatorFailed = document.getElementById('indicator-failed');
         this.reviewedOverlay = document.getElementById('reviewed-overlay');
         this.modeSegmentsContainer = document.getElementById('mode-segments');
+        this.lockOverlay = document.getElementById('seg-lock-overlay');
+
+        // Reposition lock icons when any segment's width changes (flex reflow)
+        const lockObserver = new ResizeObserver(() => this._repositionLockIcons());
+        this.modeChips.forEach(seg => lockObserver.observe(seg));
 
         this.initEventListeners();
         this.loadState();
@@ -129,6 +134,43 @@ class FilterHandler {
         }
         // reviewed, discarded, failed, export — never locked
         return false;
+    }
+
+    /**
+     * Rebuild lock icons for current locked state.
+     * Each icon stores a reference to its segment for repositioning.
+     */
+    _updateLockIcons() {
+        if (!this.lockOverlay) return;
+        this.lockOverlay.innerHTML = '';
+
+        if (!this.strictMode) return;
+
+        this.modeChips.forEach(seg => {
+            if (!seg.classList.contains('locked') || seg.classList.contains('collapsed')) return;
+
+            const icon = document.createElement('span');
+            icon.className = 'seg-lock-icon';
+            icon.textContent = '\u{1F512}';
+            icon._segment = seg;
+            this.lockOverlay.appendChild(icon);
+        });
+
+        // Position after flex layout settles
+        requestAnimationFrame(() => this._repositionLockIcons());
+    }
+
+    /**
+     * Reposition existing lock icons to match current segment geometry.
+     * Called by ResizeObserver when flex layout changes.
+     */
+    _repositionLockIcons() {
+        if (!this.lockOverlay) return;
+        for (const icon of this.lockOverlay.children) {
+            if (icon._segment) {
+                icon.style.left = icon._segment.offsetLeft + 'px';
+            }
+        }
     }
 
     toggleConfidence(level) {
@@ -223,6 +265,9 @@ class FilterHandler {
             const locked = this.strictMode && this._isModeLocked(mode) && count > 0;
             seg.classList.toggle('locked', locked);
         });
+
+        // Position lock icons between segments when strict mode is active
+        this._updateLockIcons();
 
         // Update reviewed overlay width and reposition mode segments
         const reviewedPct = total > 0 ? ((this.counts.reviewed || 0) / total) * 100 : 0;
@@ -402,8 +447,10 @@ class FilterHandler {
         this.modeChips.forEach(seg => {
             seg.style.flexGrow = '0';
             seg.classList.add('collapsed');
-            seg.classList.remove('seg-small', 'has-items');
+            seg.classList.remove('seg-small', 'has-items', 'locked');
         });
+        // Clear lock icons
+        if (this.lockOverlay) this.lockOverlay.innerHTML = '';
         // Reset export segment
         if (this.exportSegment) {
             this.exportSegment.classList.add('collapsed');
