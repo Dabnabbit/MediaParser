@@ -178,6 +178,15 @@ Plans:
 
 **Requirements:** TAG-01, TAG-02, TAG-03, TAG-04, PROC-02, PROC-03, PROC-04, PROC-05
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Export task + file copy engine (year folders, YYYYMMDD_HHMMSS filenames)
+- [ ] 07-02-PLAN.md — EXIF metadata write-back (timestamps + tags via PyExifTool)
+- [ ] 07-03-PLAN.md — Tag auto-generation (filename syntax + folder structure)
+- [ ] 07-04-PLAN.md — Export UI + source cleanup + tag filter integration
+- [ ] 07-05-PLAN.md — Integration testing and regression verification
+
 **Success Criteria:**
 1. Output job writes corrected EXIF metadata based on user timestamp decisions
 2. Files renamed to YYYYMMDD_HHMMSS.ext format in output directory
