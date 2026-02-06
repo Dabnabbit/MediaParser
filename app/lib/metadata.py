@@ -239,3 +239,81 @@ def write_timestamps(file_path: Path | str, timestamp: datetime) -> bool:
     except Exception as e:
         logger.error(f"Failed to write timestamps to {path_str}: {e}")
         return False
+
+
+def write_tags_to_file(file_path: Path | str, tag_names: list[str]) -> bool:
+    """
+    Write tags (keywords) to file metadata.
+
+    Writes to both IPTC:Keywords and XMP:Subject for broadest compatibility
+    with photo management tools (Google Photos, Apple Photos, etc.).
+    Uses -overwrite_original to prevent backup file clutter.
+
+    Args:
+        file_path: Path to the output file
+        tag_names: List of tag names to write
+
+    Returns:
+        True on success, False on error
+    """
+    if not tag_names:
+        return True
+
+    path_str = str(file_path) if isinstance(file_path, Path) else file_path
+
+    tags = {
+        'IPTC:Keywords': tag_names,
+        'XMP:Subject': tag_names,
+    }
+
+    try:
+        with exiftool.ExifToolHelper(executable=EXIFTOOL_PATH) as et:
+            et.set_tags(path_str, tags, params=['-overwrite_original'])
+        return True
+    except Exception as e:
+        logger.error(f"Failed to write tags to {path_str}: {e}")
+        return False
+
+
+def write_metadata(file_path: Path | str, timestamp: datetime = None, tag_names: list[str] = None) -> bool:
+    """
+    Write timestamps and/or tags to file metadata in a single operation.
+
+    This is a convenience function that batches both timestamp and tag writes
+    in a single ExifTool context for efficiency. If both are provided, writes
+    all metadata in one operation.
+
+    Args:
+        file_path: Path to the output file
+        timestamp: Optional datetime to write to EXIF timestamp fields
+        tag_names: Optional list of tags to write to IPTC/XMP keyword fields
+
+    Returns:
+        True if all writes succeed, False if any fail
+    """
+    path_str = str(file_path) if isinstance(file_path, Path) else file_path
+    tags = {}
+
+    if timestamp:
+        formatted_ts = timestamp.strftime('%Y:%m:%d %H:%M:%S')
+        tags['EXIF:DateTimeOriginal'] = formatted_ts
+        tags['EXIF:CreateDate'] = formatted_ts
+        ext = Path(path_str).suffix.lower()
+        if ext in {'.mp4', '.mov', '.avi', '.mkv'}:
+            tags['QuickTime:CreateDate'] = formatted_ts
+            tags['QuickTime:ModifyDate'] = formatted_ts
+
+    if tag_names:
+        tags['IPTC:Keywords'] = tag_names
+        tags['XMP:Subject'] = tag_names
+
+    if not tags:
+        return True
+
+    try:
+        with exiftool.ExifToolHelper(executable=EXIFTOOL_PATH) as et:
+            et.set_tags(path_str, tags, params=['-overwrite_original'])
+        return True
+    except Exception as e:
+        logger.error(f"Failed to write metadata to {path_str}: {e}")
+        return False
