@@ -879,6 +879,11 @@ body {
     margin-bottom: var(--spacing-sm);
 }
 
+.export-inline-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
 .metrics-row {
     display: flex;
     flex-wrap: wrap;

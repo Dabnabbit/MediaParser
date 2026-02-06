@@ -211,6 +211,17 @@ class FilterHandler {
             this.indicatorFailed.style.display = (this.counts.failed || 0) > 0 ? 'inline-flex' : 'none';
         }
 
+        // Show/hide export button reactively based on review completion
+        const allReviewed = (this.counts.duplicates || 0) === 0
+                         && (this.counts.similar || 0) === 0
+                         && (this.counts.unreviewed || 0) === 0
+                         && (this.counts.reviewed || 0) > 0;
+        if (allReviewed && window.resultsHandler?._importJobId) {
+            window.resultsHandler.showExportSection(window.resultsHandler._importJobId);
+        } else if (window.resultsHandler) {
+            window.resultsHandler.hideExportButton();
+        }
+
         // Emit counts updated event for other components
         window.dispatchEvent(new CustomEvent('filterCountsUpdated', {
             detail: { counts: this.counts, mode: this.currentMode }
@@ -337,10 +348,6 @@ class FilterHandler {
      * Enforces sequential workflow: Duplicates → Similar → Unreviewed
      */
     autoSelectMode() {
-        // Hide export section until review is fully complete
-        const exportSection = document.getElementById('export-section');
-        if (exportSection) exportSection.style.display = 'none';
-
         // Enforce sequential resolution: Duplicates → Similar → Unreviewed
         if (this.counts.duplicates > 0) {
             this.setMode('duplicates');
@@ -354,10 +361,8 @@ class FilterHandler {
             this.setMode('unreviewed');
             return 'unreviewed';
         }
-        // All review done — show export section and default to reviewed mode
-        if (window.resultsHandler) {
-            window.resultsHandler.showExportSection(window.resultsHandler._importJobId);
-        }
+        // All review done — default to reviewed mode
+        // (export button visibility is handled reactively by updateCounts)
         this.setMode('reviewed');
         return 'reviewed';
     }

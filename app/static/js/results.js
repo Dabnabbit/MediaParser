@@ -58,7 +58,8 @@ class ResultsHandler {
             this.resultsContainer.style.display = 'none';
         }
 
-        // Hide export section
+        // Hide export button and section
+        this.hideExportButton();
         const exportSection = document.getElementById('export-section');
         if (exportSection) {
             exportSection.style.display = 'none';
@@ -89,7 +90,16 @@ class ResultsHandler {
         });
 
         // Reload grid when viewport exits (reflects any changes made during examination)
-        window.addEventListener('viewportExit', () => {
+        // Then auto-select mode if current mode is now empty (e.g., last unreviewed confirmed)
+        window.addEventListener('viewportExit', async () => {
+            await this.loadSummary();
+            if (window.filterHandler) {
+                const mode = window.filterHandler.currentMode;
+                const count = window.filterHandler.counts[mode] || 0;
+                if (count === 0) {
+                    window.filterHandler.autoSelectMode();
+                }
+            }
             this.loadFiles();
         });
 
@@ -209,20 +219,25 @@ class ResultsHandler {
      * Show export section with export button
      */
     showExportSection(importJobId) {
-        const exportSection = document.getElementById('export-section');
-        if (!exportSection) return;
-
-        exportSection.style.display = 'block';
-
-        // Wire up export button if not already done
+        // Show inline export button in workflow bar
         const exportBtn = document.getElementById('export-btn');
-        if (exportBtn && !exportBtn.dataset.wired) {
-            exportBtn.dataset.wired = 'true';
-            exportBtn.addEventListener('click', () => {
-                if (window.progressHandler) {
-                    window.progressHandler.startExport(importJobId);
-                }
-            });
+        if (exportBtn) {
+            exportBtn.style.display = '';
+            if (!exportBtn.dataset.wired) {
+                exportBtn.dataset.wired = 'true';
+                exportBtn.addEventListener('click', () => {
+                    if (window.progressHandler) {
+                        window.progressHandler.startExport(importJobId);
+                    }
+                });
+            }
+        }
+    }
+
+    hideExportButton() {
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn) {
+            exportBtn.style.display = 'none';
         }
     }
 
