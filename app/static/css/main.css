@@ -1113,35 +1113,30 @@ body {
     color: var(--color-failed);
 }
 
-/* Summary indicators for discarded/failed (side-channel modes) */
+/* Summary indicators for discarded/failed (clickable inline stats) */
 .summary-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    padding: 2px 8px;
-    margin-left: var(--spacing-xs);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-bg);
+    background: none;
+    border: none;
+    border-bottom: 1px dashed transparent;
+    padding: 0;
+    font: inherit;
+    font-size: inherit;
     color: var(--color-text-muted);
-    font-size: 0.8rem;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .summary-indicator:hover {
-    border-color: var(--color-text-muted);
-    background: var(--color-bg-hover);
+    color: var(--color-text);
+    border-bottom-color: var(--color-text-muted);
 }
 
 .summary-indicator.active {
-    border-color: var(--color-primary);
     color: var(--color-text);
-    background: var(--color-bg-hover);
+    border-bottom-color: var(--color-primary);
 }
 
-.summary-indicator-discarded .seg-icon { color: var(--color-mode-discarded); }
-.summary-indicator-failed .seg-icon { color: var(--color-mode-failed); }
+.summary-indicator-discarded strong { color: var(--color-mode-discarded); }
 .summary-indicator-failed strong { color: var(--color-failed); }
 
 /* (Thumbnail size toggle removed - replaced by tile-size-slider) */

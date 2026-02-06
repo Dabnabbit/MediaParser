@@ -51,6 +51,8 @@ class FilterHandler {
         this.confidenceChips = document.querySelectorAll('.confidence-filters .filter-chip');
         this.indicatorDiscarded = document.getElementById('indicator-discarded');
         this.indicatorFailed = document.getElementById('indicator-failed');
+        this.dividerDiscarded = document.getElementById('divider-discarded');
+        this.dividerFailed = document.getElementById('divider-failed');
         this.reviewedOverlay = document.getElementById('reviewed-overlay');
         this.modeSegmentsContainer = document.getElementById('mode-segments');
         this.lockOverlay = document.getElementById('seg-lock-overlay');
@@ -284,12 +286,12 @@ class FilterHandler {
         }
 
         // Show/hide summary indicators for side-channel modes
-        if (this.indicatorDiscarded) {
-            this.indicatorDiscarded.style.display = (this.counts.discards || 0) > 0 ? 'inline-flex' : 'none';
-        }
-        if (this.indicatorFailed) {
-            this.indicatorFailed.style.display = (this.counts.failed || 0) > 0 ? 'inline-flex' : 'none';
-        }
+        const showFailed = (this.counts.failed || 0) > 0;
+        const showDiscarded = (this.counts.discards || 0) > 0;
+        if (this.indicatorFailed) this.indicatorFailed.style.display = showFailed ? 'inline' : 'none';
+        if (this.dividerFailed) this.dividerFailed.style.display = showFailed ? 'inline' : 'none';
+        if (this.indicatorDiscarded) this.indicatorDiscarded.style.display = showDiscarded ? 'inline' : 'none';
+        if (this.dividerDiscarded) this.dividerDiscarded.style.display = showDiscarded ? 'inline' : 'none';
 
         // Show/hide export segment reactively based on review completion
         const allReviewed = (this.counts.duplicates || 0) === 0
@@ -468,9 +470,11 @@ class FilterHandler {
             this.modeSegmentsContainer.style.left = '0';
             this.modeSegmentsContainer.style.width = '100%';
         }
-        // Hide summary indicators
+        // Hide summary indicators and their dividers
         if (this.indicatorDiscarded) this.indicatorDiscarded.style.display = 'none';
         if (this.indicatorFailed) this.indicatorFailed.style.display = 'none';
+        if (this.dividerDiscarded) this.dividerDiscarded.style.display = 'none';
+        if (this.dividerFailed) this.dividerFailed.style.display = 'none';
         this.updateStyles();
     }
 

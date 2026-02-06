@@ -56,20 +56,20 @@
     <!-- Stats area (above bar) - metrics during processing, summary after completion -->
     <div class="metrics-row" id="metrics-row" style="display: none;">
         <div class="metric">
-            <span class="metric-label">Files:</span>
-            <span class="metric-value" id="files-processed">0 / 0</span>
-        </div>
-        <div class="metric">
-            <span class="metric-label">Current:</span>
-            <span class="metric-value metric-value-truncate" id="current-filename">-</span>
-        </div>
-        <div class="metric">
             <span class="metric-label">Time:</span>
             <span class="metric-value" id="elapsed-time">0:00</span>
         </div>
         <div class="metric">
             <span class="metric-label">ETA:</span>
             <span class="metric-value" id="eta">-</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Files:</span>
+            <span class="metric-value" id="files-processed">0 / 0</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Current:</span>
+            <span class="metric-value metric-value-truncate" id="current-filename">-</span>
         </div>
         <div class="metric error-metric" id="error-metric" style="display: none;">
             <span class="metric-label">Errors:</span>
@@ -78,17 +78,19 @@
     </div>
     <div class="job-summary" id="job-summary" style="display: none;">
         <div class="summary-row">
-            <span class="summary-item"><strong id="summary-total">0</strong> files</span>
-            <span class="summary-divider">•</span>
-            <span class="summary-item summary-success"><strong id="summary-success">0</strong> successful</span>
-            <span class="summary-divider">•</span>
             <span class="summary-item"><strong id="summary-time">0:00</strong> elapsed</span>
-            <!-- Side-channel indicators (not workflow stages) -->
-            <button class="summary-indicator summary-indicator-discarded" id="indicator-discarded" data-mode="discarded" style="display: none;" title="View discarded files">
-                <span class="seg-icon">&#x2715;</span> <strong data-count="discards">0</strong> discarded
+            <span class="summary-divider">&bull;</span>
+            <span class="summary-item"><strong id="summary-total">0</strong> files</span>
+            <span class="summary-divider">&bull;</span>
+            <span class="summary-item summary-success"><strong id="summary-success">0</strong> successful</span>
+            <!-- Side-channel indicators (clickable to filter) -->
+            <span class="summary-divider summary-divider-failed" id="divider-failed" style="display: none;">&bull;</span>
+            <button class="summary-item summary-indicator summary-indicator-failed" id="indicator-failed" data-mode="failed" style="display: none;" title="View failed files">
+                <strong data-count="failed">0</strong> failed
             </button>
-            <button class="summary-indicator summary-indicator-failed" id="indicator-failed" data-mode="failed" style="display: none;" title="View failed files">
-                <span class="seg-icon">!</span> <strong data-count="failed">0</strong> failed
+            <span class="summary-divider summary-divider-discarded" id="divider-discarded" style="display: none;">&bull;</span>
+            <button class="summary-item summary-indicator summary-indicator-discarded" id="indicator-discarded" data-mode="discarded" style="display: none;" title="View discarded files">
+                <strong data-count="discards">0</strong> discarded
             </button>
         </div>
     </div>
