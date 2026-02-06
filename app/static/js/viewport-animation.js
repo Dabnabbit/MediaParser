@@ -37,6 +37,13 @@
             this._flipCleanupTimeout = null;
         }
 
+        // --- Ensure tiles exist before capturing positions ---
+        // Tiles far from the initial scroll position may not be rendered yet.
+        // Create them now so we can capture their grid rect for the FLIP animation.
+        [prevId, currentId, nextId].forEach(id => {
+            if (id !== undefined) this.tileManager.ensureTile(id);
+        });
+
         // --- Identify tiles entering and leaving the viewport ---
         const enteringTiles = [];
         [prevId, currentId, nextId].forEach(id => {
@@ -58,9 +65,17 @@
         });
 
         // --- Capture positions BEFORE any changes ---
+        // Only capture rects for tiles visible on screen. Tiles created by ensureTile
+        // far from the scroll position have meaningless grid rects (off-screen);
+        // those will fade in at their target position instead of flying in.
         const enteringStartRects = new Map();
         enteringTiles.forEach(tile => {
-            enteringStartRects.set(tile, tile.element.getBoundingClientRect());
+            const rect = tile.element.getBoundingClientRect();
+            const onScreen = rect.bottom > 0 && rect.top < window.innerHeight &&
+                             rect.right > 0 && rect.left < window.innerWidth;
+            if (onScreen) {
+                enteringStartRects.set(tile, rect);
+            }
         });
 
         const leavingStartRects = new Map();
@@ -69,32 +84,34 @@
         });
 
         // --- Z-index management ---
+        // Set explicit inline z-indices on ALL tiles involved in the transition
+        // so stacking never depends on CSS attribute selectors mid-animation.
         this._clearViewportZIndices();
         this._viewportZTiles = [];
 
-        // Elevate tiles LEAVING the viewport above the backdrop (z:3)
+        // Leaving tiles: above backdrop but below everything else (z:3)
         leavingTiles.forEach(tile => {
             tile.element.style.zIndex = '3';
             this._viewportZTiles.push(tile);
         });
 
-        // Promote upcoming current tile (z:10)
+        // Prev/next tiles: explicit z:5 whether staying, entering, or changing role
+        [prevId, nextId].forEach(id => {
+            if (id !== undefined) {
+                const tile = this.tileManager.getTile(id);
+                if (tile?.element) {
+                    tile.element.style.zIndex = '5';
+                    this._viewportZTiles.push(tile);
+                }
+            }
+        });
+
+        // Current tile: always on top (z:10)
         const currentTile = this.tileManager.getTile(currentId);
         if (currentTile?.element) {
             currentTile.element.style.zIndex = '10';
             this._viewportZTiles.push(currentTile);
         }
-
-        // Demote tiles entering from grid (z:2, behind existing viewport tiles)
-        [prevId, nextId].forEach(id => {
-            if (id !== undefined) {
-                const tile = this.tileManager.getTile(id);
-                if (tile && tile.position === Tile.POSITIONS.GRID && tile.element) {
-                    tile.element.style.zIndex = '2';
-                    this._viewportZTiles.push(tile);
-                }
-            }
-        });
 
         // --- Suppress CSS transitions on entering/leaving tiles BEFORE position changes ---
         // This prevents the browser from starting CSS animations when data-vp-pos
@@ -119,7 +136,9 @@
 
         // --- FLIP: Freeze tiles at their pre-change positions ---
 
-        // Entering tiles: freeze at grid position, start invisible
+        // Entering tiles: freeze at grid position, start invisible.
+        // Tiles without a captured rect (off-screen grid position) just get
+        // opacity:0 so they fade in at their target position.
         enteringTiles.forEach(tile => {
             const rect = enteringStartRects.get(tile);
             if (rect) {
@@ -129,9 +148,9 @@
                 tile.element.style.width = `${rect.width}px`;
                 tile.element.style.height = `${rect.height}px`;
                 tile.element.style.transform = 'none';
-                // transition: none already set above
-                tile.element.style.opacity = '0';
             }
+            // transition: none already set above
+            tile.element.style.opacity = '0';
         });
 
         // Leaving tiles: freeze at their viewport position
