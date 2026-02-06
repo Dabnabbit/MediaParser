@@ -12,7 +12,7 @@ class ResultsHandler {
         this.summary = null;
         this.selectedFiles = new Set();
         this.lastSelectedIndex = null;
-        this.thumbnailSize = 'medium';
+        this.tileSizePx = 150;
         this.allFiles = [];
 
         // Window-based loading (scrubber model)
@@ -108,17 +108,17 @@ class ResultsHandler {
             this.loadFiles();
         });
 
-        // Thumbnail size toggle
-        const sizeToggle = document.getElementById('thumb-size-toggle');
-        if (sizeToggle) {
-            sizeToggle.querySelectorAll('button').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    this.setThumbnailSize(e.target.dataset.size);
-                    // Trigger window size recalculation after size change
-                    if (window.positionSlider) {
-                        window.positionSlider.recalculateWindowSize();
-                    }
-                });
+        // Tile size slider
+        const tileSizeSlider = document.getElementById('tile-size-slider');
+        if (tileSizeSlider) {
+            tileSizeSlider.addEventListener('input', (e) => {
+                this.setTileSize(parseInt(e.target.value, 10));
+            });
+            // Recalculate window after drag ends (avoids thrashing during drag)
+            tileSizeSlider.addEventListener('change', () => {
+                if (window.positionSlider) {
+                    window.positionSlider.recalculateWindowSize();
+                }
             });
         }
 
@@ -245,7 +245,7 @@ class ResultsHandler {
     renderGrid() {
         if (!this.unifiedGrid) return;
 
-        this.unifiedGrid.className = `thumbnail-grid thumb-${this.thumbnailSize}`;
+        this.unifiedGrid.className = 'thumbnail-grid';
 
         if (this.allFiles.length === 0) {
             if (this.tileManager) {
@@ -422,19 +422,12 @@ class ResultsHandler {
     }
 
     /**
-     * Set thumbnail size and update grid
+     * Set tile size via CSS variable (driven by slider)
      */
-    setThumbnailSize(size) {
-        this.thumbnailSize = size;
-
-        // Update active button
-        document.querySelectorAll('#thumb-size-toggle button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.size === size);
-        });
-
-        // Update grid class
+    setTileSize(px) {
+        this.tileSizePx = px;
         if (this.unifiedGrid) {
-            this.unifiedGrid.className = `thumbnail-grid thumb-${size}`;
+            this.unifiedGrid.style.setProperty('--tile-size', px + 'px');
         }
     }
 

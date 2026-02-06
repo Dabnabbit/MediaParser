@@ -40,8 +40,10 @@ class FilterHandler {
 
         // Cache DOM elements
         this.filterBar = document.getElementById('filter-bar');
-        this.modeChips = document.querySelectorAll('.mode-chip');
+        this.modeChips = document.querySelectorAll('.mode-segment');
         this.confidenceChips = document.querySelectorAll('.confidence-filters .filter-chip');
+        this.indicatorDiscarded = document.getElementById('indicator-discarded');
+        this.indicatorFailed = document.getElementById('indicator-failed');
 
         this.initEventListeners();
         this.loadState();
@@ -65,6 +67,13 @@ class FilterHandler {
             });
         });
 
+        // Summary indicator clicks (discarded/failed)
+        [this.indicatorDiscarded, this.indicatorFailed].forEach(btn => {
+            btn?.addEventListener('click', () => {
+                this.setMode(btn.dataset.mode);
+            });
+        });
+
         // Confidence filter clicks (toggleable)
         this.confidenceChips.forEach(chip => {
             chip.addEventListener('click', (e) => {
@@ -73,28 +82,7 @@ class FilterHandler {
             });
         });
 
-        // Sort select
-        const sortSelect = document.getElementById('sort-select');
-        if (sortSelect) {
-            sortSelect.addEventListener('change', (e) => {
-                this.sortField = e.target.value;
-                this.saveState();
-                this.emitChange();
-            });
-        }
-
-        // Sort order button
-        const sortOrder = document.getElementById('sort-order');
-        if (sortOrder) {
-            sortOrder.addEventListener('click', () => {
-                this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-                sortOrder.dataset.order = this.sortOrder;
-                sortOrder.innerHTML = this.sortOrder === 'asc' ? '&#x2191;' : '&#x2193;';
-                sortOrder.title = this.sortOrder === 'asc' ? 'Sort ascending' : 'Sort descending';
-                this.saveState();
-                this.emitChange();
-            });
-        }
+        // Sort removed from UI - using defaults (detected_timestamp asc)
     }
 
     setMode(mode) {
@@ -124,11 +112,19 @@ class FilterHandler {
     }
 
     updateStyles() {
-        // Update mode chips
+        // Update mode segments
         this.modeChips.forEach(chip => {
             const isActive = chip.dataset.mode === this.currentMode;
             chip.classList.toggle('active', isActive);
         });
+
+        // Update summary indicators (discarded/failed)
+        if (this.indicatorDiscarded) {
+            this.indicatorDiscarded.classList.toggle('active', this.currentMode === 'discarded');
+        }
+        if (this.indicatorFailed) {
+            this.indicatorFailed.classList.toggle('active', this.currentMode === 'failed');
+        }
 
         // Update confidence chips
         this.confidenceChips.forEach(chip => {
@@ -140,24 +136,53 @@ class FilterHandler {
     updateCounts(counts) {
         this.counts = { ...this.counts, ...counts };
 
-        // Update count displays
+        // Update count displays (both segment counts and any remaining data-count elements)
         Object.keys(this.counts).forEach(key => {
-            const countEl = document.querySelector(`[data-count="${key}"]`);
-            if (countEl) {
-                countEl.textContent = this.counts[key] || 0;
-            }
+            document.querySelectorAll(`[data-count="${key}"]`).forEach(el => {
+                el.textContent = this.counts[key] || 0;
+            });
         });
 
-        // Highlight duplicates mode if there are unresolved duplicates
-        const dupChip = document.querySelector('[data-mode="duplicates"]');
-        if (dupChip) {
-            dupChip.classList.toggle('has-items', this.counts.duplicates > 0);
-        }
+        // Map bar-segment mode names to count keys (only workflow stages)
+        const modeCountMap = {
+            reviewed: 'reviewed',
+            duplicates: 'duplicates',
+            similar: 'similar',
+            unreviewed: 'unreviewed'
+        };
 
-        // Highlight similar mode if there are unresolved similar groups
-        const simChip = document.querySelector('[data-mode="similar"]');
-        if (simChip) {
-            simChip.classList.toggle('has-items', this.counts.similar > 0);
+        // Calculate total across bar segments for proportional sizing
+        const total = Object.values(modeCountMap).reduce((sum, key) => sum + (this.counts[key] || 0), 0);
+
+        // Update mode segments: flex-grow, collapsed state, small state
+        this.modeChips.forEach(seg => {
+            const mode = seg.dataset.mode;
+            const countKey = modeCountMap[mode];
+            const count = this.counts[countKey] || 0;
+
+            // Proportional flex-grow (minimum 1 for non-zero to ensure visibility)
+            if (count > 0) {
+                seg.style.flexGrow = Math.max(count, 1);
+                seg.classList.remove('collapsed');
+                // Small segment: less than 8% of total, hide label
+                seg.classList.toggle('seg-small', total > 0 && (count / total) < 0.08);
+            } else {
+                seg.style.flexGrow = '0';
+                seg.classList.add('collapsed');
+                seg.classList.remove('seg-small');
+            }
+
+            // Attention pulse for duplicates/similar when not active
+            const needsAttention = (mode === 'duplicates' || mode === 'similar') && count > 0;
+            seg.classList.toggle('has-items', needsAttention);
+        });
+
+        // Show/hide summary indicators for side-channel modes
+        if (this.indicatorDiscarded) {
+            this.indicatorDiscarded.style.display = (this.counts.discards || 0) > 0 ? 'inline-flex' : 'none';
+        }
+        if (this.indicatorFailed) {
+            this.indicatorFailed.style.display = (this.counts.failed || 0) > 0 ? 'inline-flex' : 'none';
         }
 
         // Emit counts updated event for other components
@@ -231,15 +256,6 @@ class FilterHandler {
 
                 // Update UI to match loaded state
                 this.updateStyles();
-
-                const sortSelect = document.getElementById('sort-select');
-                if (sortSelect) sortSelect.value = this.sortField;
-
-                const sortOrderBtn = document.getElementById('sort-order');
-                if (sortOrderBtn) {
-                    sortOrderBtn.dataset.order = this.sortOrder;
-                    sortOrderBtn.innerHTML = this.sortOrder === 'asc' ? '&#x2191;' : '&#x2193;';
-                }
             }
         } catch (e) {
             console.warn('Failed to load filter state:', e);
@@ -266,6 +282,15 @@ class FilterHandler {
             duplicates: 0, similar: 0, unreviewed: 0, reviewed: 0, discards: 0, failed: 0,
             high: 0, medium: 0, low: 0, none: 0, total: 0
         };
+        // Reset segment sizing
+        this.modeChips.forEach(seg => {
+            seg.style.flexGrow = '0';
+            seg.classList.add('collapsed');
+            seg.classList.remove('seg-small', 'has-items');
+        });
+        // Hide summary indicators
+        if (this.indicatorDiscarded) this.indicatorDiscarded.style.display = 'none';
+        if (this.indicatorFailed) this.indicatorFailed.style.display = 'none';
         this.updateStyles();
     }
 

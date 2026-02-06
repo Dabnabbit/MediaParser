@@ -27,6 +27,9 @@ class ProgressHandler {
         this.jobProgress = document.getElementById('job-progress');
         this.progressFill = document.getElementById('job-progress-fill');
         this.progressText = document.getElementById('job-progress-text');
+        this.workflowTrack = document.getElementById('workflow-track');
+        this.modeSegments = document.getElementById('mode-segments');
+        this.workflowPhases = document.getElementById('workflow-phases');
         this.metricsRow = document.getElementById('metrics-row');
         this.filesProcessed = document.getElementById('files-processed');
         this.currentFilename = document.getElementById('current-filename');
@@ -61,6 +64,69 @@ class ProgressHandler {
     }
 
     /**
+     * Set the workflow phase breadcrumb
+     */
+    setPhase(phase) {
+        if (!this.workflowPhases) return;
+        const phases = this.workflowPhases.querySelectorAll('.phase');
+        const order = ['upload', 'process', 'review'];
+        const activeIdx = order.indexOf(phase);
+
+        phases.forEach(el => {
+            const idx = order.indexOf(el.dataset.phase);
+            el.classList.remove('active', 'completed');
+            if (idx < activeIdx) {
+                el.classList.add('completed');
+            } else if (idx === activeIdx) {
+                el.classList.add('active');
+            }
+        });
+    }
+
+    /**
+     * Morph progress bar into mode segments (crossfade animation)
+     */
+    morphToModes() {
+        // Fill to 100% green first
+        if (this.progressFill) {
+            this.progressFill.style.width = '100%';
+        }
+
+        // After a brief pause, trigger the CSS crossfade
+        setTimeout(() => {
+            if (this.workflowTrack) {
+                this.workflowTrack.dataset.state = 'review';
+            }
+            this.setPhase('review');
+        }, 400);
+    }
+
+    /**
+     * Show mode segments immediately (no animation), for page refresh
+     */
+    showModesDirectly() {
+        if (this.workflowTrack) {
+            this.workflowTrack.dataset.state = 'review';
+        }
+        if (this.progressFill) {
+            this.progressFill.style.transition = 'none';
+            this.progressFill.style.width = '100%';
+            void this.progressFill.offsetHeight;
+            this.progressFill.style.transition = '';
+        }
+        this.setPhase('review');
+    }
+
+    /**
+     * Hide mode segments and reset workflow track
+     */
+    hideSegments() {
+        if (this.workflowTrack) {
+            delete this.workflowTrack.dataset.state;
+        }
+    }
+
+    /**
      * Set tile state and update visibility of areas
      */
     setState(state) {
@@ -71,6 +137,14 @@ class ProgressHandler {
                 this.jobSection.dataset.status = '';
             }
         }
+
+        // Update phase breadcrumb
+        if (state === 'uploading') {
+            this.setPhase('upload');
+        } else if (state === 'processing') {
+            this.setPhase('process');
+        }
+        // 'complete' phase is set by morphToModes/showModesDirectly
 
         // Upload area: visible only in idle state
         if (this.uploadArea) {
@@ -130,10 +204,14 @@ class ProgressHandler {
         this.isProcessingPhase = false;
         localStorage.removeItem('currentJobId');
 
+        // Hide mode segments and reset workflow track
+        this.hideSegments();
+
         // Reset progress bar
         if (this.progressFill) {
             this.progressFill.style.transition = 'none';
             this.progressFill.style.width = '0%';
+            this.progressFill.style.opacity = '';
             void this.progressFill.offsetHeight;
             this.progressFill.style.transition = '';
         }
@@ -141,7 +219,17 @@ class ProgressHandler {
             this.progressText.textContent = '0%';
         }
 
-        // Hide summary
+        // Reset phase breadcrumb
+        if (this.workflowPhases) {
+            this.workflowPhases.querySelectorAll('.phase').forEach(el => {
+                el.classList.remove('active', 'completed');
+            });
+        }
+
+        // Hide metrics and summary
+        if (this.metricsRow) {
+            this.metricsRow.style.display = 'none';
+        }
         if (this.jobSummary) {
             this.jobSummary.style.display = 'none';
         }
@@ -167,6 +255,8 @@ class ProgressHandler {
                         this.startPolling(storedJobId);
                         return;
                     } else if (status === 'COMPLETED') {
+                        // Show segments directly (no morph animation on page refresh)
+                        this._resumeCompleted = true;
                         this.startPolling(storedJobId);
                         return;
                     } else if (['FAILED', 'CANCELLED', 'HALTED'].includes(status)) {
@@ -555,20 +645,13 @@ class ProgressHandler {
         }
     }
 
-    handleJobComplete(jobId, data) {
+    async handleJobComplete(jobId, data) {
         // Keep job ID in localStorage so refresh shows results
         // (removed when user clicks "New")
 
         // Set complete state
         this.setState('complete');
 
-        // Keep progress bar visible at 100%
-        if (this.progressFill) {
-            this.progressFill.style.width = '100%';
-        }
-        if (this.progressText) {
-            this.progressText.textContent = '100%';
-        }
         // Hide metrics row (current file, ETA no longer relevant)
         if (this.metricsRow) {
             this.metricsRow.style.display = 'none';
@@ -589,9 +672,17 @@ class ProgressHandler {
             if (this.summaryTime) this.summaryTime.textContent = this.formatTime(summary.duration_seconds || 0);
         }
 
-        // Trigger results handler
+        // Trigger results handler (loads counts into filterHandler, which sets segment flex-grow)
         if (window.resultsHandler) {
-            window.resultsHandler.showResults(jobId, data);
+            await window.resultsHandler.showResults(jobId, data);
+        }
+
+        // Morph progress bar into mode segments (counts are now loaded)
+        if (this._resumeCompleted) {
+            this._resumeCompleted = false;
+            this.showModesDirectly();
+        } else {
+            this.morphToModes();
         }
     }
 

@@ -125,49 +125,87 @@
         </div>
     </div>
 
-    <!-- Progress Area (visible while processing, collapses when done) -->
-    <div class="job-progress" id="job-progress">
-        <div class="progress-row">
-            <div class="progress-bar progress-bar-lg">
-                <div class="progress-bar-fill" id="job-progress-fill" style="width: 0%;"></div>
-            </div>
-            <span class="progress-text" id="job-progress-text">0%</span>
+    <!-- Stats area (above bar) - metrics during processing, summary after completion -->
+    <div class="metrics-row" id="metrics-row" style="display: none;">
+        <div class="metric">
+            <span class="metric-label">Files:</span>
+            <span class="metric-value" id="files-processed">0 / 0</span>
         </div>
-
-        <div class="metrics-row" id="metrics-row">
-            <div class="metric">
-                <span class="metric-label">Files:</span>
-                <span class="metric-value" id="files-processed">0 / 0</span>
-            </div>
-            <div class="metric">
-                <span class="metric-label">Current:</span>
-                <span class="metric-value metric-value-truncate" id="current-filename">-</span>
-            </div>
-            <div class="metric">
-                <span class="metric-label">Time:</span>
-                <span class="metric-value" id="elapsed-time">0:00</span>
-            </div>
-            <div class="metric">
-                <span class="metric-label">ETA:</span>
-                <span class="metric-value" id="eta">-</span>
-            </div>
-            <div class="metric error-metric" id="error-metric" style="display: none;">
-                <span class="metric-label">Errors:</span>
-                <span class="metric-value metric-error" id="error-count">0</span>
-            </div>
+        <div class="metric">
+            <span class="metric-label">Current:</span>
+            <span class="metric-value metric-value-truncate" id="current-filename">-</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">Time:</span>
+            <span class="metric-value" id="elapsed-time">0:00</span>
+        </div>
+        <div class="metric">
+            <span class="metric-label">ETA:</span>
+            <span class="metric-value" id="eta">-</span>
+        </div>
+        <div class="metric error-metric" id="error-metric" style="display: none;">
+            <span class="metric-label">Errors:</span>
+            <span class="metric-value metric-error" id="error-count">0</span>
         </div>
     </div>
-
-    <!-- Summary Row (shown when complete, replaces detailed progress) -->
     <div class="job-summary" id="job-summary" style="display: none;">
         <div class="summary-row">
             <span class="summary-item"><strong id="summary-total">0</strong> files</span>
             <span class="summary-divider">•</span>
             <span class="summary-item summary-success"><strong id="summary-success">0</strong> successful</span>
             <span class="summary-divider">•</span>
-            <span class="summary-item summary-error"><strong id="summary-errors">0</strong> errors</span>
-            <span class="summary-divider">•</span>
             <span class="summary-item"><strong id="summary-time">0:00</strong> elapsed</span>
+            <!-- Side-channel indicators (not workflow stages) -->
+            <button class="summary-indicator summary-indicator-discarded" id="indicator-discarded" data-mode="discarded" style="display: none;" title="View discarded files">
+                <span class="seg-icon">&#x2715;</span> <strong data-count="discards">0</strong> discarded
+            </button>
+            <button class="summary-indicator summary-indicator-failed" id="indicator-failed" data-mode="failed" style="display: none;" title="View failed files">
+                <span class="seg-icon">!</span> <strong data-count="failed">0</strong> failed
+            </button>
+        </div>
+    </div>
+
+    <!-- Workflow Bar (progress → mode segments) -->
+    <div class="job-progress" id="job-progress">
+        <div class="progress-row">
+            <div class="progress-bar progress-bar-lg" id="workflow-track">
+                <!-- Layer 1: Progress fill (upload/processing phases) -->
+                <div class="progress-bar-fill" id="job-progress-fill" style="width: 0%;"></div>
+                <!-- Layer 2: Mode segments (review phase) - hidden initially -->
+                <!-- Ordered left→right: done → needs work (green fills from left as you progress) -->
+                <div class="mode-segments" id="mode-segments">
+                    <button class="mode-segment" data-mode="reviewed" title="Reviewed files">
+                        <span class="seg-icon">&#x2713;</span>
+                        <span class="seg-label">Reviewed</span>
+                        <span class="seg-count" data-count="reviewed">0</span>
+                    </button>
+                    <button class="mode-segment" data-mode="duplicates" title="Duplicate groups">
+                        <span class="seg-icon">&#x29C9;</span>
+                        <span class="seg-label">Dupes</span>
+                        <span class="seg-count" data-count="duplicates">0</span>
+                    </button>
+                    <button class="mode-segment" data-mode="similar" title="Perceptually similar files">
+                        <span class="seg-icon">&#x2248;</span>
+                        <span class="seg-label">Similar</span>
+                        <span class="seg-count" data-count="similar">0</span>
+                    </button>
+                    <button class="mode-segment" data-mode="unreviewed" title="Files needing review">
+                        <span class="seg-icon">&#x25CB;</span>
+                        <span class="seg-label">Unreviewed</span>
+                        <span class="seg-count" data-count="unreviewed">0</span>
+                    </button>
+                </div>
+            </div>
+            <span class="progress-text" id="job-progress-text">0%</span>
+        </div>
+
+        <!-- Phase breadcrumb -->
+        <div class="workflow-phases" id="workflow-phases">
+            <span class="phase active" data-phase="upload">Upload</span>
+            <span class="phase-sep">&mdash;</span>
+            <span class="phase" data-phase="process">Process</span>
+            <span class="phase-sep">&mdash;</span>
+            <span class="phase" data-phase="review">Review</span>
         </div>
     </div>
 
@@ -216,44 +254,9 @@
             </div>
         </div>
 
-        <!-- Filter Bar -->
+        <!-- Filter Bar (single row: confidence chips, bulk actions, tile size) -->
         <div class="filter-bar" id="filter-bar">
             <div class="filter-chips">
-                <!-- Mode selector (mutually exclusive) -->
-                <div class="mode-selector" id="mode-selector">
-                    <button class="mode-chip" data-mode="duplicates" title="Files in duplicate groups - resolve first">
-                        <span class="chip-icon">&#x29C9;</span>
-                        <span class="chip-label">Duplicates</span>
-                        <span class="chip-count" data-count="duplicates">0</span>
-                    </button>
-                    <button class="mode-chip" data-mode="similar" title="Perceptually similar files (burst shots, panoramas, format conversions)">
-                        <span class="chip-icon">&#x2248;</span>
-                        <span class="chip-label">Similar</span>
-                        <span class="chip-count" data-count="similar">0</span>
-                    </button>
-                    <button class="mode-chip active" data-mode="unreviewed" title="Files needing timestamp review">
-                        <span class="chip-icon">○</span>
-                        <span class="chip-label">Unreviewed</span>
-                        <span class="chip-count" data-count="unreviewed">0</span>
-                    </button>
-                    <button class="mode-chip" data-mode="reviewed" title="Reviewed files">
-                        <span class="chip-icon">&#10003;</span>
-                        <span class="chip-label">Reviewed</span>
-                        <span class="chip-count" data-count="reviewed">0</span>
-                    </button>
-                    <button class="mode-chip" data-mode="discarded" title="Discarded files">
-                        <span class="chip-icon">&#x1F5D1;</span>
-                        <span class="chip-label">Discarded</span>
-                        <span class="chip-count" data-count="discards">0</span>
-                    </button>
-                    <button class="mode-chip" data-mode="failed" title="Files that failed processing">
-                        <span class="chip-icon">&#x2717;</span>
-                        <span class="chip-label">Failed</span>
-                        <span class="chip-count" data-count="failed">0</span>
-                    </button>
-                </div>
-                <span class="filter-divider"></span>
-                <!-- Confidence filters (toggleable within current mode) -->
                 <div class="confidence-filters" id="confidence-filters">
                     <button class="filter-chip active" data-filter="high">
                         <span class="chip-badge confidence-high">H</span>
@@ -270,7 +273,6 @@
                 </div>
             </div>
             <div class="filter-actions">
-                <!-- Bulk Actions Dropdown -->
                 <div class="bulk-actions-dropdown" id="bulk-actions-dropdown">
                     <button class="btn btn-secondary btn-sm bulk-actions-trigger" id="bulk-actions-trigger">
                         Bulk Actions ▾
@@ -306,33 +308,15 @@
                         </div>
                     </div>
                 </div>
-                <button class="btn btn-link btn-sm" id="clear-filters" style="display: none;">Show All</button>
-            </div>
-        </div>
-
-        <!-- Sort and Size Controls -->
-        <div class="grid-controls">
-            <div class="sort-control">
-                <label for="sort-select">Sort:</label>
-                <select id="sort-select" class="form-select form-select-sm">
-                    <option value="detected_timestamp" selected>Date (detected)</option>
-                    <option value="original_timestamp">Date (file system)</option>
-                    <option value="filename">Filename</option>
-                    <option value="file_size">File size</option>
-                </select>
-                <button class="btn btn-xs" id="sort-order" data-order="asc" title="Sort ascending">&#x2191;</button>
-            </div>
-            <div class="thumb-size-toggle" id="thumb-size-toggle">
-                <button type="button" class="btn btn-xs" data-size="compact">S</button>
-                <button type="button" class="btn btn-xs active" data-size="medium">M</button>
-                <button type="button" class="btn btn-xs" data-size="large">L</button>
+                <span class="filter-divider"></span>
+                <input type="range" id="tile-size-slider" class="tile-size-slider" min="80" max="240" value="150" title="Tile size">
             </div>
         </div>
 
         <!-- Grid with Position Slider -->
         <div class="grid-with-slider">
             <!-- Unified Thumbnail Grid -->
-            <div class="thumbnail-grid thumb-medium" id="unified-grid"></div>
+            <div class="thumbnail-grid" id="unified-grid"></div>
 
             <!-- Position Slider (Window Scrubber) -->
             <div class="position-slider" id="position-slider" style="display: none;">

@@ -525,12 +525,13 @@ body {
 
 .progress-bar-lg {
     height: 1.5rem;
+    position: relative;
 }
 
 .progress-bar-fill {
     height: 100%;
     background-color: var(--color-primary);
-    transition: width 0.3s ease, background-color 0.3s ease;
+    transition: width 0.3s ease, background-color 0.3s ease, opacity 0.4s ease;
 }
 
 .progress-text {
@@ -538,6 +539,151 @@ body {
     min-width: 3rem;
     text-align: right;
     font-size: 0.9rem;
+}
+
+/* ========================================
+   Mode Segment Colors
+   ======================================== */
+:root {
+    --color-mode-duplicates: #f59e0b;
+    --color-mode-similar:    #8b5cf6;
+    --color-mode-unreviewed: #3b82f6;
+    --color-mode-reviewed:   #22c55e;
+    --color-mode-discarded:  #6b7280;
+    --color-mode-failed:     #ef4444;
+}
+
+/* ========================================
+   Mode Segments (inside workflow bar)
+   ======================================== */
+.mode-segments {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 1;
+}
+
+/* When in review state, show segments and hide fill */
+#workflow-track[data-state="review"] .progress-bar-fill {
+    opacity: 0;
+}
+
+#workflow-track[data-state="review"] .mode-segments {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.mode-segment {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: none;
+    padding: 0 6px;
+    cursor: pointer;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: flex-grow 0.4s ease, min-width 0.3s ease, padding 0.3s ease, filter 0.15s ease;
+    min-width: 0;
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: 0;
+}
+
+/* Segment colors */
+.mode-segment[data-mode="duplicates"] { background: var(--color-mode-duplicates); }
+.mode-segment[data-mode="similar"]    { background: var(--color-mode-similar); }
+.mode-segment[data-mode="unreviewed"] { background: var(--color-mode-unreviewed); }
+.mode-segment[data-mode="reviewed"]   { background: var(--color-mode-reviewed); }
+/* Discarded/Failed are shown as summary indicators, not bar segments */
+
+/* Active segment */
+.mode-segment.active {
+    filter: brightness(1.15);
+    box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Hover */
+.mode-segment:hover {
+    filter: brightness(1.1);
+}
+
+/* Collapsed (zero count) */
+.mode-segment.collapsed {
+    flex-grow: 0 !important;
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0;
+}
+
+/* Label and icon inside segments */
+.seg-icon {
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.seg-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.seg-count {
+    opacity: 0.9;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+/* Small segments: hide label, show icon + count */
+.mode-segment.seg-small .seg-label {
+    display: none;
+}
+
+/* ========================================
+   Workflow Phase Breadcrumb
+   ======================================== */
+.workflow-phases {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.workflow-phases .phase {
+    transition: color 0.2s ease, font-weight 0.2s ease;
+}
+
+.workflow-phases .phase.active {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.workflow-phases .phase.completed {
+    color: var(--color-completed);
+}
+
+.workflow-phases .phase.completed::before {
+    content: '\2713 ';
+}
+
+.workflow-phases .phase-sep {
+    font-size: 0.65rem;
+    opacity: 0.5;
+}
+
+/* Hide percentage text in review mode */
+#workflow-track[data-state="review"] ~ .progress-text {
+    display: none;
 }
 
 /* ========================================
@@ -683,7 +829,11 @@ body {
 .metrics-row {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--spacing-md) var(--spacing-xl);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background-color: var(--color-bg-alt);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: var(--spacing-md);
     font-size: 0.85rem;
 }
 
@@ -723,7 +873,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: var(--spacing-sm);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
 }
 
 .summary-item {
@@ -742,23 +892,38 @@ body {
     color: var(--color-failed);
 }
 
-/* ========================================
-   Thumbnail Size Toggle
-   ======================================== */
-.thumb-size-toggle {
-    display: flex;
-    gap: 2px;
-}
-
-.thumb-size-toggle .btn {
-    background-color: var(--color-bg-alt);
+/* Summary indicators for discarded/failed (side-channel modes) */
+.summary-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    margin-left: var(--spacing-xs);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-bg);
     color: var(--color-text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
 }
 
-.thumb-size-toggle .btn.active {
-    background-color: var(--color-primary);
-    color: white;
+.summary-indicator:hover {
+    border-color: var(--color-text-muted);
+    background: var(--color-bg-hover);
 }
+
+.summary-indicator.active {
+    border-color: var(--color-primary);
+    color: var(--color-text);
+    background: var(--color-bg-hover);
+}
+
+.summary-indicator-discarded .seg-icon { color: var(--color-mode-discarded); }
+.summary-indicator-failed .seg-icon { color: var(--color-mode-failed); }
+.summary-indicator-failed strong { color: var(--color-failed); }
+
+/* (Thumbnail size toggle removed - replaced by tile-size-slider) */
 
 /* ========================================
    Confidence Badges
@@ -804,18 +969,6 @@ body {
     /* Prevent browser text/element selection when clicking/dragging */
     user-select: none;
     -webkit-user-select: none;
-}
-
-.thumbnail-grid.thumb-compact {
-    grid-template-columns: repeat(auto-fill, 100px);
-}
-
-.thumbnail-grid.thumb-medium {
-    grid-template-columns: repeat(auto-fill, 150px);
-}
-
-.thumbnail-grid.thumb-large {
-    grid-template-columns: repeat(auto-fill, 200px);
 }
 
 .thumbnail {
@@ -930,10 +1083,8 @@ body {
         display: none;
     }
 
-    .thumbnail-grid.thumb-compact,
-    .thumbnail-grid.thumb-medium,
-    .thumbnail-grid.thumb-large {
-        grid-template-columns: repeat(auto-fill, 100px);
+    .thumbnail-grid {
+        --tile-size: 100px;
     }
 }
 
@@ -945,8 +1096,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-sm) 0;
-    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-xs) 0;
+    margin-bottom: var(--spacing-sm);
     border-bottom: 1px solid var(--color-border);
 }
 
@@ -1040,64 +1191,9 @@ body {
 }
 
 /* ============================================
-   MODE SELECTOR (mutually exclusive workflow stages)
+   MODE SELECTOR (legacy - replaced by workflow bar segments)
+   Pulse animation still used by mode segments
    ============================================ */
-
-.mode-selector {
-    display: flex;
-    gap: 2px;
-    background: var(--color-bg-alt);
-    border-radius: 18px;
-    padding: 2px;
-    border: 1px solid var(--color-border);
-}
-
-.mode-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border: none;
-    border-radius: 16px;
-    background: transparent;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: all 0.15s ease;
-}
-
-.mode-chip:hover {
-    background: var(--color-bg-hover);
-    color: var(--color-text);
-}
-
-.mode-chip.active {
-    background: var(--color-bg);
-    color: var(--color-text);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.mode-chip .chip-icon {
-    font-size: 0.9rem;
-}
-
-.mode-chip .chip-count {
-    font-size: 0.75rem;
-    opacity: 0.7;
-}
-
-.mode-chip.active .chip-count {
-    opacity: 1;
-}
-
-/* Highlight mode chip when it has items requiring attention */
-.mode-chip.has-items:not(.active) {
-    color: var(--color-warning);
-}
-
-.mode-chip.has-items:not(.active) .chip-icon {
-    animation: pulse 2s infinite;
-}
 
 @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -1123,35 +1219,15 @@ body {
 }
 
 /* ============================================
-   GRID CONTROLS
+   TILE SIZE SLIDER
    ============================================ */
 
-.grid-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-xs) 0;
-    margin-bottom: var(--spacing-sm);
-}
-
-.sort-control {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-}
-
-.sort-control label {
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-}
-
-.form-select-sm {
-    padding: 4px 8px;
-    font-size: 0.85rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
-    background: var(--color-bg);
-    color: var(--color-text);
+.tile-size-slider {
+    width: 80px;
+    height: 4px;
+    cursor: pointer;
+    accent-color: var(--color-primary);
+    vertical-align: middle;
 }
 
 /* ============================================
@@ -1167,17 +1243,10 @@ body {
     gap: var(--spacing-sm);
 }
 
-/* Grid responsive columns based on thumbnail size - fixed widths, static gaps */
-.thumbnail-grid.thumb-compact {
-    grid-template-columns: repeat(auto-fill, 100px);
-}
-
-.thumbnail-grid.thumb-medium {
-    grid-template-columns: repeat(auto-fill, 150px);
-}
-
-.thumbnail-grid.thumb-large {
-    grid-template-columns: repeat(auto-fill, 200px);
+/* Grid responsive columns - driven by --tile-size CSS variable */
+.thumbnail-grid {
+    --tile-size: 150px;
+    grid-template-columns: repeat(auto-fill, var(--tile-size));
 }
 
 /* ============================================
@@ -1985,7 +2054,7 @@ body {
     filter: brightness(1.1);
 }
 
-/* Mode chip warning state */
-.mode-chip.mode-chip--warned {
-    opacity: 0.7;
+/* Mode segment attention state */
+.mode-segment.has-items {
+    animation: pulse 2s infinite;
 }
