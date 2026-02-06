@@ -168,25 +168,12 @@
         const prevId = this.navigationFiles[this.currentIndex - 1];
         const nextId = this.navigationFiles[this.currentIndex + 1];
 
-        console.log('[ViewportController] upgradeVisibleTilesToFullRes:', {
-            prevId, currentId, nextId, viewMode: this.viewMode
-        });
-
         const upgradeTiles = () => {
             [prevId, currentId, nextId].forEach(fileId => {
                 if (fileId !== undefined) {
                     const tile = this.tileManager.getTile(fileId);
-                    if (tile) {
-                        console.log(`[ViewportController] Tile ${fileId}:`, {
-                            hasFullRes: tile.hasFullResSource(),
-                            currentResolution: tile.currentResolution,
-                            position: tile.position
-                        });
-                        if (tile.hasFullResSource()) {
-                            tile.setResolution('full');
-                        }
-                    } else {
-                        console.warn(`[ViewportController] Tile not found for fileId: ${fileId}`);
+                    if (tile && tile.hasFullResSource()) {
+                        tile.setResolution('full');
                     }
                 }
             });

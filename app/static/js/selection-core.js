@@ -234,9 +234,14 @@ class SelectionHandler {
     }
 
     syncWithResultsHandler() {
-        // Sync selection state with results handler
+        // Sync selection state with results handler and tile manager
         if (window.resultsHandler) {
             window.resultsHandler.selectedFiles = new Set(this.selectedIds);
+            // Keep TileManager's selectedIds in sync for virtual scroll re-renders
+            const tm = window.resultsHandler.getTileManager();
+            if (tm) {
+                tm.selectedIds = new Set(this.selectedIds);
+            }
         }
     }
 

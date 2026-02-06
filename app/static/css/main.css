@@ -1662,7 +1662,7 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: none; /* Firefox */
-    /* Right padding for custom scrollbar, slight inset for visual breathing room */
+    /* Left/right padding for layout; top/bottom set by VirtualScrollManager via spacer divs */
     padding: 8px 44px 8px 8px;
     /* Grid fills container, items align to top, columns centered */
     align-content: start;

@@ -38,7 +38,7 @@ class ResultsHandler {
 
         this.tileManager = new TileManager(this.unifiedGrid, {
             getGroupColor: (hash) => this.getGroupColor(hash),
-            lazyLoad: true,
+            virtualScroll: true,
         });
     }
 
@@ -220,7 +220,10 @@ class ResultsHandler {
             return;
         }
 
-        // Use TileManager for tile rendering
+        // Scroll to top before rendering so VirtualScrollManager sees scrollTop=0
+        this.unifiedGrid.scrollTop = 0;
+
+        // Use TileManager for tile rendering (triggers virtual scroll if enabled)
         if (this.tileManager) {
             this.tileManager.renderFiles(this.allFiles, {
                 clear: true,
@@ -238,11 +241,6 @@ class ResultsHandler {
         // After rendering, refresh selection UI if selectionHandler exists
         if (window.selectionHandler) {
             window.selectionHandler.refreshUI();
-        }
-
-        // Scroll to top when content changes (e.g., filter switch)
-        if (this.unifiedGrid) {
-            this.unifiedGrid.scrollTop = 0;
         }
 
         // Sync scrollbar after layout settles
@@ -383,6 +381,8 @@ class ResultsHandler {
         if (this.unifiedGrid) {
             this.unifiedGrid.style.setProperty('--tile-size', px + 'px');
         }
+        // Recalculate virtual scroll layout (columns/rows change with tile size)
+        this.tileManager?.virtualScroll?.recalculateLayout();
     }
 
     /**

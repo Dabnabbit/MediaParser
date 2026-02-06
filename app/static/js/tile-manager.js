@@ -6,8 +6,10 @@
  * - Maintains file ID to Tile mapping
  * - Provides navigation helpers for viewport mode
  * - Handles bulk operations (render, clear)
+ * - Integrates with VirtualScrollManager for efficient rendering
  *
- * Works with ResultsHandler to manage the thumbnail grid.
+ * With virtual scroll enabled, only visible tiles have DOM elements.
+ * File data for ALL files is kept in allFileData Map for navigation.
  */
 
 class TileManager {
@@ -18,7 +20,7 @@ class TileManager {
      * @param {Function} [options.getGroupColor] - Function to get duplicate group color
      * @param {Function} [options.onTileClick] - Callback when tile is clicked
      * @param {Function} [options.onTileCreated] - Callback when tile is created
-     * @param {boolean} [options.lazyLoad=true] - Use lazy loading for images
+     * @param {boolean} [options.virtualScroll=true] - Use virtual scrolling
      */
     constructor(container, options = {}) {
         this.container = container;
@@ -26,44 +28,37 @@ class TileManager {
             getGroupColor: null,
             onTileClick: null,
             onTileCreated: null,
-            lazyLoad: true,
+            virtualScroll: true,
             ...options
         };
 
-        // Tile tracking
+        // Tile tracking — only currently rendered tiles
         this.tiles = new Map();        // fileId → Tile instance
+
+        // File data store — ALL files, independent of rendering
+        this.allFileData = new Map();  // fileId → file data object
         this.fileOrder = [];           // Array of fileIds in display order
 
-        // Lazy loading observer
-        this.lazyLoader = null;
-        if (this.options.lazyLoad) {
-            this.initLazyLoader();
+        // Selection state (survives re-renders)
+        this.selectedIds = new Set();
+
+        // Virtual scroll manager
+        this.virtualScroll = null;
+        if (this.options.virtualScroll) {
+            this.initVirtualScroll();
         }
     }
 
     /**
-     * Initialize Intersection Observer for lazy loading
+     * Initialize VirtualScrollManager
      */
-    initLazyLoader() {
-        this.lazyLoader = new IntersectionObserver(
-            (entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const img = entry.target;
-                        if (img.dataset.src) {
-                            img.src = img.dataset.src;
-                            img.removeAttribute('data-src');
-                            img.addEventListener('load', () => img.classList.add('loaded'), { once: true });
-                            img.addEventListener('error', () => {
-                                img.src = '/static/img/placeholder.svg';
-                            }, { once: true });
-                        }
-                        this.lazyLoader.unobserve(img);
-                    }
-                });
-            },
-            { rootMargin: '100px' }
-        );
+    initVirtualScroll() {
+        if (!this.container || typeof VirtualScrollManager === 'undefined') return;
+
+        this.virtualScroll = new VirtualScrollManager(this.container);
+        this.virtualScroll.onRender = (startIdx, endIdx) => {
+            this.renderRange(startIdx, endIdx);
+        };
     }
 
     // ==========================================
@@ -81,38 +76,39 @@ class TileManager {
         if (this.tiles.has(fileData.id)) {
             const existing = this.tiles.get(fileData.id);
             existing.updateFile(fileData);
-            // Update index for shift-click range selection
             if (typeof index === 'number' && existing.element) {
                 existing.element.dataset.index = index;
             }
             return existing;
         }
 
-        // Create new Tile instance
+        // Determine initial resolution based on current tile size
+        const tileSize = this.virtualScroll?.tileSize || 150;
+        const useFullRes = tileSize >= Tile.THRESHOLDS.FULL;
+
+        // Create new Tile instance — no individual ResizeObserver for grid tiles
         const tile = new Tile({
             file: fileData,
             getGroupColor: this.options.getGroupColor,
-            observeSize: true,  // Enable MIPMAP resolution
+            observeSize: false,
         });
+
+        // Set initial resolution based on tile size
+        if (useFullRes && tile.hasFullResSource()) {
+            tile.setResolution('full');
+        }
 
         // Set index for shift-click range selection
         if (typeof index === 'number' && tile.element) {
             tile.element.dataset.index = index;
         }
 
-        // Store in map
+        // Store in rendered tiles map
         this.tiles.set(fileData.id, tile);
 
-        // Track order
-        if (typeof index === 'number') {
-            this.fileOrder[index] = fileData.id;
-        } else {
-            this.fileOrder.push(fileData.id);
-        }
-
-        // Set up lazy loading if enabled
-        if (this.lazyLoader && tile.imageElement) {
-            this.setupLazyLoad(tile);
+        // Apply selection state
+        if (this.selectedIds.has(fileData.id)) {
+            tile.setSelected(true);
         }
 
         // Callback
@@ -124,46 +120,19 @@ class TileManager {
     }
 
     /**
-     * Set up lazy loading for a tile's image
-     * @param {Tile} tile
-     */
-    setupLazyLoad(tile) {
-        const img = tile.imageElement;
-        if (!img) return;
-
-        // Convert src to data-src for lazy loading
-        const src = img.src;
-        if (src && !src.includes('placeholder')) {
-            img.dataset.src = src;
-            img.src = '/static/img/placeholder.svg';
-        }
-
-        this.lazyLoader.observe(img);
-    }
-
-    /**
-     * Remove a tile by file ID
+     * Remove a tile by file ID (destroys DOM)
      * @param {number} fileId
      */
     removeTile(fileId) {
         const tile = this.tiles.get(fileId);
         if (!tile) return;
 
-        // Unobserve lazy loader
-        if (this.lazyLoader && tile.imageElement) {
-            this.lazyLoader.unobserve(tile.imageElement);
-        }
-
-        // Destroy tile
         tile.destroy();
-
-        // Remove from tracking
         this.tiles.delete(fileId);
-        this.fileOrder = this.fileOrder.filter(id => id !== fileId);
     }
 
     /**
-     * Get a tile by file ID
+     * Get a tile by file ID (only returns rendered tiles)
      * @param {number} fileId
      * @returns {Tile|undefined}
      */
@@ -172,7 +141,36 @@ class TileManager {
     }
 
     /**
-     * Get all tile instances
+     * Ensure a tile exists for a given file ID (create on-demand if needed).
+     * Used by viewport mode for tiles outside the rendered range.
+     * @param {number} fileId
+     * @returns {Tile|undefined}
+     */
+    ensureTile(fileId) {
+        let tile = this.tiles.get(fileId);
+        if (tile) return tile;
+
+        const fileData = this.allFileData.get(fileId);
+        if (!fileData) return undefined;
+
+        const index = this.fileOrder.indexOf(fileId);
+        tile = this.createTile(fileData, index >= 0 ? index : undefined);
+
+        // Place at correct grid position and append
+        if (tile.element) {
+            if (this.virtualScroll && index >= 0) {
+                const pos = this.virtualScroll.getGridPosition(index);
+                tile.element.style.gridRow = String(pos.row);
+                tile.element.style.gridColumn = String(pos.col);
+            }
+            this.container.appendChild(tile.element);
+        }
+
+        return tile;
+    }
+
+    /**
+     * Get all currently rendered tile instances
      * @returns {Tile[]}
      */
     getAllTiles() {
@@ -180,7 +178,7 @@ class TileManager {
     }
 
     /**
-     * Get tile count
+     * Get count of rendered tiles
      * @returns {number}
      */
     get size() {
@@ -192,35 +190,125 @@ class TileManager {
     // ==========================================
 
     /**
-     * Render files to the grid
-     * Creates/updates tiles and appends to container
+     * Render files to the grid.
+     * Stores all file data, then either uses virtual scroll or renders all.
      * @param {Object[]} files - Array of file data objects
      * @param {Object} options
      * @param {boolean} [options.clear=true] - Clear existing tiles first
      * @param {Set} [options.selectedIds] - Set of selected file IDs
      */
     renderFiles(files, options = {}) {
-        const { clear = true, selectedIds = new Set() } = options;
+        const { clear = true, selectedIds } = options;
 
         if (clear) {
             this.clear();
         }
 
-        // Create document fragment for batch DOM insertion
+        // Store selection state
+        if (selectedIds) {
+            this.selectedIds = new Set(selectedIds);
+        }
+
+        // Store ALL file data
+        this.fileOrder = [];
+        files.forEach((file, index) => {
+            this.allFileData.set(file.id, file);
+            this.fileOrder.push(file.id);
+        });
+
+        // Use virtual scroll if available
+        if (this.virtualScroll) {
+            this.virtualScroll.setFiles(files);
+        } else {
+            // Fallback: render all tiles
+            this._renderAll(files);
+        }
+    }
+
+    /**
+     * Fallback: render all files without virtual scrolling
+     * @param {Object[]} files
+     */
+    _renderAll(files) {
         const fragment = document.createDocumentFragment();
 
         files.forEach((file, index) => {
             const tile = this.createTile(file, index);
-
-            // Set selection state
-            if (selectedIds.has(file.id)) {
-                tile.setSelected(true);
-            }
-
             fragment.appendChild(tile.element);
         });
 
-        // Append all at once
+        this.container.appendChild(fragment);
+    }
+
+    /**
+     * Render a specific range of files (called by VirtualScrollManager).
+     * Clears rendered tiles and creates new ones for the range.
+     * @param {number} startIdx - First file index to render
+     * @param {number} endIdx - One past last file index to render
+     */
+    renderRange(startIdx, endIdx) {
+        // Collect exempted tiles (viewport mode tiles that must stay alive)
+        const exemptedTiles = new Map();
+        if (this.virtualScroll) {
+            this.virtualScroll.exemptedIds.forEach(id => {
+                const tile = this.tiles.get(id);
+                if (tile) {
+                    exemptedTiles.set(id, tile);
+                }
+            });
+        }
+
+        // Destroy non-exempted rendered tiles
+        this.tiles.forEach((tile, fileId) => {
+            if (!exemptedTiles.has(fileId)) {
+                tile.destroy();
+            }
+        });
+        this.tiles.clear();
+
+        // Re-register exempted tiles
+        exemptedTiles.forEach((tile, id) => {
+            this.tiles.set(id, tile);
+        });
+
+        // Create tiles for visible range, placing each at its correct grid cell
+        const fragment = document.createDocumentFragment();
+
+        for (let i = startIdx; i < endIdx; i++) {
+            const fileId = this.fileOrder[i];
+            if (fileId === undefined) continue;
+
+            // Skip if this tile is exempted (already exists)
+            if (exemptedTiles.has(fileId)) continue;
+
+            const fileData = this.allFileData.get(fileId);
+            if (!fileData) continue;
+
+            const tile = this.createTile(fileData, i);
+
+            // Place tile at its correct grid position (1-indexed)
+            if (this.virtualScroll && tile.element) {
+                const pos = this.virtualScroll.getGridPosition(i);
+                tile.element.style.gridRow = String(pos.row);
+                tile.element.style.gridColumn = String(pos.col);
+            }
+
+            fragment.appendChild(tile.element);
+        }
+
+        // Remove non-exempted elements from container
+        const exemptedElements = new Set();
+        exemptedTiles.forEach(tile => {
+            if (tile.element) exemptedElements.add(tile.element);
+        });
+
+        const children = Array.from(this.container.children);
+        children.forEach(child => {
+            if (!exemptedElements.has(child)) {
+                child.remove();
+            }
+        });
+
         this.container.appendChild(fragment);
     }
 
@@ -230,6 +318,10 @@ class TileManager {
      */
     updateFiles(files) {
         files.forEach(file => {
+            // Update stored file data
+            this.allFileData.set(file.id, file);
+
+            // Update rendered tile if it exists
             const tile = this.tiles.get(file.id);
             if (tile) {
                 tile.updateFile(file);
@@ -238,24 +330,27 @@ class TileManager {
     }
 
     /**
-     * Clear all tiles from the grid
+     * Clear all tiles and file data
      */
     clear() {
-        // Destroy all tiles
-        this.tiles.forEach(tile => {
-            if (this.lazyLoader && tile.imageElement) {
-                this.lazyLoader.unobserve(tile.imageElement);
-            }
-            tile.destroy();
-        });
-
-        // Clear tracking
+        // Destroy all rendered tiles
+        this.tiles.forEach(tile => tile.destroy());
         this.tiles.clear();
+
+        // Clear file data
+        this.allFileData.clear();
         this.fileOrder = [];
 
-        // Clear container
+        // Clear container and virtual scroll grid template
         if (this.container) {
             this.container.innerHTML = '';
+            this.container.style.gridTemplateRows = '';
+            this.container.style.gridTemplateColumns = '';
+        }
+
+        // Reset virtual scroll
+        if (this.virtualScroll) {
+            this.virtualScroll.clearExemptions();
         }
     }
 
@@ -264,7 +359,7 @@ class TileManager {
     // ==========================================
 
     /**
-     * Get file IDs in display order
+     * Get file IDs in display order (ALL files, not just rendered)
      * @returns {number[]}
      */
     getFileOrder() {
@@ -272,7 +367,7 @@ class TileManager {
     }
 
     /**
-     * Get file IDs matching a filter function
+     * Get file IDs matching a filter function (works across ALL files)
      * @param {Function} filterFn - Filter function (file) => boolean
      * @returns {number[]}
      */
@@ -282,13 +377,13 @@ class TileManager {
         }
 
         return this.fileOrder.filter(fileId => {
-            const tile = this.tiles.get(fileId);
-            return tile && filterFn(tile.file);
+            const file = this.allFileData.get(fileId);
+            return file && filterFn(file);
         });
     }
 
     /**
-     * Get tile at a specific index in display order
+     * Get tile at a specific index in display order (only if rendered)
      * @param {number} index
      * @returns {Tile|undefined}
      */
@@ -307,20 +402,20 @@ class TileManager {
     }
 
     /**
-     * Get the file data for a file ID
+     * Get the file data for a file ID (works for ALL files)
      * @param {number} fileId
      * @returns {Object|undefined}
      */
     getFile(fileId) {
-        return this.tiles.get(fileId)?.file;
+        return this.allFileData.get(fileId);
     }
 
     /**
-     * Get all file data objects in display order
+     * Get all file data objects in display order (ALL files)
      * @returns {Object[]}
      */
     getAllFiles() {
-        return this.fileOrder.map(id => this.tiles.get(id)?.file).filter(Boolean);
+        return this.fileOrder.map(id => this.allFileData.get(id)).filter(Boolean);
     }
 
     // ==========================================
@@ -333,6 +428,12 @@ class TileManager {
      * @param {boolean} selected
      */
     setSelected(fileId, selected) {
+        if (selected) {
+            this.selectedIds.add(fileId);
+        } else {
+            this.selectedIds.delete(fileId);
+        }
+
         const tile = this.tiles.get(fileId);
         if (tile) {
             tile.setSelected(selected);
@@ -346,6 +447,15 @@ class TileManager {
      */
     setMultipleSelected(fileIds, selected) {
         const ids = fileIds instanceof Set ? fileIds : new Set(fileIds);
+        ids.forEach(fileId => {
+            if (selected) {
+                this.selectedIds.add(fileId);
+            } else {
+                this.selectedIds.delete(fileId);
+            }
+        });
+
+        // Update rendered tiles
         this.tiles.forEach((tile, fileId) => {
             if (ids.has(fileId)) {
                 tile.setSelected(selected);
@@ -357,18 +467,16 @@ class TileManager {
      * Clear all selections
      */
     clearSelection() {
+        this.selectedIds.clear();
         this.tiles.forEach(tile => tile.setSelected(false));
     }
 
     /**
-     * Get all selected file IDs
+     * Get all selected file IDs (from persistent set, not tile DOM)
      * @returns {number[]}
      */
     getSelectedFileIds() {
-        return this.fileOrder.filter(id => {
-            const tile = this.tiles.get(id);
-            return tile?.selected;
-        });
+        return this.fileOrder.filter(id => this.selectedIds.has(id));
     }
 
     // ==========================================
@@ -376,7 +484,7 @@ class TileManager {
     // ==========================================
 
     /**
-     * Set all tiles to a specific position
+     * Set all rendered tiles to a specific position
      * @param {string} position
      */
     setAllPositions(position) {
@@ -384,15 +492,21 @@ class TileManager {
     }
 
     /**
-     * Reset all tiles to grid position
+     * Reset all rendered tiles to grid position.
+     * Also clears virtual scroll exemptions.
      */
     resetToGrid() {
         this.tiles.forEach(tile => tile.setPosition(Tile.POSITIONS.GRID));
+
+        if (this.virtualScroll) {
+            this.virtualScroll.clearExemptions();
+        }
     }
 
     /**
-     * Prepare tiles for viewport mode
-     * Sets tiles to appropriate positions for carousel display
+     * Prepare tiles for viewport mode.
+     * Ensures prev/current/next tiles exist and sets positions.
+     * Exempts viewport tiles from virtual scroll recycling.
      * @param {number} currentFileId - The file to show as current
      * @param {number[]} [navigableIds] - Optional subset of navigable file IDs
      */
@@ -408,6 +522,15 @@ class TileManager {
         const prevId = navOrder[currentIndex - 1];
         const nextId = navOrder[currentIndex + 1];
         const viewportIds = new Set([prevId, currentFileId, nextId].filter(id => id !== undefined));
+
+        // Exempt viewport tiles from recycling
+        if (this.virtualScroll) {
+            this.virtualScroll.clearExemptions();
+            this.virtualScroll.exemptFromRecycling([...viewportIds]);
+        }
+
+        // Ensure viewport tiles exist (they may be outside rendered range)
+        viewportIds.forEach(id => this.ensureTile(id));
 
         // Only move non-viewport tiles to grid — never bounce viewport tiles through GRID,
         // as that would reset their transition starting point to the grid position
@@ -437,9 +560,9 @@ class TileManager {
     destroy() {
         this.clear();
 
-        if (this.lazyLoader) {
-            this.lazyLoader.disconnect();
-            this.lazyLoader = null;
+        if (this.virtualScroll) {
+            this.virtualScroll.destroy();
+            this.virtualScroll = null;
         }
 
         this.container = null;

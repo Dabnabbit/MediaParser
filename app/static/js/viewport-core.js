@@ -204,10 +204,21 @@ class ViewportController {
             // Restore scroll position
             window.scrollTo(0, this.lastScrollPosition);
 
-            // Scroll the last viewed tile into view
-            const lastTile = this.tileManager.getTile(this.getCurrentFileId());
-            if (lastTile?.element) {
-                lastTile.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Scroll the grid to show the last viewed tile.
+            // Use VirtualScrollManager.scrollToIndex if available (ensures tile is rendered),
+            // otherwise fall back to scrollIntoView on the tile element.
+            const lastFileId = this.getCurrentFileId();
+            const vs = this.tileManager.virtualScroll;
+            if (vs) {
+                const fileIdx = this.tileManager.getFileIndex(lastFileId);
+                if (fileIdx >= 0) {
+                    vs.scrollToIndex(fileIdx);
+                }
+            } else {
+                const lastTile = this.tileManager.getTile(lastFileId);
+                if (lastTile?.element) {
+                    lastTile.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
             }
 
             // Callback

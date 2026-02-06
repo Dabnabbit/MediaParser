@@ -307,8 +307,11 @@
 
     /**
      * Lock the grid layout so tiles don't shift when viewport tiles
-     * leave flow. Freezes the grid template and assigns every tile
-     * to an explicit row/column based on display order.
+     * leave flow. Freezes the grid template to resolved pixel values
+     * and ensures every tile has explicit row/column placement.
+     *
+     * With virtual scroll, tiles already have grid-row/grid-column set.
+     * Without virtual scroll, we assign them here.
      */
     proto.lockGridPositions = function() {
         const container = this.tileManager.container;
@@ -318,33 +321,46 @@
         container.style.gridTemplateRows = cs.gridTemplateRows;
         container.style.gridTemplateColumns = cs.gridTemplateColumns;
 
-        // Calculate column count from resolved template
-        const cols = cs.gridTemplateColumns.split(/\s+/).length;
-
-        // Pin every tile to its exact cell
-        const fileOrder = this.tileManager.getFileOrder();
-        fileOrder.forEach((fileId, index) => {
-            const tile = this.tileManager.getTile(fileId);
-            if (tile?.element) {
-                tile.element.style.gridRow = String(Math.floor(index / cols) + 1);
-                tile.element.style.gridColumn = String((index % cols) + 1);
-            }
-        });
+        // With virtual scroll, tiles already have grid-row/column from renderRange.
+        // Without virtual scroll, assign explicit positions now.
+        if (!this.tileManager.virtualScroll) {
+            const cols = cs.gridTemplateColumns.split(/\s+/).length;
+            const fileOrder = this.tileManager.getFileOrder();
+            fileOrder.forEach((fileId, index) => {
+                const tile = this.tileManager.getTile(fileId);
+                if (tile?.element) {
+                    tile.element.style.gridRow = String(Math.floor(index / cols) + 1);
+                    tile.element.style.gridColumn = String((index % cols) + 1);
+                }
+            });
+        }
     };
 
     /**
-     * Unlock grid positions, returning to auto-placement
+     * Unlock grid positions, returning to auto-placement (or virtual scroll placement).
      */
     proto.unlockGridPositions = function() {
         const container = this.tileManager.container;
-        container.style.gridTemplateRows = '';
-        container.style.gridTemplateColumns = '';
+        const vs = this.tileManager.virtualScroll;
 
-        this.tileManager.getAllTiles().forEach(tile => {
-            if (tile.element) {
-                tile.element.style.gridRow = '';
-                tile.element.style.gridColumn = '';
-            }
-        });
+        if (vs && vs.files.length > 0) {
+            // Restore virtual scroll's grid template
+            container.style.gridTemplateRows = `repeat(${vs.totalRows}, var(--tile-size))`;
+            container.style.gridTemplateColumns = `repeat(${vs.columns}, var(--tile-size))`;
+        } else {
+            // Clear explicit templates
+            container.style.gridTemplateRows = '';
+            container.style.gridTemplateColumns = '';
+        }
+
+        // If not using virtual scroll, clear tile grid positions
+        if (!vs) {
+            this.tileManager.getAllTiles().forEach(tile => {
+                if (tile.element) {
+                    tile.element.style.gridRow = '';
+                    tile.element.style.gridColumn = '';
+                }
+            });
+        }
     };
 })();
