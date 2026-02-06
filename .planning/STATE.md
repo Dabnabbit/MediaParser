@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 7 of 7 - Output Generation + Tagging
-**Plan:** 2 of 5 (EXIF metadata write functions complete)
+**Plan:** 3 of 5 (Tag auto-generation complete)
 **Status:** In progress
-**Last activity:** 2026-02-06 - Completed 07-02-PLAN.md (EXIF write-back functions)
-**Progress:** `[█████████████████████████████████] 97%` (36/~37 plans complete)
+**Last activity:** 2026-02-06 - Completed 07-03-PLAN.md (Tag auto-generation from filenames and folders)
+**Progress:** `[█████████████████████████████████] 98%` (37/~38 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,8 +36,8 @@
 
 ## Performance Metrics
 
-**Velocity:** 36 plans in ~78 minutes (avg 2.2 min/plan) - Phase 1+2+3+4+5 complete, Phase 6 in progress, Phase 7 in progress
-**Plan Success Rate:** 100% (36/36 completed successfully)
+**Velocity:** 37 plans in ~80 minutes (avg 2.2 min/plan) - Phase 1+2+3+4+5 complete, Phase 6 in progress, Phase 7 in progress
+**Plan Success Rate:** 100% (37/37 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
 **Phases Complete:** 5/7 (Phase 1, 2, 3, 4, 5 complete; Phase 6 in progress, Phase 7 in progress)
 **Out-of-band work:** Carousel viewport system refactor (not tracked by GSD plans)
@@ -167,6 +167,9 @@
 | Deferred initialization pattern | 2026-02-04 | Cross-module dependencies resolved after DOMContentLoaded via setViewportController() | Viewport refactor |
 | ExaminationHandler as fallback | 2026-02-04 | Legacy modal remains for duplicate group loading but viewport is primary interface | Viewport refactor |
 | Cleanup comparison view | 2026-02-04 | Removed orphaned comparison grid code, CSS, HTML modal - now using single-view navigation | Viewport refactor |
+| Setting model for import root storage | 2026-02-06 | No migration needed, clean separation from Job status tracking, job-scoped keys | 07-03: Tag auto-generation |
+| Filter generic folder names | 2026-02-06 | Prevents noise tags (dcim, camera, numeric years) that don't provide meaningful organization | 07-03: Folder tag extraction |
+| Browser uploads skip import root | 2026-02-06 | Folder structure lost via secure_filename, only server imports preserve hierarchy | 07-03: Upload handling |
 | Cleanup legacy bucket CSS | 2026-02-04 | Removed 276 lines of unused accordion/bucket styles from main.css and examination.css | CSS cleanup |
 | Two-tier duplicate detection | 2026-02-04 | Separate DUPLICATES (exact SHA256 + perceptual 0-4) from SIMILAR (sequences, bursts, perceptual 5-20) | Phase 6: Architecture |
 | Sequential duplicate resolution | 2026-02-04 | Workflow enforces: Duplicates → Similar → Unreviewed. Must resolve each before proceeding. | Phase 6: Workflow |
@@ -467,16 +470,18 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-05
-**Stopped at:** Completed 06-03-PLAN.md (Two-tier duplicate detection API)
+**Last session:** 2026-02-06
+**Stopped at:** Completed 07-03-PLAN.md (Tag auto-generation from filenames and folders)
 **Resume file:** None
-**Last commit:** `0b97dab` — Add similar group resolution and update discard logic
+**Last commit:** `8292a62` — feat(07-03): store import root path during server-path import
 
 **Phase 4 Execution Status:** ✓ COMPLETE (all 9 plans)
 
 **Phase 5 Execution Status (Duplicate Detection - Exact):** ✓ COMPLETE (all 4 plans)
 
 **Phase 6 Execution Status (Duplicate Detection - Perceptual):** Plans 06-01, 06-02, 06-03 COMPLETE (3/5 plans)
+
+**Phase 7 Execution Status (Output Generation + Tagging):** Plans 07-01, 07-02, 07-03 COMPLETE (3/5 plans)
 
 **Viewport Refactor Status (Out-of-band):** ✓ COMPLETE
 - Carousel viewport system replaces examination modal
@@ -581,4 +586,4 @@ None
 ---
 
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-05*
+*Last updated: 2026-02-06*
