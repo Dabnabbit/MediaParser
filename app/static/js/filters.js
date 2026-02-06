@@ -322,6 +322,12 @@ class FilterHandler {
                 this.exportSegment.style.flexGrow = '1';
                 if (!this.exportSegment.classList.contains('ready')) {
                     this.exportSegment.classList.add('ready');
+                    console.log('[BURST] export ready — scheduling particle burst');
+                    // Delay burst until segment has transitioned into view
+                    setTimeout(() => {
+                        console.log('[BURST] firing burstParticles now');
+                        this.burstParticles(this.exportSegment);
+                    }, 350);
                 }
                 // Wire click handler once
                 if (!this.exportSegment.dataset.wired) {
@@ -501,6 +507,48 @@ class FilterHandler {
         // (export button visibility is handled reactively by updateCounts)
         this.setMode('reviewed');
         return 'reviewed';
+    }
+
+    /**
+     * Spawn particle burst from an element's position.
+     */
+    burstParticles(el) {
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        console.log('[BURST] element rect:', rect, 'center:', cx, cy);
+        const colors = ['#fbbf24', '#fde68a', '#f59e0b', '#fff', '#fcd34d', '#fb923c'];
+        const count = 28;
+
+        for (let i = 0; i < count; i++) {
+            const particle = document.createElement('div');
+            const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.6;
+            const distance = 50 + Math.random() * 80;
+            const dx = Math.cos(angle) * distance;
+            const dy = Math.sin(angle) * distance - 25;
+            const size = 4 + Math.random() * 5;
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const duration = 0.6 + Math.random() * 0.4;
+            const delay = Math.random() * 0.12;
+
+            particle.style.cssText = `
+                position: fixed;
+                left: ${cx}px;
+                top: ${cy}px;
+                width: ${size}px;
+                height: ${size}px;
+                background: ${color};
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 10000;
+                opacity: 0;
+                --dx: ${dx}px;
+                --dy: ${dy}px;
+                animation: exportParticle ${duration}s ease-out ${delay}s both;
+            `;
+            document.body.appendChild(particle);
+            particle.addEventListener('animationend', () => particle.remove());
+        }
     }
 
 }
