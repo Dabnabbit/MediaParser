@@ -14,13 +14,9 @@ class ResultsHandler {
         this.lastSelectedIndex = null;
         this.tileSizePx = 150;
         this.allFiles = [];
-
-        // Window-based loading (scrubber model)
-        this.currentOffset = 0;
         this.totalFiles = 0;
-        this.windowSize = 50;  // Will be updated dynamically by slider
         this.isLoading = false;  // Prevent overlapping loads
-        this.pendingLoad = null;  // Queue next load if one is in progress
+        this.pendingLoad = false;  // Queue next load if one is in progress
 
         // Cache DOM elements - unified grid
         this.resultsContainer = document.getElementById('results-container');
@@ -55,7 +51,6 @@ class ResultsHandler {
         this.selectedFiles.clear();
         this.lastSelectedIndex = null;
         this.allFiles = [];
-        this.currentOffset = 0;
         this.totalFiles = 0;
 
         // Hide results container
@@ -83,41 +78,19 @@ class ResultsHandler {
 
     initEventListeners() {
         // Listen for filter changes from FilterHandler
-        window.addEventListener('filterChange', (e) => {
-            this.currentOffset = 0;  // Reset to start on filter change
+        window.addEventListener('filterChange', () => {
             this.loadFiles();
         });
 
-        // Listen for slider offset changes (live during drag)
-        window.addEventListener('sliderOffsetChange', (e) => {
-            this.currentOffset = e.detail.offset;
-            if (e.detail.limit) {
-                this.windowSize = e.detail.limit;
-            }
-            this.loadFiles();
-        });
-
-        // Listen for window size changes (from resize)
-        window.addEventListener('windowSizeChange', (e) => {
-            // Don't reload files while viewport is active - it would break the examination view
-            if (window.selectionHandler?.isViewportActive()) {
-                return;
-            }
-            this.windowSize = e.detail.windowSize;
-            // Reload with new window size
-            this.loadFiles();
-        });
-
-        // Tile size slider
+        // Tile size slider - live update + sync scrollbar after resize
         const tileSizeSlider = document.getElementById('tile-size-slider');
         if (tileSizeSlider) {
             tileSizeSlider.addEventListener('input', (e) => {
                 this.setTileSize(parseInt(e.target.value, 10));
             });
-            // Recalculate window after drag ends (avoids thrashing during drag)
             tileSizeSlider.addEventListener('change', () => {
                 if (window.positionSlider) {
-                    window.positionSlider.recalculateWindowSize();
+                    window.positionSlider.syncThumb();
                 }
             });
         }
@@ -128,57 +101,52 @@ class ResultsHandler {
     }
 
     /**
-     * Load files from API with current filter state
-     * Handles rapid calls during scrubbing by canceling stale requests
+     * Load all files from API with current filter state.
+     * Grid scrolls natively; no offset/limit windowing needed.
      */
     async loadFiles() {
         if (!this.jobId) return;
 
-        // Get dynamic window size from slider
-        const windowSize = window.positionSlider?.getWindowSize() || this.windowSize;
-
-        // If already loading, queue this request
+        // If already loading, queue a reload after current finishes
         if (this.isLoading) {
-            this.pendingLoad = { offset: this.currentOffset, windowSize };
+            this.pendingLoad = true;
             return;
         }
 
         this.isLoading = true;
-        const requestOffset = this.currentOffset;
 
         try {
-            // Build URL with filter params
             const filterParams = window.filterHandler?.getQueryParams() || new URLSearchParams();
-            filterParams.set('offset', requestOffset);
-            filterParams.set('limit', windowSize);
+            filterParams.set('offset', 0);
+            filterParams.set('limit', 10000);
 
             const response = await fetch(`/api/jobs/${this.jobId}/files?${filterParams}`);
             if (!response.ok) throw new Error('Failed to load files');
 
             const data = await response.json();
 
-            // Only render if this is still the current offset (not stale)
-            if (requestOffset === this.currentOffset) {
-                this.allFiles = data.files || [];
-                this.totalFiles = data.total || 0;
-                this.windowSize = windowSize;
+            this.allFiles = data.files || [];
+            this.totalFiles = data.total || 0;
 
-                this.renderGrid();
-                this.updateSlider();
+            this.renderGrid();
 
-                // Update filter counts with mode totals and confidence counts
-                if (window.filterHandler) {
-                    const counts = {
-                        ...(data.mode_totals || {}),
-                        ...(data.mode_counts || {}),
-                        total: data.total || 0
-                    };
-                    window.filterHandler.updateCounts(counts);
-                }
+            // Update filter counts with mode totals and confidence counts
+            if (window.filterHandler) {
+                const counts = {
+                    ...(data.mode_totals || {}),
+                    ...(data.mode_counts || {}),
+                    total: data.total || 0
+                };
+                window.filterHandler.updateCounts(counts);
+            }
+
+            // Sync scrollbar after grid renders
+            if (window.positionSlider) {
+                window.positionSlider.setTotal(this.totalFiles);
             }
         } catch (error) {
             console.error('Error loading files:', error);
-            if (requestOffset === this.currentOffset && this.unifiedGrid) {
+            if (this.unifiedGrid) {
                 this.unifiedGrid.innerHTML = '<div class="empty">Failed to load files</div>';
             }
         } finally {
@@ -186,10 +154,7 @@ class ResultsHandler {
 
             // Process any pending load request
             if (this.pendingLoad) {
-                const pending = this.pendingLoad;
-                this.pendingLoad = null;
-                this.currentOffset = pending.offset;
-                this.windowSize = pending.windowSize;
+                this.pendingLoad = false;
                 this.loadFiles();
             }
         }
@@ -275,17 +240,16 @@ class ResultsHandler {
             window.selectionHandler.refreshUI();
         }
 
-        // Force layout recalculation after tiles are added
-        // Double RAF ensures we're after the browser has painted the new layout
-        // This fixes initial render issues where grid dimensions aren't stable yet
+        // Scroll to top when content changes (e.g., filter switch)
+        if (this.unifiedGrid) {
+            this.unifiedGrid.scrollTop = 0;
+        }
+
+        // Sync scrollbar after layout settles
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                // Force reflow by reading a layout property
-                void this.unifiedGrid?.offsetHeight;
-                if (window.positionSlider) {
-                    window.positionSlider.recalculateWindowSize();
-                }
-            });
+            if (window.positionSlider) {
+                window.positionSlider.syncThumb();
+            }
         });
     }
 
@@ -369,16 +333,6 @@ class ResultsHandler {
         `;
 
         return thumb;
-    }
-
-    /**
-     * Update position slider with current window state
-     */
-    updateSlider() {
-        if (window.positionSlider) {
-            window.positionSlider.setTotal(this.totalFiles);
-            window.positionSlider.setOffset(this.currentOffset);
-        }
     }
 
     /**

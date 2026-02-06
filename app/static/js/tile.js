@@ -16,7 +16,7 @@ class Tile {
     // Resolution thresholds (pixels)
     static THRESHOLDS = {
         THUMBNAIL: 0,      // Use thumbnail below full threshold
-        FULL: 400,         // Use full-res at or above this size
+        FULL: 180,         // Use full-res at or above this size (thumbnails are 150px)
     };
 
     // Position states

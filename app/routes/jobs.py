@@ -178,7 +178,7 @@ def get_job_files(job_id):
 
     if use_offset_mode:
         offset = max(0, offset)
-        limit = min(200, max(1, limit or 50))
+        limit = max(1, limit or 50)
     else:
         page = max(1, int(request.args.get('page', 1)))
         per_page = min(200, max(1, int(request.args.get('per_page', 50))))
