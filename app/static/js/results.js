@@ -179,8 +179,8 @@ class ResultsHandler {
             this.resultsContainer.style.display = 'block';
         }
 
-        // Show export section with export button
-        this.showExportSection(jobId);
+        // Store jobId for export section (shown later when review is complete)
+        this._importJobId = jobId;
 
         // Reset filter handler and load fresh counts
         if (window.filterHandler) {

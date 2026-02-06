@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 import logging
 
 from app import db
-from app.models import Job, File, Duplicate, JobStatus, ConfidenceLevel
+from app.models import Job, File, Duplicate, JobStatus, ConfidenceLevel, job_files
 from app.tasks import enqueue_import_job
 from app.lib.duplicates import recommend_best_duplicate, get_quality_metrics
 
@@ -886,15 +886,24 @@ def get_job_summary(job_id):
     ).count()
 
     # Exact duplicate groups count
-    exact_groups = db.session.query(File.exact_group_id).filter(
-        File.job_id == job_id,
+    exact_groups = db.session.query(File.exact_group_id).join(
+        job_files, File.id == job_files.c.file_id
+    ).filter(
+        job_files.c.job_id == job_id,
         File.exact_group_id.isnot(None),
         File.discarded == False
     ).distinct().count()
 
-    # Similar groups count
-    similar_groups = db.session.query(File.similar_group_id).filter(
-        File.job_id == job_id,
+    # Similar files count (for mode selector) and groups count
+    similar_count = base_query.filter(
+        File.similar_group_id.isnot(None),
+        File.discarded == False
+    ).count()
+
+    similar_groups = db.session.query(File.similar_group_id).join(
+        job_files, File.id == job_files.c.file_id
+    ).filter(
+        job_files.c.job_id == job_id,
         File.similar_group_id.isnot(None),
         File.discarded == False
     ).distinct().count()
@@ -902,7 +911,8 @@ def get_job_summary(job_id):
     unreviewed_count = base_query.filter(
         File.reviewed_at.is_(None),
         File.discarded == False,
-        File.exact_group_id.is_(None)
+        File.exact_group_id.is_(None),
+        File.similar_group_id.is_(None)
     ).count()
 
     reviewed_count = base_query.filter(
@@ -929,6 +939,7 @@ def get_job_summary(job_id):
         # Mode counts
         'duplicates': duplicates_count,
         'exact_duplicate_groups': exact_groups,
+        'similar': similar_count,
         'similar_groups': similar_groups,
         'unreviewed': unreviewed_count,
         'reviewed': reviewed_count,

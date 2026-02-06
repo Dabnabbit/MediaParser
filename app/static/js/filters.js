@@ -298,6 +298,10 @@ class FilterHandler {
      * Enforces sequential workflow: Duplicates → Similar → Unreviewed
      */
     autoSelectMode() {
+        // Hide export section until review is fully complete
+        const exportSection = document.getElementById('export-section');
+        if (exportSection) exportSection.style.display = 'none';
+
         // Enforce sequential resolution: Duplicates → Similar → Unreviewed
         if (this.counts.duplicates > 0) {
             this.setMode('duplicates');
@@ -311,7 +315,10 @@ class FilterHandler {
             this.setMode('unreviewed');
             return 'unreviewed';
         }
-        // All done? Show reviewed
+        // All review done — show export section and default to reviewed mode
+        if (window.resultsHandler) {
+            window.resultsHandler.showExportSection(window.resultsHandler._importJobId);
+        }
         this.setMode('reviewed');
         return 'reviewed';
     }
