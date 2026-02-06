@@ -7,9 +7,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Any
 import os
+import logging
 import exiftool
 
 from app.lib.timestamp import convert_str_to_datetime
+
+logger = logging.getLogger(__name__)
 
 
 # Path to exiftool executable - use system default or override via environment
@@ -195,3 +198,44 @@ def get_image_dimensions(file_path: Path | str, metadata: dict | None = None) ->
         int(width) if width else None,
         int(height) if height else None
     )
+
+
+def write_timestamps(file_path: Path | str, timestamp: datetime) -> bool:
+    """
+    Write corrected timestamps to EXIF metadata on output files.
+
+    Writes to EXIF:DateTimeOriginal and EXIF:CreateDate for photos,
+    plus QuickTime:CreateDate and QuickTime:ModifyDate for videos.
+    Uses -overwrite_original to prevent backup file clutter.
+
+    Args:
+        file_path: Path to the output file (NEVER called on source files)
+        timestamp: Corrected datetime to write
+
+    Returns:
+        True on success, False on error
+    """
+    path_str = str(file_path) if isinstance(file_path, Path) else file_path
+
+    # Format timestamp for ExifTool: YYYY:MM:DD HH:MM:SS
+    formatted_ts = timestamp.strftime('%Y:%m:%d %H:%M:%S')
+
+    # Build base tags for all files
+    tags = {
+        'EXIF:DateTimeOriginal': formatted_ts,
+        'EXIF:CreateDate': formatted_ts,
+    }
+
+    # Add video-specific tags for video files
+    ext = Path(path_str).suffix.lower()
+    if ext in {'.mp4', '.mov', '.avi', '.mkv'}:
+        tags['QuickTime:CreateDate'] = formatted_ts
+        tags['QuickTime:ModifyDate'] = formatted_ts
+
+    try:
+        with exiftool.ExifToolHelper(executable=EXIFTOOL_PATH) as et:
+            et.set_tags(path_str, tags, params=['-overwrite_original'])
+        return True
+    except Exception as e:
+        logger.error(f"Failed to write timestamps to {path_str}: {e}")
+        return False
