@@ -433,13 +433,15 @@ def process_export_job(job_id: int) -> dict:
     Implements complete export pipeline:
     1. Fetch job and associated files from database
     2. Update job status to RUNNING
-    3. Query non-discarded files not yet exported
-    4. For each file:
+    3. Auto-generate tags for all files to be exported
+    4. Query non-discarded files not yet exported
+    5. For each file:
        - Generate output path (year-based or unknown/)
        - Copy to output location with collision resolution
+       - Write corrected metadata (timestamp + tags) to OUTPUT file
        - Set File.output_path after successful copy
-    5. Track progress with pause/cancel support
-    6. Update job status to COMPLETED or FAILED
+    6. Track progress with pause/cancel support
+    7. Update job status to COMPLETED or FAILED
 
     Args:
         job_id: ID of the export Job record to process
@@ -454,6 +456,9 @@ def process_export_job(job_id: int) -> dict:
         }
     """
     from app.lib.export import generate_output_filename, copy_file_to_output
+    from app.lib.tagging import apply_auto_tags
+    from app.lib.metadata import write_metadata
+    from app.routes.upload import get_import_root
 
     app = get_app()
 
@@ -538,6 +543,13 @@ def process_export_job(job_id: int) -> dict:
                     'processed': already_exported
                 }
 
+            # Pre-export: Auto-generate tags for all files to be exported
+            # Get import root if available (None for browser uploads)
+            import_root = get_import_root(job_id)
+            tag_result = apply_auto_tags(db, files_to_export, import_root)
+            logger.info(f"Export job {job_id}: Auto-tags applied - {tag_result}")
+            db.session.commit()
+
             # Get batch commit size from config
             batch_size = app.config.get('BATCH_COMMIT_SIZE', 10)
 
@@ -557,6 +569,15 @@ def process_export_job(job_id: int) -> dict:
 
                     # Copy file with collision resolution
                     final_output_path = copy_file_to_output(source_path, output_path)
+
+                    # Get timestamp for metadata write (prefer final, fall back to detected)
+                    timestamp = file_obj.final_timestamp or file_obj.detected_timestamp
+
+                    # Get tag names for this file
+                    tag_names = [tag.name for tag in file_obj.tags]
+
+                    # Write corrected metadata to the OUTPUT copy (not source)
+                    write_metadata(final_output_path, timestamp=timestamp, tag_names=tag_names)
 
                     # Set output_path on file object
                     file_obj.output_path = str(final_output_path)

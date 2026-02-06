@@ -148,6 +148,7 @@ def get_job_files(job_id):
     Query params:
         - mode: Workflow mode (duplicates, unreviewed, reviewed, discarded, failed)
         - confidence: Filter by confidence level(s) (high,medium,low,none - comma-separated)
+        - tag: Filter by tag name (exact match)
         - sort: Sort field (detected_timestamp, original_timestamp, filename, file_size)
         - order: Sort order (asc, desc) - default asc
         - offset: Start position for window (preferred over page)
@@ -159,6 +160,8 @@ def get_job_files(job_id):
     Returns:
         JSON with file list (offset mode returns offset/limit/total, page mode returns page/per_page/pages/total)
     """
+    from app.models import Tag
+
     job = db.session.get(Job, job_id)
 
     if job is None:
@@ -167,6 +170,7 @@ def get_job_files(job_id):
     # Parse query parameters
     mode = request.args.get('mode', 'unreviewed').lower()
     confidence_filter = request.args.get('confidence', '').lower()
+    tag_filter = request.args.get('tag', '').strip()
     sort_field = request.args.get('sort', 'detected_timestamp').lower()
     sort_order = request.args.get('order', 'asc').lower()
     group_by = request.args.get('group_by', '')
@@ -230,6 +234,10 @@ def get_job_files(job_id):
     elif mode == 'failed':
         # Files with processing errors
         query = query.filter(File.processing_error.isnot(None))
+
+    # Apply tag filter
+    if tag_filter:
+        query = query.join(File.tags).filter(Tag.name == tag_filter)
 
     # Apply confidence filter within the mode
     # In group modes, filter on the group confidence (string column) instead of
@@ -944,13 +952,21 @@ def trigger_export(job_id):
     Creates a new export job linked to the same files as the import job,
     then enqueues it for processing by the Huey worker.
 
+    Validates that duplicate groups have been resolved before export.
+
     Args:
         job_id: ID of the completed import job
+
+    Request body (optional):
+        {
+            'force': bool  # Skip duplicate validation if true
+        }
 
     Returns:
         JSON with new export job details
     """
     from app.tasks import enqueue_export_job
+    from collections import defaultdict
 
     # Verify source job exists and is an import job
     source_job = db.session.get(Job, job_id)
@@ -969,6 +985,35 @@ def trigger_export(job_id):
             'error': f'Cannot export from job in {source_job.status.value} state',
             'required_status': 'completed'
         }), 400
+
+    # Check for unresolved duplicates (unless force=true)
+    data = request.get_json() if request.is_json else {}
+    force = data.get('force', False)
+
+    if not force:
+        # Check for unresolved exact duplicates
+        exact_groups = defaultdict(list)
+        for f in source_job.files:
+            if f.exact_group_id and not f.discarded:
+                exact_groups[f.exact_group_id].append(f)
+
+        unresolved_exact = sum(1 for files in exact_groups.values() if len(files) > 1)
+
+        # Check for unresolved similar groups
+        similar_groups = defaultdict(list)
+        for f in source_job.files:
+            if f.similar_group_id and not f.discarded:
+                similar_groups[f.similar_group_id].append(f)
+
+        unresolved_similar = sum(1 for files in similar_groups.values() if len(files) > 1)
+
+        if unresolved_exact > 0 or unresolved_similar > 0:
+            return jsonify({
+                'error': 'Unresolved duplicate groups found',
+                'unresolved_exact_groups': unresolved_exact,
+                'unresolved_similar_groups': unresolved_similar,
+                'message': 'Please resolve duplicates before export, or use force=true to override'
+            }), 400
 
     # Create new export job
     export_job = Job(
@@ -996,4 +1041,106 @@ def trigger_export(job_id):
         'status': 'queued',
         'file_count': file_count,
         'task_id': task_id
+    }), 200
+
+
+@jobs_bp.route('/api/jobs/<int:job_id>/cleanup-sources', methods=['POST'])
+def cleanup_sources(job_id):
+    """
+    Clean up source files after successful export.
+
+    Only deletes source files of successfully exported files (output_path is not None).
+    NEVER deletes files that failed export.
+
+    Args:
+        job_id: ID of the export job
+
+    Request body:
+        {
+            'action': 'delete' | 'keep'
+        }
+
+    Returns:
+        JSON with cleanup results
+    """
+    import os
+
+    # Verify job exists and is an export job
+    job = db.session.get(Job, job_id)
+
+    if job is None:
+        return jsonify({'error': f'Job {job_id} not found'}), 404
+
+    if job.job_type != 'export':
+        return jsonify({
+            'error': 'Source cleanup only available for export jobs',
+            'job_type': job.job_type
+        }), 400
+
+    if job.status != JobStatus.COMPLETED:
+        return jsonify({
+            'error': f'Cannot cleanup sources for job in {job.status.value} state',
+            'required_status': 'completed'
+        }), 400
+
+    # Get action from request
+    data = request.get_json()
+    if not data or 'action' not in data:
+        return jsonify({'error': 'No action provided'}), 400
+
+    action = data['action']
+
+    if action not in ('delete', 'keep'):
+        return jsonify({
+            'error': f'Invalid action: {action}',
+            'allowed_actions': ['delete', 'keep']
+        }), 400
+
+    if action == 'keep':
+        return jsonify({
+            'action': 'keep',
+            'message': 'Source files preserved'
+        }), 200
+
+    # Action is 'delete' - proceed with cleanup
+    deleted = 0
+    failed = 0
+    kept = 0
+
+    # Only delete files that were successfully exported (have output_path)
+    for file_obj in job.files:
+        if file_obj.output_path is None:
+            # File was not exported (failed or discarded) - keep it
+            kept += 1
+            continue
+
+        # Determine source path
+        source_path = file_obj.storage_path or file_obj.original_path
+
+        if not source_path:
+            logger.warning(f"File {file_obj.id} has no source path, skipping")
+            kept += 1
+            continue
+
+        # Delete the source file
+        try:
+            if os.path.exists(source_path):
+                os.unlink(source_path)
+                deleted += 1
+                logger.info(f"Deleted source file: {source_path}")
+            else:
+                logger.warning(f"Source file not found: {source_path}")
+                kept += 1
+        except Exception as e:
+            failed += 1
+            logger.error(f"Failed to delete {source_path}: {e}")
+
+    logger.info(f"Source cleanup for job {job_id}: deleted={deleted}, failed={failed}, kept={kept}")
+
+    return jsonify({
+        'action': 'delete',
+        'deleted': deleted,
+        'failed': failed,
+        'kept': kept,
+        'message': f'Deleted {deleted} source files, {failed} failed, {kept} kept'
     }), 200
