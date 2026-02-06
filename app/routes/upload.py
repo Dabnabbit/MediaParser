@@ -8,12 +8,13 @@ from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from datetime import datetime, timezone
+from typing import Optional
 import os
 import json
 import logging
 
 from app import db
-from app.models import Job, File, JobStatus
+from app.models import Job, File, JobStatus, Setting
 from app.tasks import enqueue_import_job
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,20 @@ def allowed_file(filename: str) -> bool:
     """
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def get_import_root(job_id: int) -> Optional[str]:
+    """
+    Get stored import root path for a job, if any.
+
+    Args:
+        job_id: Job ID
+
+    Returns:
+        Import root path string, or None if not stored (browser upload)
+    """
+    setting = Setting.query.filter_by(key=f'job_{job_id}_import_root').first()
+    return setting.value if setting else None
 
 
 @upload_bp.route('/api/upload', methods=['POST'])
@@ -207,6 +222,10 @@ def import_server_path():
         )
         db.session.add(job)
         db.session.flush()  # Get job.id without committing
+
+        # Store import root path for tag auto-generation
+        setting = Setting(key=f'job_{job.id}_import_root', value=str(import_path))
+        db.session.add(setting)
 
         # Create File records (no copying needed - files stay in place)
         file_records = []
