@@ -81,6 +81,10 @@ class TileManager {
         if (this.tiles.has(fileData.id)) {
             const existing = this.tiles.get(fileData.id);
             existing.updateFile(fileData);
+            // Update index for shift-click range selection
+            if (typeof index === 'number' && existing.element) {
+                existing.element.dataset.index = index;
+            }
             return existing;
         }
 
@@ -90,6 +94,11 @@ class TileManager {
             getGroupColor: this.options.getGroupColor,
             observeSize: true,  // Enable MIPMAP resolution
         });
+
+        // Set index for shift-click range selection
+        if (typeof index === 'number' && tile.element) {
+            tile.element.dataset.index = index;
+        }
 
         // Store in map
         this.tiles.set(fileData.id, tile);
