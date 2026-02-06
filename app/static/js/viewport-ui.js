@@ -30,22 +30,22 @@
         this.closeButton.addEventListener('click', () => this.exit());
         document.body.appendChild(this.closeButton);
 
-        // View mode toggle
+        // View mode toggle — ordered by center image size: compare (small) → carousel (medium) → fullscreen (large)
         this.modeToggle = document.createElement('div');
         this.modeToggle.className = 'viewport-mode-toggle';
         this.modeToggle.innerHTML = `
-            <button class="viewport-mode-btn active" data-mode="carousel" title="Carousel view (V)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="7" y="5" width="10" height="14" rx="1"/>
-                    <rect x="2" y="7" width="4" height="10" rx="1" opacity="0.5"/>
-                    <rect x="18" y="7" width="4" height="10" rx="1" opacity="0.5"/>
-                </svg>
-            </button>
             <button class="viewport-mode-btn" data-mode="compare" title="Compare view (V)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="2" y="6" width="6" height="12" rx="1"/>
                     <rect x="9" y="6" width="6" height="12" rx="1"/>
                     <rect x="16" y="6" width="6" height="12" rx="1"/>
+                </svg>
+            </button>
+            <button class="viewport-mode-btn active" data-mode="carousel" title="Carousel view (V)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="7" y="5" width="10" height="14" rx="1"/>
+                    <rect x="2" y="7" width="4" height="10" rx="1" opacity="0.5"/>
+                    <rect x="18" y="7" width="4" height="10" rx="1" opacity="0.5"/>
                 </svg>
             </button>
             <button class="viewport-mode-btn" data-mode="fullscreen" title="Fullscreen view (V)">
@@ -62,6 +62,21 @@
             }
         });
         document.body.appendChild(this.modeToggle);
+
+        // Navigation arrows (visible in carousel + fullscreen, hidden in compare)
+        this.navPrev = document.createElement('button');
+        this.navPrev.className = 'viewport-nav-arrow nav-prev';
+        this.navPrev.innerHTML = '\u2039'; // ‹
+        this.navPrev.title = 'Previous';
+        this.navPrev.addEventListener('click', () => this.prev());
+        document.body.appendChild(this.navPrev);
+
+        this.navNext = document.createElement('button');
+        this.navNext.className = 'viewport-nav-arrow nav-next';
+        this.navNext.innerHTML = '\u203A'; // ›
+        this.navNext.title = 'Next';
+        this.navNext.addEventListener('click', () => this.next());
+        document.body.appendChild(this.navNext);
 
         // Counter
         this.counter = document.createElement('div');
@@ -86,11 +101,15 @@
     proto.removeUI = function() {
         this.closeButton?.remove();
         this.modeToggle?.remove();
+        this.navPrev?.remove();
+        this.navNext?.remove();
         this.counter?.remove();
         this.hints?.remove();
 
         this.closeButton = null;
         this.modeToggle = null;
+        this.navPrev = null;
+        this.navNext = null;
         this.counter = null;
         this.hints = null;
 
@@ -141,6 +160,11 @@
         } else {
             this._clearCompareLayout();
         }
+
+        // Toggle nav arrows: hide in compare (tiles are clickable), show otherwise
+        const isCompare = mode === ViewportController.VIEW_MODES.COMPARE;
+        this.navPrev?.classList.toggle('compare-hidden', isCompare);
+        this.navNext?.classList.toggle('compare-hidden', isCompare);
 
         // Update toggle button states
         if (this.modeToggle) {

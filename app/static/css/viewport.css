@@ -172,23 +172,18 @@ body.viewport-active {
    BADGE VISIBILITY IN VIEWPORT
    ============================================ */
 
-/* Hide badges on side tiles */
+/* Show badges on all viewport tiles */
 .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"] .thumbnail-badges,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] .thumbnail-badges,
 .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] .thumbnail-badges,
 .thumbnail-grid.viewport-mode .thumbnail.vp-prev .thumbnail-badges,
+.thumbnail-grid.viewport-mode .thumbnail.vp-current .thumbnail-badges,
 .thumbnail-grid.viewport-mode .thumbnail.vp-next .thumbnail-badges {
-    opacity: 0;
-    pointer-events: none;
-}
-
-/* Show badges on current tile with larger size */
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] .thumbnail-badges,
-.thumbnail-grid.viewport-mode .thumbnail.vp-current .thumbnail-badges {
     opacity: 1;
     pointer-events: auto;
 }
 
-/* Scale up badges for viewport */
+/* Scale up badges on current tile */
 .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] .thumb-badge,
 .thumbnail-grid.viewport-mode .thumbnail.vp-current .thumb-badge {
     font-size: 0.9rem;
@@ -284,6 +279,59 @@ body.viewport-active {
 .thumbnail-grid.viewport-mode .thumbnail.vp-prev:hover::after,
 .thumbnail-grid.viewport-mode .thumbnail.vp-next:hover::after {
     opacity: 0.8;
+}
+
+/* ============================================
+   VIEWPORT NAVIGATION ARROWS (standalone buttons)
+   ============================================ */
+
+/* Nav arrows: fixed buttons on left/right edges, visible in carousel + fullscreen */
+.viewport-nav-arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1010;
+    width: 48px;
+    height: 80px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    font-size: 1.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease, opacity 0.2s ease;
+    backdrop-filter: blur(4px);
+    opacity: 0.5;
+}
+
+.viewport-nav-arrow:hover {
+    background: rgba(255, 255, 255, 0.18);
+    opacity: 1;
+}
+
+.viewport-nav-arrow:active {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.viewport-nav-arrow.nav-prev {
+    left: 12px;
+}
+
+.viewport-nav-arrow.nav-next {
+    right: 12px;
+}
+
+/* Adjust nav-next for details panel */
+body.viewport-details-open > .viewport-nav-arrow.nav-next {
+    right: 392px;
+}
+
+/* Hide nav arrows in compare mode (tiles are directly clickable) */
+body.viewport-active .viewport-nav-arrow.compare-hidden {
+    display: none;
 }
 
 /* ============================================
@@ -570,6 +618,10 @@ body.viewport-active {
     }
 
     .viewport-hints {
+        display: none;
+    }
+
+    .viewport-nav-arrow {
         display: none;
     }
 
@@ -924,6 +976,10 @@ body.viewport-details-open > .viewport-counter {
 
     body.viewport-details-open > .viewport-close {
         right: 340px;
+    }
+
+    body.viewport-details-open > .viewport-nav-arrow.nav-next {
+        right: 352px;
     }
 }
 

@@ -9,11 +9,12 @@
  */
 
 class ViewportController {
-    // View modes
+    // View modes — ordered by center image size (small → medium → large)
+    // Carousel is the default mode on enter
     static VIEW_MODES = {
-        CAROUSEL: 'carousel',   // Large center, small prev/next
-        COMPARE: 'compare',     // Equal size tiles
-        FULLSCREEN: 'fullscreen' // Single large image
+        COMPARE: 'compare',      // Equal size tiles (smallest center)
+        CAROUSEL: 'carousel',    // Large center, small prev/next (default)
+        FULLSCREEN: 'fullscreen' // Single large image (largest)
     };
 
     /**
