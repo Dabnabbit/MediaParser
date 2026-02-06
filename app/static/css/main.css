@@ -1054,7 +1054,7 @@ body {
     padding: var(--spacing-sm) var(--spacing-md);
     background-color: var(--color-bg-alt);
     border-radius: var(--border-radius-sm);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
     font-size: 0.85rem;
 }
 
@@ -1087,7 +1087,7 @@ body {
     padding: var(--spacing-sm) var(--spacing-md);
     background-color: var(--color-bg-alt);
     border-radius: var(--border-radius-sm);
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
 }
 
 .summary-row {
