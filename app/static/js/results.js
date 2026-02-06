@@ -58,12 +58,8 @@ class ResultsHandler {
             this.resultsContainer.style.display = 'none';
         }
 
-        // Hide export button and section
+        // Hide export button
         this.hideExportButton();
-        const exportSection = document.getElementById('export-section');
-        if (exportSection) {
-            exportSection.style.display = 'none';
-        }
 
         // Clear tiles via TileManager
         if (this.tileManager) {
