@@ -43,6 +43,20 @@ class ParticleEffects {
             });
         }
 
+        // Single confetti ball emoji — nudged up to visually center on button
+        particles.push({
+            x: cx, y: cy - 16,
+            vx: 0, vy: -8,
+            size: 30,
+            emoji: '\uD83C\uDF8A',
+            color: '#fff',
+            opacity: 1,
+            spin: 0,
+            spinRate: (Math.random() - 0.5) * 60,
+            shape: 'emoji',
+            noGravity: true,
+        });
+
         this._animate(particles, {
             gravity: 500,
             fadeRate: 0.7,
@@ -78,6 +92,20 @@ class ParticleEffects {
                 shape: 'circle',
             });
         }
+
+        // Sparkles emoji — nudged up to visually center on button
+        particles.push({
+            x: cx, y: cy - 6,
+            vx: 0, vy: 0,
+            size: 28,
+            emoji: '\u2728',
+            color: '#fff',
+            opacity: 1,
+            spin: 0,
+            spinRate: 0,
+            shape: 'emoji',
+            noGravity: true,
+        });
 
         this._animate(particles, {
             gravity: 200,
@@ -149,6 +177,26 @@ class ParticleEffects {
                 solid: 0,
                 opacity: 0,
                 phase: Math.random() * Math.PI * 2,
+                delay,
+                age: -delay,
+            });
+        }
+
+        // One big turd emoji floating above the cloud
+        const turds = [];
+        {
+            const delay = 0.15;
+            turds.push({
+                x: cx,
+                y: cy - 16,
+                vx: (Math.random() - 0.5) * 10,
+                vy: -6,
+                size: 28 + Math.random() * 4,
+                peak: 0.5,
+                opacity: 0,
+                phase: Math.random() * Math.PI * 2,
+                spin: 0,
+                spinRate: (Math.random() - 0.5) * 90,
                 delay,
                 age: -delay,
             });
@@ -248,6 +296,43 @@ class ParticleEffects {
                 ctx.stroke();
             }
 
+            // Update + draw turds
+            for (const t of turds) {
+                t.age += dt;
+                if (t.age < 0) { alive = true; continue; }
+
+                const peak = t.peak;
+                if (t.age < 0.2) {
+                    t.opacity = t.age / 0.2 * peak;
+                } else {
+                    t.opacity -= dt * 0.25;
+                }
+                if (t.opacity <= 0 && t.age > 0.2) continue;
+                alive = true;
+
+                // Same swirl physics as puffs
+                const swirl = 20;
+                const freq = 4 + (t.phase % 3);
+                t.x += t.vx * dt + Math.sin(t.age * freq + t.phase) * swirl * dt;
+                t.y += t.vy * dt + Math.cos(t.age * freq + t.phase) * swirl * 0.6 * dt;
+                t.vy += 8 * dt;
+                t.vx *= (1 - dt * 1.2);
+                t.spin += t.spinRate * dt;
+
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, t.opacity);
+                ctx.translate(t.x, t.y);
+                ctx.rotate(t.spin * Math.PI / 180);
+                ctx.font = `${t.size}px serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                ctx.shadowBlur = 6;
+                ctx.fillText('\uD83D\uDCA9', 0, 0);
+                ctx.shadowBlur = 0;
+                ctx.restore();
+            }
+
             if (alive) {
                 requestAnimationFrame(tick);
             } else {
@@ -304,7 +389,7 @@ class ParticleEffects {
             let alive = false;
             for (const p of particles) {
                 if (p.opacity <= 0) continue;
-                p.vy += gravity * dt;
+                if (!p.noGravity) p.vy += gravity * dt;
                 p.x += p.vx * dt;
                 p.y += p.vy * dt;
                 p.spin += p.spinRate * dt;
@@ -313,7 +398,7 @@ class ParticleEffects {
                 p.vy *= (1 - dt * drag * 0.3);
                 if (p.opacity > 0) {
                     alive = true;
-                    if (trailLen) {
+                    if (trailLen && p.shape !== 'emoji') {
                         if (!p.trail) p.trail = [];
                         p.trail.push({ x: p.x, y: p.y });
                         if (p.trail.length > trailLen) p.trail.shift();
@@ -361,6 +446,15 @@ class ParticleEffects {
                     ctx.arc(0, 0, p.size * 2.5, 0, Math.PI * 2);
                     ctx.fillStyle = p.color;
                     ctx.fill();
+                } else if (p.shape === 'emoji') {
+                    ctx.font = `${p.size}px serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    // Dark halo to pop against any background
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+                    ctx.shadowBlur = 6;
+                    ctx.fillText(p.emoji, 0, 0);
+                    ctx.shadowBlur = 0;
                 } else {
                     ctx.fillStyle = p.color;
                     ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
