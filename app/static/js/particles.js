@@ -7,6 +7,10 @@
  *   window.particles.fart(el)        // noxious gas cloud
  *   window.particles.burst(el)       // random pick
  *
+ * Sound-only (no visuals):
+ *   window.particles.successSound()  // ascending two-tone chime
+ *   window.particles.failSound()     // short dull thud
+ *
  * Each call creates a short-lived fullscreen canvas overlay,
  * runs physics via requestAnimationFrame, then cleans itself up.
  */
@@ -15,12 +19,27 @@ class ParticleEffects {
         this.defaults = {
             colors: ['#ef4444', '#f59e0b', '#fbbf24', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#fff'],
         };
+        this._audioCtx = null;
+        this.muted = false;
+
+        // Browsers require AudioContext creation during a direct user gesture.
+        // Use capture phase so this fires BEFORE any button handler that triggers effects.
+        const initAudio = () => {
+            if (!this._audioCtx) {
+                try { this._audioCtx = new AudioContext(); } catch {}
+            }
+            document.removeEventListener('click', initAudio, true);
+            document.removeEventListener('keydown', initAudio, true);
+        };
+        document.addEventListener('click', initAudio, { capture: true, once: true });
+        document.addEventListener('keydown', initAudio, { capture: true, once: true });
     }
 
     // ── Public API ─────────────────────────────────────────
 
     /** Spinning confetti rectangles bursting from el */
     confetti(el, opts = {}) {
+        if (!opts.mute && !this.muted) this._popSound();
         const { cx, cy } = this._center(el);
         const colors = opts.colors || this.defaults.colors;
         const count = opts.count || 32;
@@ -67,6 +86,7 @@ class ParticleEffects {
 
     /** Radial firework burst with glowing trails from el */
     fireworks(el, opts = {}) {
+        if (!opts.mute && !this.muted) this._crackleSound();
         const { cx, cy } = this._center(el);
         const colors = opts.colors || this.defaults.colors;
         const count = opts.count || 36;
@@ -117,8 +137,9 @@ class ParticleEffects {
 
     /** Noxious gas cloud puffing out from el */
     fart(el, opts = {}) {
+        if (!opts.mute && !this.muted) this._fartSound();
         const { cx, cy } = this._center(el);
-        const count = opts.count || 18;
+        const count = opts.count || 12;
         // Greens are wispy/transparent, browns are denser/opaque
         const palette = opts.colors || [
             { color: '#4ade80', peak: 0.4,  solid: 0,    scale: 1.5 },
@@ -192,6 +213,7 @@ class ParticleEffects {
                 vx: (Math.random() - 0.5) * 10,
                 vy: -6,
                 size: 28 + Math.random() * 4,
+                emoji: '\uD83D\uDCA9',
                 peak: 0.5,
                 opacity: 0,
                 phase: Math.random() * Math.PI * 2,
@@ -201,6 +223,8 @@ class ParticleEffects {
                 age: -delay,
             });
         }
+
+
 
         // Stink-line squiggles rising from the cloud
         const stinkLines = [];
@@ -323,12 +347,12 @@ class ParticleEffects {
                 ctx.globalAlpha = Math.max(0, t.opacity);
                 ctx.translate(t.x, t.y);
                 ctx.rotate(t.spin * Math.PI / 180);
-                ctx.font = `${t.size}px serif`;
+                ctx.font = `${Math.round(t.size)}px serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
                 ctx.shadowBlur = 6;
-                ctx.fillText('\uD83D\uDCA9', 0, 0);
+                ctx.fillText(t.emoji, 0, 0);
                 ctx.shadowBlur = 0;
                 ctx.restore();
             }
@@ -344,14 +368,18 @@ class ParticleEffects {
 
     /** Random pick between confetti and fireworks */
     burst(el, opts = {}) {
-        const roll = Math.random();
-        if (roll < 0.4) {
-            this.confetti(el, opts);
-        } else if (roll < 0.8) {
-            this.fireworks(el, opts);
-        } else {
-            this.fart(el, opts);
-        }
+        // TODO: restore randomizer after gas puff tuning
+        this.fart(el, opts);
+    }
+
+    /** Standalone ascending two-tone success chime (no visuals) */
+    successSound() {
+        if (!this.muted) this._successSound();
+    }
+
+    /** Standalone dull thud fail sound (no visuals) */
+    failSound() {
+        if (!this.muted) this._failSound();
     }
 
     // ── Internals ──────────────────────────────────────────
@@ -469,6 +497,251 @@ class ParticleEffects {
             }
         };
         requestAnimationFrame(tick);
+    }
+
+    // ── Sound effects (Web Audio API) ─────────────────────
+
+    /** Get shared AudioContext, resuming if suspended */
+    _getAudioCtx() {
+        try {
+            if (!this._audioCtx) this._audioCtx = new AudioContext();
+            if (this._audioCtx.state === 'suspended') this._audioCtx.resume();
+            return this._audioCtx;
+        } catch { return null; }
+    }
+
+    /** Confetti — short white noise pop/snap */
+    _popSound() {
+        const ctx = this._getAudioCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const duration = 0.08;
+
+        // White noise buffer
+        const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+
+        // Bandpass to give it a snappy pop character
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 1200;
+        bp.Q.value = 0.8;
+
+        // Sharp attack, fast decay
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.6, now + 0.005);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        src.connect(bp).connect(gain).connect(ctx.destination);
+        src.start(now);
+        src.stop(now + duration);
+    }
+
+
+    /** Fireworks — crackle burst with sparkle tail */
+    _crackleSound() {
+        const ctx = this._getAudioCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        // Initial pop — punchy noise burst
+        const burstDur = 0.08;
+        const buf = ctx.createBuffer(1, ctx.sampleRate * burstDur, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 1500;
+
+        const burstGain = ctx.createGain();
+        burstGain.gain.setValueAtTime(0.7, now);
+        burstGain.gain.exponentialRampToValueAtTime(0.001, now + burstDur);
+
+        src.connect(hp).connect(burstGain).connect(ctx.destination);
+        src.start(now);
+        src.stop(now + burstDur);
+
+        // Crackle — staggered micro noise pops
+        for (let i = 0; i < 8; i++) {
+            const popDur = 0.015 + Math.random() * 0.025;
+            const popBuf = ctx.createBuffer(1, ctx.sampleRate * popDur, ctx.sampleRate);
+            const popData = popBuf.getChannelData(0);
+            for (let j = 0; j < popData.length; j++) popData[j] = Math.random() * 2 - 1;
+
+            const popSrc = ctx.createBufferSource();
+            popSrc.buffer = popBuf;
+
+            const popHp = ctx.createBiquadFilter();
+            popHp.type = 'highpass';
+            popHp.frequency.value = 800 + Math.random() * 3000;
+
+            const popGain = ctx.createGain();
+            const delay = 0.2 + Math.random() * 0.35;
+            popGain.gain.setValueAtTime(0.25 + Math.random() * 0.35, now + delay);
+            popGain.gain.exponentialRampToValueAtTime(0.001, now + delay + popDur);
+
+            popSrc.connect(popHp).connect(popGain).connect(ctx.destination);
+            popSrc.start(now + delay);
+            popSrc.stop(now + delay + popDur);
+        }
+
+        // Sizzle tail — sustained high-freq noise that fades out
+        const sizzleDur = 0.5;
+        const sizzleBuf = ctx.createBuffer(1, ctx.sampleRate * sizzleDur, ctx.sampleRate);
+        const sizzleData = sizzleBuf.getChannelData(0);
+        for (let i = 0; i < sizzleData.length; i++) sizzleData[i] = Math.random() * 2 - 1;
+
+        const sizzleSrc = ctx.createBufferSource();
+        sizzleSrc.buffer = sizzleBuf;
+
+        const sizzleHp = ctx.createBiquadFilter();
+        sizzleHp.type = 'highpass';
+        sizzleHp.frequency.value = 6000;
+
+        const sizzleGain = ctx.createGain();
+        const sizzleDelay = 0.2;
+        sizzleGain.gain.setValueAtTime(0.001, now + sizzleDelay);
+        sizzleGain.gain.linearRampToValueAtTime(0.12, now + sizzleDelay + 0.05);
+        sizzleGain.gain.exponentialRampToValueAtTime(0.001, now + sizzleDelay + sizzleDur);
+
+        sizzleSrc.connect(sizzleHp).connect(sizzleGain).connect(ctx.destination);
+        sizzleSrc.start(now + sizzleDelay);
+        sizzleSrc.stop(now + sizzleDelay + sizzleDur);
+    }
+
+    /** Fart — low oscillator sweep with filtered noise texture */
+    _fartSound() {
+        const ctx = this._getAudioCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+        const duration = 0.35 + Math.random() * 0.15;
+
+        // Low oscillator with downward frequency sweep
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        const startFreq = 90 + Math.random() * 30;
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(startFreq * 0.5, now + duration);
+
+        // Slight pitch wobble for realism
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = 6 + Math.random() * 8;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 8;
+        lfo.connect(lfoGain).connect(osc.frequency);
+        lfo.start(now);
+        lfo.stop(now + duration);
+
+        // Lowpass to soften the sawtooth
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 500;
+        lp.Q.value = 3;
+
+        const oscGain = ctx.createGain();
+        oscGain.gain.setValueAtTime(0.001, now);
+        oscGain.gain.linearRampToValueAtTime(0.45, now + 0.04);
+        oscGain.gain.setValueAtTime(0.45, now + duration * 0.5);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        osc.connect(lp).connect(oscGain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+
+        // Noise layer for texture
+        const noiseDur = duration * 0.8;
+        const buf = ctx.createBuffer(1, ctx.sampleRate * noiseDur, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+        const noiseSrc = ctx.createBufferSource();
+        noiseSrc.buffer = buf;
+
+        const noiseBp = ctx.createBiquadFilter();
+        noiseBp.type = 'bandpass';
+        noiseBp.frequency.value = 200;
+        noiseBp.Q.value = 0.8;
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.setValueAtTime(0.001, now);
+        noiseGain.gain.linearRampToValueAtTime(0.25, now + 0.05);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + noiseDur);
+
+        noiseSrc.connect(noiseBp).connect(noiseGain).connect(ctx.destination);
+        noiseSrc.start(now);
+        noiseSrc.stop(now + noiseDur);
+    }
+
+    /** Success — quick ascending two-tone chime */
+    _successSound() {
+        const ctx = this._getAudioCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        // Bright ascending two-pulse — same square-wave family as fail
+        const notes = [520, 780]; // C5 → G5, upbeat
+        notes.forEach((freq, i) => {
+            const osc = ctx.createOscillator();
+            osc.type = 'square';
+            osc.frequency.value = freq;
+
+            // Lowpass softens the square but keeps it brighter than fail
+            const lp = ctx.createBiquadFilter();
+            lp.type = 'lowpass';
+            lp.frequency.value = 1800;
+
+            const gain = ctx.createGain();
+            const start = now + i * 0.12;
+            const dur = 0.1;
+            gain.gain.setValueAtTime(0.001, start);
+            gain.gain.linearRampToValueAtTime(0.25, start + 0.01);
+            gain.gain.setValueAtTime(0.25, start + dur - 0.025);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + dur + 0.06);
+
+            osc.connect(lp).connect(gain).connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + dur + 0.06);
+        });
+    }
+
+    /** Fail — short dull low thud */
+    _failSound() {
+        const ctx = this._getAudioCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        // "Nah-uh" buzzer — two short low pulses
+        for (let i = 0; i < 2; i++) {
+            const osc = ctx.createOscillator();
+            osc.type = 'square';
+            osc.frequency.value = 185;
+
+            // Lowpass to take the harsh edge off the square wave
+            const lp = ctx.createBiquadFilter();
+            lp.type = 'lowpass';
+            lp.frequency.value = 600;
+
+            const gain = ctx.createGain();
+            const start = now + i * 0.14;
+            const dur = 0.09;
+            gain.gain.setValueAtTime(0.001, start);
+            gain.gain.linearRampToValueAtTime(0.3, start + 0.01);
+            gain.gain.setValueAtTime(0.3, start + dur - 0.02);
+            gain.gain.linearRampToValueAtTime(0.001, start + dur);
+
+            osc.connect(lp).connect(gain).connect(ctx.destination);
+            osc.start(start);
+            osc.stop(start + dur);
+        }
     }
 }
 
