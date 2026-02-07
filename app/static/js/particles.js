@@ -9,7 +9,7 @@
  *
  * Sound-only (no visuals):
  *   window.particles.successSound()  // ascending two-tone chime
- *   window.particles.failSound()     // short dull thud
+ *   window.particles.failSound()     // "nah-uh" buzzer
  *
  * Each call creates a short-lived fullscreen canvas overlay,
  * runs physics via requestAnimationFrame, then cleans itself up.
@@ -377,7 +377,7 @@ class ParticleEffects {
         if (!this.muted) this._successSound();
     }
 
-    /** Standalone dull thud fail sound (no visuals) */
+    /** Standalone "nah-uh" buzzer fail sound (no visuals) */
     failSound() {
         if (!this.muted) this._failSound();
     }
@@ -541,7 +541,6 @@ class ParticleEffects {
         src.start(now);
         src.stop(now + duration);
     }
-
 
     /** Fireworks — crackle burst with sparkle tail */
     _crackleSound() {
@@ -713,7 +712,7 @@ class ParticleEffects {
         });
     }
 
-    /** Fail — short dull low thud */
+    /** Fail — "nah-uh" double buzzer */
     _failSound() {
         const ctx = this._getAudioCtx();
         if (!ctx) return;
