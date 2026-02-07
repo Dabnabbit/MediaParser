@@ -53,4 +53,23 @@ The following was tested and fixed in sessions not tracked by GSD:
 - Carousel viewport system (major architectural refactor)
 - FLIP animation for navigation enter/leave (tiles animate to/from grid positions)
 - Fixed tile.css transition selector (was applying to grid tiles, causing shoot-off bug)
-- Latest commit: `631a0fd fix(viewport): FLIP animation for nav enter/leave, fix grid tile transition`
+
+### Sound Effects (Web Audio API) — `app/static/js/particles.js`
+Synthesized sound effects added to particle system, no audio files needed:
+- **Confetti** → white noise pop/snap (bandpass 1200Hz, 80ms)
+- **Fireworks** → initial burst → 200ms gap → crackle pops + high-freq sizzle tail
+- **Fart** → sawtooth sweep (90-120Hz) with LFO wobble + bandpassed noise texture
+- **`successSound()`** → ascending two-tone square wave (520→780Hz), lowpass softened
+- **`failSound()`** → "nah-uh" double buzzer (185Hz square wave, two 90ms pulses)
+
+AudioContext lazy-inited on first user gesture via capture-phase document listener.
+All sounds respect `opts.mute` (per-call) and `particles.muted` (global toggle).
+Success/fail sounds share the same square-wave family for coherence.
+
+### Next: Sound & Particle Enhancements
+Planned additions (not yet implemented):
+- **Lock icon shatter** (`filters.js:_updateLockIcons()`) — when a mode segment unlocks, burst particles from the lock icon position + success sound. The lock could become particles that fly apart.
+- **Job complete** — moderate celebration (success sound + small confetti)
+- **Export segment unlocks** — bigger celebration (fireworks + success sound) since this is the real finish line. Same sound family as job complete, just louder.
+- **Mode bars "coming alive"** — when `morphToModes()` transitions from progress bar to mode segments, staggered ripple/sparkle left-to-right as each segment appears.
+- Other candidates: bulk action completion sounds, progress milestones, duplicate group resolution
