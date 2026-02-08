@@ -139,24 +139,61 @@ class FilterHandler {
     }
 
     /**
+     * Snapshot current lock icon positions before DOM changes shift segments.
+     * Returns Map<mode, {cx, cy}> — empty map if no lock overlay or no icons.
+     */
+    _snapshotLockPositions() {
+        const positions = new Map();
+        if (!this.lockOverlay) return positions;
+        for (const icon of this.lockOverlay.children) {
+            const seg = icon._segment;
+            if (seg) {
+                const rect = seg.getBoundingClientRect();
+                positions.set(seg.dataset.mode, {
+                    cx: rect.left + rect.width / 2,
+                    cy: rect.top + rect.height / 2,
+                });
+            }
+        }
+        return positions;
+    }
+
+    /**
      * Rebuild lock icons for current locked state.
      * Each icon stores a reference to its segment for repositioning.
+     * @param {Map} [prevLocked] — pre-snapshot of old lock positions (from before DOM changes)
      */
-    _updateLockIcons() {
+    _updateLockIcons(prevLocked) {
         if (!this.lockOverlay) return;
+
+        // Fall back to snapshotting now if no pre-computed positions passed
+        if (!prevLocked) prevLocked = this._snapshotLockPositions();
+
         this.lockOverlay.innerHTML = '';
 
         if (!this.strictMode) return;
 
+        // Rebuild lock icons for current state
+        const nowLocked = new Set();
         this.modeChips.forEach(seg => {
             if (!seg.classList.contains('locked') || seg.classList.contains('collapsed')) return;
 
+            nowLocked.add(seg.dataset.mode);
             const icon = document.createElement('span');
             icon.className = 'seg-lock-icon';
             icon.textContent = '\u{1F512}';
             icon._segment = seg;
             this.lockOverlay.appendChild(icon);
         });
+
+        // Shatter effect for each lock that just disappeared (= segment unlocked)
+        if (window.particles) {
+            for (const [mode, pos] of prevLocked) {
+                if (!nowLocked.has(mode)) {
+                    window.particles.shatter(pos);
+                }
+            }
+        }
 
         // Position after flex layout settles
         requestAnimationFrame(() => this._repositionLockIcons());
@@ -215,6 +252,9 @@ class FilterHandler {
     }
 
     updateCounts(counts) {
+        // Snapshot lock icon positions BEFORE any DOM changes (flex reflow shifts segments)
+        const prevLockPositions = this._snapshotLockPositions();
+
         this.counts = { ...this.counts, ...counts };
 
         // Update count displays (both segment counts and any remaining data-count elements)
@@ -269,7 +309,7 @@ class FilterHandler {
         });
 
         // Position lock icons between segments when strict mode is active
-        this._updateLockIcons();
+        this._updateLockIcons(prevLockPositions);
 
         // Update reviewed overlay width and reposition mode segments
         const reviewedPct = total > 0 ? ((this.counts.reviewed || 0) / total) * 100 : 0;

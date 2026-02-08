@@ -6,6 +6,7 @@
  *   window.particles.fireworks(el)   // radial burst with trails
  *   window.particles.fart(el)        // noxious gas cloud
  *   window.particles.burst(el)       // random pick
+ *   window.particles.shatter({cx,cy}) // metallic shard burst (lock unlock)
  *
  * Sound-only (no visuals):
  *   window.particles.successSound()  // ascending two-tone chime
@@ -372,6 +373,53 @@ class ParticleEffects {
         this.fart(el, opts);
     }
 
+    /** Metallic shatter burst — lock icon unlock effect */
+    shatter(el, opts = {}) {
+        if (!opts.mute && !this.muted) this._latchSound();
+        const { cx, cy } = this._center(el);
+        const metalColors = ['#c0c0c0', '#ffd700', '#888888', '#ffffff'];
+        const count = 10 + Math.floor(Math.random() * 5); // 10-14
+
+        const particles = [];
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i / count) + (Math.random() - 0.5) * 0.8;
+            const speed = 40 + Math.random() * 60;
+            particles.push({
+                x: cx, y: cy,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 80,
+                w: 2 + Math.random() * 2,
+                h: 3 + Math.random() * 3,
+                color: metalColors[Math.floor(Math.random() * metalColors.length)],
+                opacity: 1,
+                spin: 0,
+                spinRate: (Math.random() - 0.5) * 900,
+                shape: 'rect',
+            });
+        }
+
+        // Open lock emoji — pops up briefly and fades
+        particles.push({
+            x: cx, y: cy - 8,
+            vx: 0, vy: -15,
+            size: 20,
+            emoji: '\uD83D\uDD13',
+            color: '#fff',
+            opacity: 1,
+            spin: 0,
+            spinRate: 0,
+            shape: 'emoji',
+            noGravity: true,
+        });
+
+        this._animate(particles, {
+            gravity: 300,
+            fadeRate: 1.0,
+            drag: 0.5,
+            trailLen: 0,
+        });
+    }
+
     /** Standalone ascending two-tone success chime (no visuals) */
     successSound() {
         if (!this.muted) this._successSound();
@@ -384,9 +432,10 @@ class ParticleEffects {
 
     // ── Internals ──────────────────────────────────────────
 
-    /** Get center point of an element */
-    _center(el) {
-        const rect = el.getBoundingClientRect();
+    /** Get center point — accepts a DOM element or raw {cx, cy} coordinates */
+    _center(elOrPos) {
+        if (!elOrPos.getBoundingClientRect) return elOrPos;
+        const rect = elOrPos.getBoundingClientRect();
         return {
             cx: rect.left + rect.width / 2,
             cy: rect.top + rect.height / 2,
@@ -678,6 +727,52 @@ class ParticleEffects {
         noiseSrc.connect(noiseBp).connect(noiseGain).connect(ctx.destination);
         noiseSrc.start(now);
         noiseSrc.stop(now + noiseDur);
+    }
+
+    /** Latch release — short metallic click + brief resonant ping */
+    _latchSound() {
+        const ctx = this._getAudioCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        // Mechanical click — very short bandpassed noise burst
+        const clickDur = 0.025;
+        const buf = ctx.createBuffer(1, ctx.sampleRate * clickDur, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+
+        const bp = ctx.createBiquadFilter();
+        bp.type = 'bandpass';
+        bp.frequency.value = 2800;
+        bp.Q.value = 1.5;
+
+        const clickGain = ctx.createGain();
+        clickGain.gain.setValueAtTime(0.001, now);
+        clickGain.gain.linearRampToValueAtTime(0.35, now + 0.003);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, now + clickDur);
+
+        src.connect(bp).connect(clickGain).connect(ctx.destination);
+        src.start(now);
+        src.stop(now + clickDur);
+
+        // Metallic ping — brief sine tone that rings out quickly
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 3200;
+
+        const pingGain = ctx.createGain();
+        const pingStart = now + 0.01;
+        const pingDur = 0.06;
+        pingGain.gain.setValueAtTime(0.001, pingStart);
+        pingGain.gain.linearRampToValueAtTime(0.15, pingStart + 0.005);
+        pingGain.gain.exponentialRampToValueAtTime(0.001, pingStart + pingDur);
+
+        osc.connect(pingGain).connect(ctx.destination);
+        osc.start(pingStart);
+        osc.stop(pingStart + pingDur);
     }
 
     /** Success — quick ascending two-tone chime */
