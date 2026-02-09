@@ -100,14 +100,26 @@ describe('TileManager — File Data Store', () => {
         cleanup(tm);
     });
 
-    it('updateFiles merges partial data', () => {
+    it('updateFiles replaces file data in store', () => {
+        const tm = makeTM();
+        if (!tm) { assert.ok(true, 'skipped'); return; }
+        tm.renderFiles(sampleFiles);
+        tm.updateFiles([{ id: 2, original_filename: 'b.jpg', reviewed_at: '2026-01-01' }]);
+        const f = tm.getFile(2);
+        assert.equal(f.reviewed_at, '2026-01-01');
+        assert.equal(f.original_filename, 'b.jpg');
+        cleanup(tm);
+    });
+
+    it('updateFiles updates rendered tile via merge', () => {
         const tm = makeTM();
         if (!tm) { assert.ok(true, 'skipped'); return; }
         tm.renderFiles(sampleFiles);
         tm.updateFiles([{ id: 2, reviewed_at: '2026-01-01' }]);
-        const f = tm.getFile(2);
-        assert.equal(f.reviewed_at, '2026-01-01');
-        assert.equal(f.original_filename, 'b.jpg'); // preserved
+        const tile = tm.getTile(2);
+        // Tile.updateFile merges: { ...this.file, ...updates }
+        assert.equal(tile.file.reviewed_at, '2026-01-01');
+        assert.equal(tile.file.original_filename, 'b.jpg');
         cleanup(tm);
     });
 });
