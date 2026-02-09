@@ -153,6 +153,7 @@
         setupCaret('ab-keep-caret', 'ab-keep-dropdown');
         setupCaret('ab-similar-caret', 'ab-similar-dropdown');
         setupCaret('ab-accept-caret', 'ab-accept-dropdown');
+        setupCaret('ab-restore-caret', 'ab-restore-dropdown');
 
         // ==========================================
         // Action Bar — Split Dropdown Items
@@ -253,6 +254,9 @@
             }
             case 'mark-reviewed':
                 this.bulkReview('mark_reviewed', 'selection');
+                break;
+            case 'restore-all':
+                this.restoreAllDiscarded();
                 break;
             case 'select-all':
                 this.selectAll();

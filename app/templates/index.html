@@ -209,7 +209,13 @@
                 </div>
                 <!-- Discarded mode actions -->
                 <div class="action-group" data-action-mode="discarded" style="display: none;">
-                    <button class="btn-pill btn-pill-success" id="ab-restore" disabled title="Restore selected files">Restore</button>
+                    <div class="split-btn">
+                        <button class="btn-pill btn-pill-success" id="ab-restore" disabled title="Restore selected files">Restore</button>
+                        <button class="btn-pill btn-pill-success split-caret" id="ab-restore-caret" disabled title="More actions">&#9662;</button>
+                        <div class="split-dropdown" id="ab-restore-dropdown">
+                            <button class="split-dropdown-item" data-action="restore-all">Restore All</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="action-bar-right">

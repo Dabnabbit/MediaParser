@@ -104,6 +104,54 @@
         }
     };
 
+    proto.restoreAllDiscarded = async function() {
+        const jobId = window.resultsHandler?.jobId;
+        if (!jobId) return;
+
+        try {
+            const params = new URLSearchParams({
+                mode: 'discarded',
+                confidence: 'high,medium,low,none',
+                limit: 10000
+            });
+
+            const response = await fetch(`/api/jobs/${jobId}/files?${params}`);
+            if (!response.ok) throw new Error('Failed to fetch discarded files');
+
+            const data = await response.json();
+            const fileIds = (data.files || []).map(f => f.id);
+
+            if (fileIds.length === 0) {
+                this.showToast('No discarded files to restore');
+                return;
+            }
+
+            if (!confirm(`Restore all ${fileIds.length} discarded files?`)) return;
+
+            const restoreResp = await fetch('/api/files/bulk/undiscard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_ids: fileIds })
+            });
+
+            if (!restoreResp.ok) {
+                const error = await restoreResp.json();
+                throw new Error(error.error || 'Failed to restore files');
+            }
+
+            const result = await restoreResp.json();
+            this.showToast(`Restored ${result.files_undiscarded} files`);
+
+            window.resultsHandler?.loadFiles();
+            window.resultsHandler?.loadSummary();
+            this.clearSelection();
+
+        } catch (error) {
+            console.error('Restore all failed:', error);
+            alert(`Failed to restore: ${error.message}`);
+        }
+    };
+
     // ==========================================
     // Duplicate Management
     // ==========================================
