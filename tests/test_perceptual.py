@@ -1,15 +1,12 @@
-"""Tests for Phase 6 perceptual duplicate detection."""
+"""Tests for perceptual duplicate detection."""
 import pytest
 from datetime import datetime, timezone, timedelta
 from types import SimpleNamespace
 
 from app.lib.perceptual import (
     hamming_distance,
-    cluster_by_timestamp,
     detect_sequence_type,
-    distance_to_exact_confidence,
-    distance_to_similar_confidence,
-    analyze_cluster,
+    _compare_all_pairs,
     detect_perceptual_duplicates,
     EXACT_THRESHOLD,
     SIMILAR_THRESHOLD,
@@ -70,76 +67,6 @@ class TestHammingDistance:
         assert hamming_distance(h1, h2) == hamming_distance(h2, h1)
 
 
-class TestClusterByTimestamp:
-    """Tests for cluster_by_timestamp()."""
-
-    def test_two_close_files(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        files = [
-            make_file('a.jpg', detected_timestamp=t),
-            make_file('b.jpg', detected_timestamp=t + timedelta(seconds=2)),
-        ]
-        clusters = cluster_by_timestamp(files)
-        assert len(clusters) == 1
-        assert len(clusters[0]) == 2
-
-    def test_two_far_files(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        files = [
-            make_file('a.jpg', detected_timestamp=t),
-            make_file('b.jpg', detected_timestamp=t + timedelta(minutes=10)),
-        ]
-        clusters = cluster_by_timestamp(files)
-        assert len(clusters) == 0
-
-    def test_multiple_clusters(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        files = [
-            make_file('a.jpg', detected_timestamp=t),
-            make_file('b.jpg', detected_timestamp=t + timedelta(seconds=1)),
-            make_file('c.jpg', detected_timestamp=t + timedelta(seconds=2)),
-            make_file('d.jpg', detected_timestamp=t + timedelta(seconds=60)),
-            make_file('e.jpg', detected_timestamp=t + timedelta(seconds=61)),
-        ]
-        clusters = cluster_by_timestamp(files)
-        assert len(clusters) == 2
-        assert len(clusters[0]) == 3
-        assert len(clusters[1]) == 2
-
-    def test_no_timestamps(self):
-        files = [make_file('a.jpg'), make_file('b.jpg')]
-        clusters = cluster_by_timestamp(files)
-        assert len(clusters) == 0
-
-    def test_single_file(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        files = [make_file('a.jpg', detected_timestamp=t)]
-        clusters = cluster_by_timestamp(files)
-        assert len(clusters) == 0
-
-    def test_mixed_timestamp_and_none(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        files = [
-            make_file('a.jpg', detected_timestamp=t),
-            make_file('b.jpg'),  # No timestamp
-            make_file('c.jpg', detected_timestamp=t + timedelta(seconds=1)),
-        ]
-        clusters = cluster_by_timestamp(files)
-        assert len(clusters) == 1
-        assert len(clusters[0]) == 2  # Only timestamped files
-
-    def test_unsorted_input(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        files = [
-            make_file('c.jpg', detected_timestamp=t + timedelta(seconds=2)),
-            make_file('a.jpg', detected_timestamp=t),
-            make_file('b.jpg', detected_timestamp=t + timedelta(seconds=1)),
-        ]
-        clusters = cluster_by_timestamp(files)
-        assert len(clusters) == 1
-        assert len(clusters[0]) == 3
-
-
 class TestDetectSequenceType:
     """Tests for detect_sequence_type()."""
 
@@ -167,88 +94,82 @@ class TestDetectSequenceType:
         assert detect_sequence_type(a, b) == 'similar'
 
 
-class TestConfidenceMappings:
-    """Tests for confidence level mapping functions."""
-
-    def test_exact_always_high(self):
-        for d in range(0, 6):
-            assert distance_to_exact_confidence(d) == 'high'
-
-    def test_similar_high(self):
-        for d in range(6, 11):
-            assert distance_to_similar_confidence(d) == 'high'
-
-    def test_similar_medium(self):
-        for d in range(11, 16):
-            assert distance_to_similar_confidence(d) == 'medium'
-
-    def test_similar_low(self):
-        for d in range(16, 21):
-            assert distance_to_similar_confidence(d) == 'low'
-
-
-class TestAnalyzeCluster:
-    """Tests for analyze_cluster()."""
+class TestCompareAllPairs:
+    """Tests for _compare_all_pairs()."""
 
     def test_exact_match_grouped(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        # Identical perceptual hashes = distance 0
-        a = make_file('a.jpg', detected_timestamp=t, perceptual_hash='abcdef0000000000')
-        b = make_file('b.jpg', detected_timestamp=t + timedelta(seconds=1), perceptual_hash='abcdef0000000000')
-        analyze_cluster([a, b])
+        a = make_file('a.jpg', perceptual_hash='abcdef0000000000')
+        b = make_file('b.jpg', perceptual_hash='abcdef0000000000')
+        _compare_all_pairs([a, b])
         assert a.exact_group_id is not None
         assert a.exact_group_id == b.exact_group_id
+        assert a.exact_group_confidence == 'high'
 
     def test_similar_match_grouped(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        # Hashes with distance in 6-20 range
         # 0xff = 8 bits set → distance = 8
-        a = make_file('a.jpg', detected_timestamp=t, perceptual_hash='0000000000000000')
-        b = make_file('b.jpg', detected_timestamp=t + timedelta(seconds=1), perceptual_hash='00000000000000ff')
-        analyze_cluster([a, b])
+        a = make_file('a.jpg', perceptual_hash='0000000000000000')
+        b = make_file('b.jpg', perceptual_hash='00000000000000ff')
+        _compare_all_pairs([a, b])
         assert a.similar_group_id is not None
         assert a.similar_group_id == b.similar_group_id
         assert a.exact_group_id is None
+        # Group confidence should be shared
+        assert a.similar_group_confidence == b.similar_group_confidence
 
     def test_unrelated_not_grouped(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        # Very different hashes → distance > 20
-        a = make_file('a.jpg', detected_timestamp=t, perceptual_hash='ffffffffffffffff')
-        b = make_file('b.jpg', detected_timestamp=t + timedelta(seconds=1), perceptual_hash='0000000000000000')
-        analyze_cluster([a, b])
+        a = make_file('a.jpg', perceptual_hash='ffffffffffffffff')
+        b = make_file('b.jpg', perceptual_hash='0000000000000000')
+        _compare_all_pairs([a, b])
         assert a.exact_group_id is None
         assert a.similar_group_id is None
         assert b.exact_group_id is None
         assert b.similar_group_id is None
 
     def test_missing_hash_skipped(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        a = make_file('a.jpg', detected_timestamp=t, perceptual_hash='abcdef0000000000')
-        b = make_file('b.jpg', detected_timestamp=t + timedelta(seconds=1), perceptual_hash=None)
-        analyze_cluster([a, b])
+        a = make_file('a.jpg', perceptual_hash='abcdef0000000000')
+        b = make_file('b.jpg', perceptual_hash=None)
+        _compare_all_pairs([a, b])
         assert a.exact_group_id is None
         assert a.similar_group_id is None
 
     def test_transitive_grouping(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
-        # Three files, A≈B and B≈C → all in same group
-        a = make_file('a.jpg', detected_timestamp=t, perceptual_hash='0000000000000000')
-        b = make_file('b.jpg', detected_timestamp=t + timedelta(seconds=1), perceptual_hash='0000000000000001')
-        c = make_file('c.jpg', detected_timestamp=t + timedelta(seconds=2), perceptual_hash='0000000000000003')
-        analyze_cluster([a, b, c])
-        # All should share the same exact group (distances 1, 3, 2 — all ≤5)
+        a = make_file('a.jpg', perceptual_hash='0000000000000000')
+        b = make_file('b.jpg', perceptual_hash='0000000000000001')
+        c = make_file('c.jpg', perceptual_hash='0000000000000003')
+        _compare_all_pairs([a, b, c])
         assert a.exact_group_id == b.exact_group_id == c.exact_group_id
+
+    def test_no_timestamps_still_groups(self):
+        """Files without timestamps are grouped by visual similarity."""
+        a = make_file('a.jpg', perceptual_hash='abcdef0000000000')
+        b = make_file('b.jpg', perceptual_hash='abcdef0000000000')
+        _compare_all_pairs([a, b])
+        assert a.exact_group_id is not None
+        assert a.exact_group_id == b.exact_group_id
+
+    def test_similar_group_confidence_levels(self):
+        """Similar groups get confidence based on average distance."""
+        # Distance 8 → high confidence
+        a = make_file('a.jpg', perceptual_hash='0000000000000000')
+        b = make_file('b.jpg', perceptual_hash='00000000000000ff')
+        _compare_all_pairs([a, b])
+        assert a.similar_group_confidence == 'high'
+
+        # Distance 18 → low confidence (0x3ffff = 18 bits)
+        c = make_file('c.jpg', perceptual_hash='0000000000000000')
+        d = make_file('d.jpg', perceptual_hash='000000000003ffff')
+        _compare_all_pairs([c, d])
+        assert c.similar_group_confidence == 'low'
 
 
 class TestDetectPerceptualDuplicates:
     """Tests for the main detect_perceptual_duplicates() entry point."""
 
     def test_groups_exact_duplicates(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         files = [
-            make_file('a.jpg', detected_timestamp=t, perceptual_hash='abcdef0000000000'),
-            make_file('b.jpg', detected_timestamp=t + timedelta(seconds=1), perceptual_hash='abcdef0000000000'),
-            make_file('c.jpg', detected_timestamp=t + timedelta(minutes=10), perceptual_hash='1111111111111111'),
+            make_file('a.jpg', perceptual_hash='abcdef0000000000'),
+            make_file('b.jpg', perceptual_hash='abcdef0000000000'),
+            make_file('c.jpg', perceptual_hash='1111111111111111'),
         ]
         detect_perceptual_duplicates(files)
         assert files[0].exact_group_id is not None
@@ -256,11 +177,10 @@ class TestDetectPerceptualDuplicates:
         assert files[2].exact_group_id is None
 
     def test_groups_similar_files(self):
-        t = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         # 0xff = 8 bits → distance 8 (in similar range 6-20)
         files = [
-            make_file('a.jpg', detected_timestamp=t, perceptual_hash='0000000000000000'),
-            make_file('b.jpg', detected_timestamp=t + timedelta(seconds=1), perceptual_hash='00000000000000ff'),
+            make_file('a.jpg', perceptual_hash='0000000000000000'),
+            make_file('b.jpg', perceptual_hash='00000000000000ff'),
         ]
         detect_perceptual_duplicates(files)
         assert files[0].similar_group_id is not None
@@ -269,11 +189,22 @@ class TestDetectPerceptualDuplicates:
     def test_no_files_no_crash(self):
         detect_perceptual_duplicates([])
 
-    def test_no_timestamps_no_groups(self):
+    def test_no_hashes_no_groups(self):
+        """Files without perceptual hashes can't be compared."""
+        files = [
+            make_file('a.jpg'),
+            make_file('b.jpg'),
+        ]
+        detect_perceptual_duplicates(files)
+        assert files[0].exact_group_id is None
+        assert files[1].exact_group_id is None
+
+    def test_groups_without_timestamps(self):
+        """Files without timestamps are still grouped by visual similarity."""
         files = [
             make_file('a.jpg', perceptual_hash='abcdef0000000000'),
             make_file('b.jpg', perceptual_hash='abcdef0000000000'),
         ]
         detect_perceptual_duplicates(files)
-        assert files[0].exact_group_id is None
-        assert files[1].exact_group_id is None
+        assert files[0].exact_group_id is not None
+        assert files[0].exact_group_id == files[1].exact_group_id

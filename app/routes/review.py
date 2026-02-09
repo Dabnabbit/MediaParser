@@ -12,11 +12,48 @@ import json
 import logging
 
 from app import db
-from app.models import File, Job, Tag, UserDecision, file_tags
+from app.models import File, Job, Tag, UserDecision
 
 logger = logging.getLogger(__name__)
 
 review_bp = Blueprint('review', __name__)
+
+
+def _cleanup_exact_orphans(group_ids, job_ids=None):
+    """Clear exact_group_id from files left alone in their group after removals."""
+    for group_id in group_ids:
+        query = File.query.filter(
+            File.exact_group_id == group_id,
+            File.discarded == False,
+        )
+        if job_ids:
+            query = query.join(File.jobs).filter(Job.id.in_(job_ids))
+        remaining = query.all()
+        if len(remaining) == 1:
+            remaining[0].exact_group_id = None
+            logger.info(f"Cleared orphaned exact group from file {remaining[0].id}")
+
+
+def _clear_similar_fields(file):
+    """Clear all similar group fields from a file."""
+    file.similar_group_id = None
+    file.similar_group_confidence = None
+    file.similar_group_type = None
+
+
+def _cleanup_similar_orphans(group_ids, job_ids=None):
+    """Clear similar group fields from files left alone in their group after removals."""
+    for group_id in group_ids:
+        query = File.query.filter(
+            File.similar_group_id == group_id,
+            File.discarded == False,
+        )
+        if job_ids:
+            query = query.join(File.jobs).filter(Job.id.in_(job_ids))
+        remaining = query.all()
+        if len(remaining) == 1:
+            _clear_similar_fields(remaining[0])
+            logger.info(f"Cleared orphaned similar group from file {remaining[0].id}")
 
 
 @review_bp.route('/api/files/<int:file_id>', methods=['GET'])
@@ -406,29 +443,19 @@ def discard_file(file_id):
 
     # Discard clears review and duplicate status (mutually exclusive states)
     old_group_id = file.exact_group_id
+    old_similar_group_id = file.similar_group_id
     file.discarded = True
     file.reviewed_at = None
     file.final_timestamp = None
-    file.exact_group_id = None  # Discarded files are out of duplicate workflow
-    file.similar_group_id = None  # Also clear similar group
-    file.similar_group_confidence = None
-    file.similar_group_type = None
+    file.exact_group_id = None
+    _clear_similar_fields(file)
 
-    # Check if we're leaving a single file alone in its duplicate group (same job only)
-    # A file can't be a "duplicate" by itself
+    file_job_ids = [j.id for j in file.jobs]
+
     if old_group_id:
-        file_job_ids = [j.id for j in file.jobs]
-        remaining_in_group = File.query.join(File.jobs).filter(
-            File.exact_group_id == old_group_id,
-            File.discarded == False,
-            File.id != file.id,
-            Job.id.in_(file_job_ids)
-        ).all()
-
-        if len(remaining_in_group) == 1:
-            # Only one file left in this job - it's no longer a duplicate
-            remaining_in_group[0].exact_group_id = None
-            logger.info(f"Cleared duplicate status from file {remaining_in_group[0].id} (last in group)")
+        _cleanup_exact_orphans({old_group_id}, job_ids=file_job_ids)
+    if old_similar_group_id:
+        _cleanup_similar_orphans({old_similar_group_id}, job_ids=file_job_ids)
 
     db.session.commit()
 
@@ -581,36 +608,22 @@ def bulk_discard():
         if file.similar_group_id:
             affected_similar_groups.add(file.similar_group_id)
 
-        # Discard clears review and duplicate status (mutually exclusive states)
         file.discarded = True
         file.reviewed_at = None
         file.final_timestamp = None
-        file.exact_group_id = None  # Discarded files are out of duplicate workflow
-        file.similar_group_id = None  # Also clear similar group
-        file.similar_group_confidence = None
-        file.similar_group_type = None
+        file.exact_group_id = None
+        _clear_similar_fields(file)
         success_count += 1
 
-    # Collect job IDs from all discarded files for job-scoped duplicate checking
+    # Collect job IDs from all discarded files for job-scoped cleanup
     affected_job_ids = set()
     for file_id in data['file_ids']:
         file = db.session.get(File, file_id)
         if file:
             affected_job_ids.update(j.id for j in file.jobs)
 
-    # Second pass: check if any affected groups now have only 1 file remaining (same jobs only)
-    # A file can't be a "duplicate" by itself
-    for group_id in affected_groups:
-        remaining_in_group = File.query.join(File.jobs).filter(
-            File.exact_group_id == group_id,
-            File.discarded == False,
-            Job.id.in_(affected_job_ids)
-        ).all()
-
-        if len(remaining_in_group) == 1:
-            # Only one file left in affected jobs - it's no longer a duplicate
-            remaining_in_group[0].exact_group_id = None
-            logger.info(f"Cleared duplicate status from file {remaining_in_group[0].id} (last in group)")
+    _cleanup_exact_orphans(affected_groups, job_ids=affected_job_ids)
+    _cleanup_similar_orphans(affected_similar_groups, job_ids=affected_job_ids)
 
     db.session.commit()
 
@@ -720,6 +733,7 @@ def bulk_not_duplicate():
         return jsonify({'error': 'file_ids must be an array'}), 400
 
     success_count = 0
+    affected_groups = set()
 
     for file_id in data['file_ids']:
         file = db.session.get(File, file_id)
@@ -727,8 +741,11 @@ def bulk_not_duplicate():
             continue
 
         if file.exact_group_id is not None:
+            affected_groups.add(file.exact_group_id)
             file.exact_group_id = None
             success_count += 1
+
+    _cleanup_exact_orphans(affected_groups)
 
     db.session.commit()
 
@@ -824,18 +841,11 @@ def resolve_similar_group(group_id):
     discarded = 0
 
     for f in group_files:
+        _clear_similar_fields(f)
         if f.id in keep_ids:
-            # Keep: clear group membership
-            f.similar_group_id = None
-            f.similar_group_confidence = None
-            f.similar_group_type = None
             kept += 1
         else:
-            # Discard: mark as discarded and clear group
             f.discarded = True
-            f.similar_group_id = None
-            f.similar_group_confidence = None
-            f.similar_group_type = None
             discarded += 1
 
     db.session.commit()
@@ -865,9 +875,7 @@ def keep_all_similar(group_id):
         return jsonify({'error': 'Group not found'}), 404
 
     for f in group_files:
-        f.similar_group_id = None
-        f.similar_group_confidence = None
-        f.similar_group_type = None
+        _clear_similar_fields(f)
 
     db.session.commit()
 
@@ -895,12 +903,14 @@ def bulk_not_similar():
 
     files = File.query.filter(File.id.in_(file_ids)).all()
     cleared = 0
+    affected_groups = set()
     for f in files:
         if f.similar_group_id:
-            f.similar_group_id = None
-            f.similar_group_confidence = None
-            f.similar_group_type = None
+            affected_groups.add(f.similar_group_id)
+            _clear_similar_fields(f)
             cleared += 1
+
+    _cleanup_similar_orphans(affected_groups)
 
     db.session.commit()
 

@@ -217,6 +217,13 @@ class ResultsHandler {
                 const summary = await response.json();
                 if (window.filterHandler) {
                     window.filterHandler.updateCounts(summary);
+
+                    // Auto-navigate if current mode is now empty
+                    const mode = window.filterHandler.currentMode;
+                    const count = window.filterHandler.counts[mode] || 0;
+                    if (count === 0) {
+                        window.filterHandler.autoSelectMode();
+                    }
                 }
             }
         } catch (error) {

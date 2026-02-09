@@ -1,11 +1,11 @@
 """
-Perceptual duplicate detection using timestamp clustering and Hamming distance.
+Perceptual duplicate detection using Hamming distance on perceptual hashes.
 
-Implements timestamp-constrained perceptual hash comparison for efficient
-duplicate detection. Uses O(n log n) clustering to avoid O(n²) comparisons.
+Compares all files with perceptual hashes via O(n²) pairwise comparison.
+For household-scale collections (<10K files) this completes in seconds
+since each comparison is just integer XOR + bit_count.
 """
-from typing import Optional, List
-from datetime import datetime
+from typing import List
 import uuid
 import logging
 
@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 # Detection thresholds
 EXACT_THRESHOLD = 5         # Hamming distance 0-5 = exact duplicate
 SIMILAR_THRESHOLD = 20      # Hamming distance 6-20 = similar
-CLUSTER_WINDOW_SECONDS = 5  # Timestamp clustering window
 BURST_THRESHOLD = 2         # Seconds gap for burst detection
 PANORAMA_THRESHOLD = 30     # Seconds gap for panorama detection
 
@@ -57,68 +56,6 @@ def hamming_distance(hash1: str, hash2: str) -> int:
         return 999
 
 
-def cluster_by_timestamp(files, threshold_seconds=CLUSTER_WINDOW_SECONDS) -> List[List]:
-    """
-    Group files by timestamp proximity using sliding window clustering.
-
-    Achieves O(n log n) complexity via sort + linear scan. Only files with
-    detected_timestamp are included. Clusters contain 2+ files.
-
-    Args:
-        files: List of File objects (or dicts with detected_timestamp)
-        threshold_seconds: Maximum gap between files in same cluster
-
-    Returns:
-        List of clusters, where each cluster is a list of file objects
-        Only clusters with 2+ files are returned
-
-    Example:
-        Files at times [0s, 1s, 2s, 10s, 11s] with threshold=5s
-        → [[file_0, file_1, file_2], [file_10, file_11]]
-    """
-    # Filter to files with timestamps
-    timestamped_files = [f for f in files if f.detected_timestamp is not None]
-
-    if len(timestamped_files) < 2:
-        return []  # Need at least 2 files to form a cluster
-
-    # Normalize to naive UTC for comparison (handles mixed aware/naive timestamps)
-    def _naive_ts(f):
-        ts = f.detected_timestamp
-        if ts.tzinfo is not None:
-            return ts.replace(tzinfo=None) - ts.utcoffset()
-        return ts
-
-    # Sort by timestamp (O(n log n))
-    sorted_files = sorted(timestamped_files, key=_naive_ts)
-
-    # Linear scan to build clusters (O(n))
-    clusters = []
-    current_cluster = [sorted_files[0]]
-
-    for i in range(1, len(sorted_files)):
-        file_curr = sorted_files[i]
-        file_prev = current_cluster[-1]
-
-        gap = (_naive_ts(file_curr) - _naive_ts(file_prev)).total_seconds()
-
-        if gap <= threshold_seconds:
-            # Within threshold, add to current cluster
-            current_cluster.append(file_curr)
-        else:
-            # Gap too large, finalize current cluster if it has 2+ files
-            if len(current_cluster) >= 2:
-                clusters.append(current_cluster)
-            # Start new cluster
-            current_cluster = [file_curr]
-
-    # Don't forget last cluster
-    if len(current_cluster) >= 2:
-        clusters.append(current_cluster)
-
-    return clusters
-
-
 def detect_sequence_type(file_a, file_b) -> str:
     """
     Determine relationship type based on timestamp gap.
@@ -145,40 +82,80 @@ def detect_sequence_type(file_a, file_b) -> str:
         return 'similar'
 
 
-def distance_to_exact_confidence(distance: int) -> str:
-    """
-    Map perceptual distance to exact duplicate confidence level.
+# Thresholds for average pairwise distance → confidence
+SIMILAR_CONF_HIGH = 10      # avg ≤ 10 → high
+SIMILAR_CONF_MEDIUM = 15    # avg ≤ 15 → medium, else low
 
-    All exact duplicates (distance 0-5) are HIGH confidence because
-    timestamp clustering provides corroborating evidence.
+
+def _compute_similar_group_confidence(members: list) -> str:
+    """
+    Compute a single confidence level for a similar group.
+
+    Uses plain average of pairwise Hamming distances. Since similar
+    pairs have distances 6-20, this naturally spreads across all
+    three confidence levels without any weighting.
 
     Args:
-        distance: Hamming distance between perceptual hashes
+        members: List of file objects in the group
 
     Returns:
-        'high' for all distances 0-5
+        'high', 'medium', or 'low'
     """
-    return 'high'
+    if len(members) < 2:
+        return 'low'
 
+    distances = []
+    for i, a in enumerate(members):
+        for b in members[i + 1:]:
+            if not (a.file_hash_perceptual and b.file_hash_perceptual):
+                continue
+            distances.append(hamming_distance(a.file_hash_perceptual, b.file_hash_perceptual))
 
-def distance_to_similar_confidence(distance: int) -> str:
-    """
-    Map perceptual distance to similar group confidence level.
+    if not distances:
+        return 'low'
 
-    Args:
-        distance: Hamming distance between perceptual hashes
+    avg = sum(distances) / len(distances)
 
-    Returns:
-        'high' for distance 6-10 (clear similarity)
-        'medium' for distance 11-15 (moderate similarity)
-        'low' for distance 16-20 (weak similarity)
-    """
-    if distance <= 10:
+    if avg <= SIMILAR_CONF_HIGH:
         return 'high'
-    elif distance <= 15:
+    elif avg <= SIMILAR_CONF_MEDIUM:
         return 'medium'
     else:
         return 'low'
+
+
+def _finalize_similar_groups(files: list):
+    """
+    Post-process files to compute group-level confidence and type.
+
+    Called after all pairwise merges. Computes a single confidence and
+    dominant sequence type shared by all members of each similar group.
+
+    Args:
+        files: List of file objects (some may have similar_group_id set)
+    """
+    from collections import defaultdict
+
+    groups = defaultdict(list)
+    for f in files:
+        if f.similar_group_id:
+            groups[f.similar_group_id].append(f)
+
+    for group_id, members in groups.items():
+        # Compute group confidence from all pairwise distances
+        confidence = _compute_similar_group_confidence(members)
+
+        # Determine dominant sequence type from pairwise time gaps
+        type_counts = defaultdict(int)
+        for i, a in enumerate(members):
+            for b in members[i + 1:]:
+                type_counts[detect_sequence_type(a, b)] += 1
+        group_type = max(type_counts, key=type_counts.get) if type_counts else 'similar'
+
+        # Apply to all members
+        for f in members:
+            f.similar_group_confidence = confidence
+            f.similar_group_type = group_type
 
 
 def _generate_group_id() -> str:
@@ -191,142 +168,113 @@ def _generate_group_id() -> str:
     return uuid.uuid4().hex[:16]
 
 
-def _merge_into_exact_group(file_a, file_b, distance: int):
+def _merge_into_exact_group(file_a, file_b):
     """
     Merge two files into an exact duplicate group.
 
     If either file is already in a group, reuse that group_id.
-    Otherwise, generate a new group_id.
+    Otherwise, generate a new group_id. Confidence is always 'high'
+    since perceptual distance 0-5 is a near-certain match.
 
     Args:
         file_a: First file object
         file_b: Second file object
-        distance: Hamming distance between their perceptual hashes
 
     Side effects:
         Sets exact_group_id and exact_group_confidence on both files
     """
     # Reuse existing group or create new
     group_id = file_a.exact_group_id or file_b.exact_group_id or _generate_group_id()
-    confidence = distance_to_exact_confidence(distance)
 
     file_a.exact_group_id = group_id
-    file_a.exact_group_confidence = confidence
+    file_a.exact_group_confidence = 'high'
     file_b.exact_group_id = group_id
-    file_b.exact_group_confidence = confidence
+    file_b.exact_group_confidence = 'high'
 
 
-def _merge_into_similar_group(file_a, file_b, distance: int):
+def _merge_into_similar_group(file_a, file_b):
     """
     Merge two files into a similar/sequence group.
 
-    If either file is already in a group, reuse that group_id.
-    Otherwise, generate a new group_id.
+    Only assigns group membership. Confidence and type are computed
+    as group-level aggregates by _finalize_similar_groups() after
+    all pairwise comparisons are complete.
 
     Args:
         file_a: First file object
         file_b: Second file object
-        distance: Hamming distance between their perceptual hashes
 
     Side effects:
-        Sets similar_group_id, similar_group_confidence, and similar_group_type
-        on both files
+        Sets similar_group_id on both files
     """
-    # Reuse existing group or create new
     group_id = file_a.similar_group_id or file_b.similar_group_id or _generate_group_id()
-    confidence = distance_to_similar_confidence(distance)
-    group_type = detect_sequence_type(file_a, file_b)
-
     file_a.similar_group_id = group_id
-    file_a.similar_group_confidence = confidence
-    file_a.similar_group_type = group_type
     file_b.similar_group_id = group_id
-    file_b.similar_group_confidence = confidence
-    file_b.similar_group_type = group_type
 
 
-def analyze_cluster(cluster: List):
+def _compare_all_pairs(files: List):
     """
-    Analyze perceptual relationships within a timestamp cluster.
+    Pairwise comparison of all files with perceptual hashes.
 
-    Performs pairwise comparison of all files in cluster (O(k²) for small k).
+    O(n²) but each comparison is just integer XOR + bit_count,
+    so this handles thousands of files in seconds.
+
     Files with distance 0-5 are merged into exact duplicate groups.
     Files with distance 6-20 are merged into similar groups.
-    Files with distance >20 are unrelated (coincidental timing).
+    Files with distance >20 are unrelated.
 
     Args:
-        cluster: List of file objects with detected_timestamp and file_hash_perceptual
+        files: List of file objects with file_hash_perceptual
 
     Side effects:
         Updates exact_group_id/similar_group_id on file objects as matches found
     """
-    for i, file_a in enumerate(cluster):
-        for file_b in cluster[i+1:]:
-            # Skip if either file lacks perceptual hash
-            if not (file_a.file_hash_perceptual and file_b.file_hash_perceptual):
-                continue
+    # Filter to files that have perceptual hashes
+    hashable = [f for f in files if f.file_hash_perceptual]
 
+    for i, file_a in enumerate(hashable):
+        for file_b in hashable[i+1:]:
             distance = hamming_distance(file_a.file_hash_perceptual, file_b.file_hash_perceptual)
 
             if distance <= EXACT_THRESHOLD:
-                # DUPLICATE: Same image (format conversion, resize, light edit)
-                _merge_into_exact_group(file_a, file_b, distance)
+                _merge_into_exact_group(file_a, file_b)
             elif distance <= SIMILAR_THRESHOLD:
-                # SIMILAR: Related images (burst, panorama)
-                _merge_into_similar_group(file_a, file_b, distance)
-            # else: distance > 20, not related (coincidental timing)
+                _merge_into_similar_group(file_a, file_b)
+
+    # Compute group-level confidence and type for all similar groups
+    _finalize_similar_groups(files)
 
 
-def detect_perceptual_duplicates(files, threshold_seconds=CLUSTER_WINDOW_SECONDS):
+def detect_perceptual_duplicates(files):
     """
     Main entry point for perceptual duplicate detection.
 
-    Implements timestamp-constrained perceptual matching:
-    1. Pass 1: SHA256 exact matches already handled by _mark_duplicate_groups()
-    2. Pass 2: Cluster files by timestamp (O(n log n))
-    3. Pass 3: Within-cluster perceptual analysis (O(k²) per cluster, k is small)
-
-    This achieves ~2,500x performance improvement over full O(n²) comparison
-    for typical photo collections.
+    Compares all files with perceptual hashes via O(n²) pairwise
+    comparison. No timestamp gating — images are grouped purely
+    by visual similarity. Timestamps are only used to label
+    relationship type (burst/panorama/similar) after grouping.
 
     Args:
         files: List of File objects from a job
-        threshold_seconds: Timestamp clustering window (default 5 seconds)
 
     Side effects:
         Sets exact_group_id, similar_group_id, and related fields on file objects
         Does NOT commit to database - caller must commit
-
-    Example:
-        >>> from app.lib.perceptual import detect_perceptual_duplicates
-        >>> detect_perceptual_duplicates(job.files)
-        >>> db.session.commit()  # Caller commits changes
     """
-    logger.info(f"Starting perceptual duplicate detection on {len(files)} files")
+    hashable = [f for f in files if f.file_hash_perceptual]
+    logger.info(f"Starting perceptual duplicate detection: {len(hashable)} of {len(files)} files have hashes")
 
-    # Pass 2: Timestamp clustering
-    clusters = cluster_by_timestamp(files, threshold_seconds)
-    logger.info(f"Found {len(clusters)} timestamp clusters for perceptual analysis")
-
-    if not clusters:
-        logger.info("No clusters found (files lack timestamps or are too far apart)")
+    if len(hashable) < 2:
+        logger.info("Fewer than 2 files with perceptual hashes, nothing to compare")
         return
 
-    # Pass 3: Within-cluster perceptual analysis
-    exact_groups_found = set()
-    similar_groups_found = set()
+    _compare_all_pairs(files)
 
-    for cluster in clusters:
-        analyze_cluster(cluster)
-
-    # Count unique groups (for summary logging)
-    for file in files:
-        if file.exact_group_id:
-            exact_groups_found.add(file.exact_group_id)
-        if file.similar_group_id:
-            similar_groups_found.add(file.similar_group_id)
+    # Count unique groups for summary logging
+    exact_groups = {f.exact_group_id for f in files if f.exact_group_id}
+    similar_groups = {f.similar_group_id for f in files if f.similar_group_id}
 
     logger.info(
-        f"Perceptual detection complete: {len(exact_groups_found)} exact groups, "
-        f"{len(similar_groups_found)} similar groups detected across {len(clusters)} clusters"
+        f"Perceptual detection complete: {len(exact_groups)} exact groups, "
+        f"{len(similar_groups)} similar groups from {len(hashable)} hashable files"
     )

@@ -299,12 +299,13 @@ class FilterHandler {
                 groups.get(gid).push(f);
             }
 
-            // Filter to groups matching target confidence
+            // Filter to groups where any member has the target confidence
+            // (files in the same group can have different confidence from pairwise distances)
             const confKey = mode === 'similar' ? 'similar_group_confidence' : 'exact_group_confidence';
             const targetGroups = [];
             for (const [gid, members] of groups) {
-                const groupConfidence = members[0]?.[confKey]?.toLowerCase();
-                if (groupConfidence === confidence) {
+                const hasMatch = members.some(f => f[confKey]?.toLowerCase() === confidence);
+                if (hasMatch) {
                     targetGroups.push(members);
                 }
             }
