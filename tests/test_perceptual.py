@@ -149,17 +149,26 @@ class TestCompareAllPairs:
 
     def test_similar_group_confidence_levels(self):
         """Similar groups get confidence based on average distance."""
-        # Distance 8 → high confidence
+        # Distance 6 (0x3f = 6 bits) → high confidence (≤7)
         a = make_file('a.jpg', perceptual_hash='0000000000000000')
-        b = make_file('b.jpg', perceptual_hash='00000000000000ff')
+        b = make_file('b.jpg', perceptual_hash='000000000000003f')
         _compare_all_pairs([a, b])
         assert a.similar_group_confidence == 'high'
 
-        # Distance 18 → low confidence (0x3ffff = 18 bits)
+        # Distance 10 (0x3ff = 10 bits) → low confidence (>8)
         c = make_file('c.jpg', perceptual_hash='0000000000000000')
-        d = make_file('d.jpg', perceptual_hash='000000000003ffff')
+        d = make_file('d.jpg', perceptual_hash='00000000000003ff')
         _compare_all_pairs([c, d])
         assert c.similar_group_confidence == 'low'
+
+    def test_beyond_threshold_not_grouped(self):
+        """Distance beyond SIMILAR_THRESHOLD (10) is not grouped."""
+        # Distance 18 — well beyond threshold
+        a = make_file('a.jpg', perceptual_hash='0000000000000000')
+        b = make_file('b.jpg', perceptual_hash='000000000003ffff')
+        _compare_all_pairs([a, b])
+        assert a.similar_group_id is None
+        assert b.similar_group_id is None
 
 
 class TestDetectPerceptualDuplicates:
