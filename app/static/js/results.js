@@ -88,7 +88,7 @@ class ResultsHandler {
             await this.loadSummary();
             if (window.filterHandler) {
                 const mode = window.filterHandler.currentMode;
-                const count = window.filterHandler.counts[mode] || 0;
+                const count = window.filterHandler.getCountForMode(mode);
                 if (count === 0) {
                     window.filterHandler.autoSelectMode();
                 }
@@ -220,7 +220,7 @@ class ResultsHandler {
 
                     // Auto-navigate if current mode is now empty
                     const mode = window.filterHandler.currentMode;
-                    const count = window.filterHandler.counts[mode] || 0;
+                    const count = window.filterHandler.getCountForMode(mode);
                     if (count === 0) {
                         window.filterHandler.autoSelectMode();
                     }

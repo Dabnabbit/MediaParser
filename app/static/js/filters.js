@@ -936,6 +936,11 @@ class FilterHandler {
         return this.currentMode;
     }
 
+    getCountForMode(mode) {
+        const key = mode === 'discarded' ? 'discards' : mode;
+        return this.counts[key] || 0;
+    }
+
     getVisibleConfidence() {
         return Array.from(this.visibleConfidence);
     }
