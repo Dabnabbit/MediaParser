@@ -1699,91 +1699,274 @@ body {
 }
 
 /* ============================================
-   SELECTION TOOLBAR
+   ACTION BAR (always visible, mode-aware)
    ============================================ */
 
-.selection-toolbar {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--color-primary);
-    color: white;
-    border-radius: var(--border-radius);
-    margin-bottom: var(--spacing-md);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.selection-info {
-    font-weight: 500;
-}
-
-.selection-actions {
+.action-bar {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    min-height: 32px;
+    background: var(--color-bg-alt);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    margin-bottom: var(--spacing-sm);
 }
 
-.tag-quick-add {
+.action-bar-left {
+    flex-shrink: 0;
+}
+
+.action-bar-count {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+}
+
+.action-bar-center {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+    min-width: 0;
+}
+
+.action-bar-right {
+    flex-shrink: 0;
+    position: relative;
+}
+
+/* Action groups (one per mode, shown/hidden by JS) */
+.action-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+/* Pill buttons — subtle, chip-like */
+.btn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.btn-pill:hover:not(:disabled) {
+    border-color: var(--color-primary);
+    background: var(--color-bg-hover);
+}
+
+.btn-pill:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btn-pill-xs {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+}
+
+.btn-pill-primary {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.btn-pill-primary:hover:not(:disabled) {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.btn-pill-success {
+    background: var(--color-high);
+    border-color: var(--color-high);
+    color: white;
+}
+
+.btn-pill-success:hover:not(:disabled) {
+    filter: brightness(0.9);
+}
+
+.btn-pill-danger {
+    background: var(--color-danger);
+    border-color: var(--color-danger);
+    color: white;
+}
+
+.btn-pill-danger:hover:not(:disabled) {
+    filter: brightness(0.9);
+}
+
+.btn-pill-secondary {
+    background: var(--color-secondary);
+    border-color: var(--color-secondary);
+    color: white;
+}
+
+.btn-pill-secondary:hover:not(:disabled) {
+    filter: brightness(0.85);
+}
+
+.btn-pill-subtle {
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-text-muted);
+}
+
+.btn-pill-subtle:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+/* Split button (primary + caret) */
+.split-btn {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+}
+
+.split-btn .btn-pill:first-child {
+    border-radius: 16px 0 0 16px;
+    border-right: none;
+}
+
+.split-caret {
+    border-radius: 0 16px 16px 0;
+    padding: 4px 6px;
+    font-size: 0.65rem;
+    min-width: 22px;
+}
+
+/* Split dropdown */
+.split-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    min-width: 180px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    z-index: 200;
+    overflow: hidden;
+}
+
+.split-dropdown.open {
+    display: block;
+}
+
+.split-dropdown-item {
+    display: block;
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+}
+
+.split-dropdown-item:hover {
+    background: var(--color-bg-alt);
+}
+
+.split-dropdown-item:active {
+    background: var(--color-bg-hover);
+}
+
+/* Overflow menu (three dots) */
+.action-overflow-trigger {
+    font-size: 1.1rem;
+    padding: 4px 8px;
+    line-height: 1;
+}
+
+.action-overflow-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    min-width: 200px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    z-index: 200;
+    overflow: hidden;
+}
+
+.action-overflow-menu.open {
+    display: block;
+}
+
+.action-overflow-item {
+    display: block;
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: none;
+    background: transparent;
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+}
+
+.action-overflow-item:hover {
+    background: var(--color-bg-alt);
+}
+
+.action-overflow-item:active {
+    background: var(--color-bg-hover);
+}
+
+.action-overflow-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: var(--spacing-xs) 0;
+}
+
+.action-overflow-tag {
     display: flex;
     gap: 4px;
+    padding: var(--spacing-xs) var(--spacing-md);
+    align-items: center;
 }
 
-.tag-quick-add .form-input-sm {
-    width: 150px;
+.action-overflow-tag-input {
+    flex: 1;
     padding: 4px 8px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
+    border: 1px solid var(--color-border);
     border-radius: var(--border-radius-sm);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-size: 0.8rem;
 }
 
-.tag-quick-add .form-input-sm::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.tag-quick-add .form-input-sm:focus {
+.action-overflow-tag-input:focus {
     outline: none;
-    border-color: white;
-    background: rgba(255, 255, 255, 0.25);
+    border-color: var(--color-primary);
 }
 
-.selection-toolbar .btn {
-    padding: 4px 12px;
-}
-
-.selection-toolbar .btn-primary {
-    background: white;
-    color: var(--color-primary);
-    border: none;
-}
-
-.selection-toolbar .btn-primary:hover {
-    background: rgba(255, 255, 255, 0.9);
-}
-
-.selection-toolbar .btn-secondary {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    color: white;
-}
-
-.selection-toolbar .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: white;
-}
-
-.selection-toolbar .btn-success {
-    background: var(--color-high);
-    border: none;
-}
-
-.selection-toolbar .btn-danger {
-    background: var(--color-low);
-    border: none;
+.action-overflow-tag-input::placeholder {
+    color: var(--color-text-muted);
 }
 
 /* ============================================
@@ -2011,7 +2194,7 @@ body {
 }
 
 /* ============================================
-   BULK ACTIONS DROPDOWN
+   FILTER ACTIONS (tile slider area)
    ============================================ */
 
 .filter-actions {
@@ -2020,40 +2203,51 @@ body {
     gap: var(--spacing-sm);
 }
 
-.bulk-actions-dropdown {
-    position: relative;
+.chip-badge.confidence-none {
+    background: var(--color-secondary);
+    color: white;
 }
 
-.bulk-actions-trigger {
-    display: flex;
-    align-items: center;
-    gap: 4px;
+/* ============================================
+   SEGMENT CHEVRONS & DROPDOWNS
+   ============================================ */
+
+.seg-chevron {
+    font-size: 0.7rem;
+    opacity: 0;
+    margin-left: 2px;
+    flex-shrink: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: auto;
+    cursor: pointer;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
+    /* Enlarge click target without affecting layout */
+    padding: 6px 8px;
+    margin: -6px -8px -6px 0;
 }
 
-.bulk-actions-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 4px;
-    min-width: 280px;
+/* Always visible on the active mode segment */
+.mode-segment.active .seg-chevron {
+    opacity: 0.7;
+}
+
+.mode-segment:hover .seg-chevron,
+.mode-segment.seg-dropdown-open .seg-chevron {
+    opacity: 1;
+}
+
+.seg-dropdown {
+    /* Positioned fixed by JS (appended to body, not inside overflow:hidden segment) */
+    min-width: 240px;
     background: var(--color-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    z-index: 200;
+    z-index: 300;
     overflow: hidden;
 }
 
-.bulk-actions-dropdown.open .bulk-actions-menu {
-    display: block;
-}
-
-.bulk-menu-section {
-    padding: var(--spacing-xs) 0;
-}
-
-.bulk-menu-header {
+.seg-dropdown-header {
     padding: var(--spacing-xs) var(--spacing-md);
     font-size: 0.7rem;
     font-weight: 600;
@@ -2062,13 +2256,7 @@ body {
     letter-spacing: 0.05em;
 }
 
-.bulk-menu-divider {
-    height: 1px;
-    background: var(--color-border);
-    margin: var(--spacing-xs) 0;
-}
-
-.bulk-menu-item {
+.seg-dropdown-item {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
@@ -2083,50 +2271,24 @@ body {
     transition: background-color 0.1s ease;
 }
 
-.bulk-menu-item:hover {
+.seg-dropdown-item:hover {
     background: var(--color-bg-alt);
 }
 
-.bulk-menu-item:active {
+.seg-dropdown-item:active {
     background: var(--color-bg-hover);
 }
 
-.bulk-item-icon {
-    width: 18px;
-    text-align: center;
-    color: var(--color-text-muted);
+.seg-dropdown-divider {
+    height: 1px;
+    background: var(--color-border);
+    margin: var(--spacing-xs) 0;
 }
 
-.bulk-menu-item .chip-badge {
+.seg-dropdown-item .chip-badge {
     width: 18px;
     height: 18px;
     font-size: 0.65rem;
-}
-
-.chip-badge.confidence-none {
-    background: var(--color-secondary);
-    color: white;
-}
-
-/* ============================================
-   SELECTION TOOLBAR ENHANCEMENTS
-   ============================================ */
-
-.selection-divider {
-    width: 1px;
-    height: 24px;
-    background: rgba(255, 255, 255, 0.3);
-    margin: 0 var(--spacing-xs);
-}
-
-.selection-toolbar .btn-success {
-    background: var(--color-high);
-    color: white;
-    border: none;
-}
-
-.selection-toolbar .btn-success:hover {
-    filter: brightness(0.9);
 }
 
 /* ============================================

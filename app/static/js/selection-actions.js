@@ -1,7 +1,7 @@
 /**
  * SelectionHandler - Actions module
  *
- * Bulk API actions: discard, review, tags, duplicate management.
+ * Bulk API actions: discard, review, tags, duplicate/similar management.
  * Extends SelectionHandler.prototype.
  *
  * Load order: selection-core.js → selection-events.js → selection-actions.js
@@ -14,9 +14,6 @@
     // Discard Actions
     // ==========================================
 
-    /**
-     * Confirm before discarding selected files
-     */
     proto.confirmDiscard = function() {
         const count = this.selectedIds.size;
         if (count === 0) return;
@@ -30,9 +27,6 @@
         }
     };
 
-    /**
-     * Discard selected files via API
-     */
     proto.discardSelected = async function() {
         const fileIds = Array.from(this.selectedIds);
         if (fileIds.length === 0) return;
@@ -51,21 +45,16 @@
 
             const result = await response.json();
 
-            // Remove discarded files from grid (they no longer match current mode)
             fileIds.forEach(id => {
                 const thumb = document.querySelector(`.thumbnail[data-file-id="${id}"]`);
                 thumb?.remove();
             });
 
-            // Update filter counts
             if (window.resultsHandler) {
                 window.resultsHandler.loadSummary();
             }
 
-            // Show feedback
             this.showToast(`Discarded ${result.files_discarded} files`);
-
-            // Clear selection after action
             this.clearSelection();
 
         } catch (error) {
@@ -75,14 +64,51 @@
     };
 
     // ==========================================
+    // Undiscard / Restore
+    // ==========================================
+
+    proto.undiscardSelected = async function() {
+        const fileIds = Array.from(this.selectedIds);
+        if (fileIds.length === 0) return;
+
+        const message = fileIds.length === 1
+            ? 'Restore this file?'
+            : `Restore ${fileIds.length} files?`;
+
+        if (!confirm(message)) return;
+
+        try {
+            const response = await fetch('/api/files/bulk/undiscard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_ids: fileIds })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to restore files');
+            }
+
+            const result = await response.json();
+
+            this.showToast(`Restored ${result.files_undiscarded} files`);
+
+            // Refresh grid and counts
+            window.resultsHandler?.loadFiles();
+            window.resultsHandler?.loadSummary();
+            this.clearSelection();
+
+        } catch (error) {
+            console.error('Error restoring files:', error);
+            alert(`Failed to restore: ${error.message}`);
+        }
+    };
+
+    // ==========================================
     // Duplicate Management
     // ==========================================
 
-    /**
-     * Mark selected files as "not duplicate"
-     */
     proto.markNotDuplicate = async function() {
-        // Mark selected files as "not duplicate" - removes from duplicate group
         const fileIds = Array.from(this.selectedIds);
         if (fileIds.length === 0) return;
 
@@ -94,7 +120,6 @@
             });
 
             if (response.ok) {
-                // Refresh grid to reflect change
                 window.resultsHandler?.loadFiles();
                 this.clearSelection();
             }
@@ -104,34 +129,73 @@
         }
     };
 
-    /**
-     * Keep selected files, discard others in duplicate group
-     */
-    proto.selectBestFromGroup = async function() {
-        // Keep selected file(s), discard others in duplicate group
+    // ==========================================
+    // Similar Management
+    // ==========================================
+
+    proto.markNotSimilar = async function() {
         const fileIds = Array.from(this.selectedIds);
         if (fileIds.length === 0) return;
 
-        // Get all files in duplicate groups for selected files
+        try {
+            const response = await fetch('/api/files/bulk/not-similar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_ids: fileIds })
+            });
+
+            if (response.ok) {
+                window.resultsHandler?.loadFiles();
+                window.resultsHandler?.loadSummary();
+                this.clearSelection();
+            }
+        } catch (error) {
+            console.error('Failed to mark as not similar:', error);
+            alert('Failed to update similar status');
+        }
+    };
+
+    // ==========================================
+    // Keep Selected (mode-aware, multi-group)
+    // ==========================================
+
+    proto.selectBestFromGroup = async function() {
+        const fileIds = Array.from(this.selectedIds);
+        if (fileIds.length === 0) return;
+
         const visibleFiles = window.resultsHandler?.allFiles || [];
         const selectedFiles = visibleFiles.filter(f => this.selectedIds.has(f.id));
-        const groupIds = new Set(selectedFiles.filter(f => f.exact_group_id).map(f => f.exact_group_id));
+        const currentMode = window.filterHandler?.getCurrentMode();
+
+        // Choose group key based on mode
+        const groupKey = currentMode === 'similar' ? 'similar_group_id' : 'exact_group_id';
+
+        const groupIds = new Set(
+            selectedFiles.filter(f => f[groupKey]).map(f => f[groupKey])
+        );
 
         // Find all files in those groups that are NOT selected
         const toDiscard = visibleFiles.filter(f =>
-            f.exact_group_id &&
-            groupIds.has(f.exact_group_id) &&
+            f[groupKey] &&
+            groupIds.has(f[groupKey]) &&
             !this.selectedIds.has(f.id)
         ).map(f => f.id);
 
         if (toDiscard.length === 0) {
-            alert('No other files in duplicate group to discard');
+            alert('No other files in group to discard');
             return;
         }
 
-        if (!confirm(`Keep ${fileIds.length} selected file(s) and discard ${toDiscard.length} other(s) from duplicate group(s)?`)) {
-            return;
+        // Multi-group confirmation with detailed counts
+        const groupCount = groupIds.size;
+        let confirmMsg;
+        if (groupCount > 1) {
+            confirmMsg = `Keep ${fileIds.length} files, discard ${toDiscard.length} others across ${groupCount} groups?`;
+        } else {
+            confirmMsg = `Keep ${fileIds.length} selected file(s) and discard ${toDiscard.length} other(s) from group?`;
         }
+
+        if (!confirm(confirmMsg)) return;
 
         try {
             const response = await fetch('/api/files/bulk/discard', {
@@ -142,21 +206,19 @@
 
             if (response.ok) {
                 window.resultsHandler?.loadFiles();
+                window.resultsHandler?.loadSummary();
                 this.clearSelection();
             }
         } catch (error) {
             console.error('Failed to select best:', error);
-            alert('Failed to discard duplicate files');
+            alert('Failed to discard group files');
         }
     };
 
     // ==========================================
-    // Tagging
+    // Tagging (bug fix: correct endpoint + format)
     // ==========================================
 
-    /**
-     * Add a quick tag to selected files
-     */
     proto.addQuickTag = async function() {
         const input = document.getElementById('quick-tag-input');
         const tagName = input?.value?.trim();
@@ -164,19 +226,18 @@
         if (!tagName || this.selectedIds.size === 0) return;
 
         try {
-            const response = await fetch('/api/files/bulk/tag', {
+            const response = await fetch('/api/files/bulk/tags', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     file_ids: Array.from(this.selectedIds),
-                    tag: tagName
+                    tags: [tagName]
                 })
             });
 
             if (response.ok) {
                 input.value = '';
-                // Optionally refresh to show tag badge
-                // window.resultsHandler?.loadFiles();
+                this.showToast(`Tag "${tagName}" added`);
             }
         } catch (error) {
             console.error('Failed to add tag:', error);
@@ -188,10 +249,6 @@
     // Bulk Review
     // ==========================================
 
-    /**
-     * Bulk review action (accept_review, mark_reviewed, clear_review)
-     * Can work on selection, filtered view, or confidence level
-     */
     proto.bulkReview = async function(action, scope, options = {}) {
         const jobId = window.resultsHandler?.jobId;
         if (!jobId) return;
@@ -215,7 +272,6 @@
             confirmMsg = `${this.getActionLabel(action)} all ${count} ${level.toUpperCase()} confidence files?`;
 
         } else if (scope === 'filtered') {
-            // Get current filter params
             const filterParams = window.filterHandler?.getQueryParams();
             if (filterParams) {
                 requestBody.filter_params = Object.fromEntries(filterParams.entries());
@@ -240,14 +296,11 @@
 
             const result = await response.json();
 
-            // Show toast notification
             this.showToast(`${result.affected_count} files updated`);
 
-            // Refresh the grid and counts
             window.resultsHandler?.loadFiles();
             window.resultsHandler?.loadSummary();
 
-            // Clear selection if we acted on selection
             if (scope === 'selection') {
                 this.clearSelection();
             }
@@ -258,9 +311,6 @@
         }
     };
 
-    /**
-     * Get human-readable label for review action
-     */
     proto.getActionLabel = function(action) {
         switch (action) {
             case 'accept_review': return 'Accept & review';

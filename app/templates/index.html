@@ -109,16 +109,19 @@
                         <span class="seg-icon">&#x29C9;</span>
                         <span class="seg-label">Dupes</span>
                         <span class="seg-count" data-count="duplicates">0</span>
+                        <span class="seg-chevron">&#9662;</span>
                     </button>
                     <button class="mode-segment" data-mode="similar" title="Perceptually similar">
                         <span class="seg-icon">&#x2248;</span>
                         <span class="seg-label">Similar</span>
                         <span class="seg-count" data-count="similar">0</span>
+                        <span class="seg-chevron">&#9662;</span>
                     </button>
                     <button class="mode-segment" data-mode="unreviewed" title="Files needing review">
                         <span class="seg-icon">&#x25CB;</span>
                         <span class="seg-label">Unreviewed</span>
                         <span class="seg-count" data-count="unreviewed">0</span>
+                        <span class="seg-chevron">&#9662;</span>
                     </button>
                     <button class="mode-segment export-segment collapsed" data-mode="export" title="Export &amp; Finalize">
                         <span class="seg-icon">&#x2913;</span>
@@ -157,50 +160,76 @@
 
     <!-- Results: Unified Grid with Filter Bar -->
     <div class="results-container" id="results-container" style="display: none;">
-        <!-- Selection Toolbar (appears when files selected) -->
-        <div class="selection-toolbar" id="selection-toolbar" style="display: none;">
-            <div class="selection-info">
-                <span id="selection-count">0 files selected</span>
+        <!-- Action Bar (always visible, mode-aware) -->
+        <div class="action-bar" id="action-bar">
+            <div class="action-bar-left">
+                <span class="action-bar-count" id="selection-count">0 selected</span>
             </div>
-            <div class="selection-actions">
-                <!-- Review actions -->
-                <button class="btn btn-success btn-sm" id="accept-review-selected" title="Accept detected timestamp and mark as reviewed">
-                    Accept & Review
-                </button>
-                <button class="btn btn-secondary btn-sm" id="mark-reviewed-selected" title="Mark as reviewed without changing timestamp">
-                    Mark Reviewed
-                </button>
-                <div class="selection-divider"></div>
-                <!-- Examine/Compare button -->
-                <button class="btn btn-primary btn-sm" id="examine-selected" title="Open examination view (Enter)">
-                    <span id="examine-btn-label">Examine</span>
-                </button>
-                <div class="selection-divider"></div>
-                <!-- Tag quick-add -->
-                <div class="tag-quick-add">
-                    <input type="text" id="quick-tag-input" class="form-input form-input-sm" placeholder="Add tag...">
-                    <button class="btn btn-primary btn-sm" id="add-quick-tag">Tag</button>
+            <div class="action-bar-center">
+                <!-- Duplicates mode actions -->
+                <div class="action-group" data-action-mode="duplicates" style="display: none;">
+                    <div class="split-btn">
+                        <button class="btn-pill btn-pill-primary" id="ab-keep-selected" disabled title="Keep selected, discard others in group">Keep Selected</button>
+                        <button class="btn-pill btn-pill-primary split-caret" id="ab-keep-caret" disabled title="More actions">&#9662;</button>
+                        <div class="split-dropdown" id="ab-keep-dropdown">
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
+                            <button class="split-dropdown-item" data-action="not-duplicate">Not Duplicate</button>
+                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
+                        </div>
+                    </div>
                 </div>
-                <!-- Duplicate group actions (shown only when duplicates selected) -->
-                <button class="btn btn-secondary btn-sm" id="select-group" style="display: none;" title="Select all files in this duplicate group">
-                    Select Group
-                </button>
-                <button class="btn btn-secondary btn-sm" id="not-duplicate" style="display: none;" title="Remove from duplicate group">
-                    Not Duplicate
-                </button>
-                <button class="btn btn-success btn-sm" id="select-best" style="display: none;" title="Keep selected, discard others in group">
-                    Keep Selected
-                </button>
-                <button class="btn btn-danger btn-sm" id="discard-selected" title="Discard selected files from output">
-                    Discard
-                </button>
-                <button class="btn btn-secondary btn-sm" id="clear-selection">
-                    Clear
-                </button>
+                <!-- Similar mode actions -->
+                <div class="action-group" data-action-mode="similar" style="display: none;">
+                    <div class="split-btn">
+                        <button class="btn-pill btn-pill-primary" id="ab-similar-keep" disabled title="Keep selected, discard others in group">Keep Selected</button>
+                        <button class="btn-pill btn-pill-primary split-caret" id="ab-similar-caret" disabled title="More actions">&#9662;</button>
+                        <div class="split-dropdown" id="ab-similar-dropdown">
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
+                            <button class="split-dropdown-item" data-action="not-similar">Not Similar</button>
+                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Unreviewed mode actions -->
+                <div class="action-group" data-action-mode="unreviewed" style="display: none;">
+                    <div class="split-btn">
+                        <button class="btn-pill btn-pill-success" id="ab-accept-review" disabled title="Accept detected timestamp and mark as reviewed">Accept &amp; Review</button>
+                        <button class="btn-pill btn-pill-success split-caret" id="ab-accept-caret" disabled title="More actions">&#9662;</button>
+                        <div class="split-dropdown" id="ab-accept-dropdown">
+                            <button class="split-dropdown-item" data-action="mark-reviewed">Mark Reviewed</button>
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Reviewed mode actions -->
+                <div class="action-group" data-action-mode="reviewed" style="display: none;">
+                    <button class="btn-pill btn-pill-secondary" id="ab-clear-review" disabled title="Clear review status">Clear Review</button>
+                    <button class="btn-pill btn-pill-danger" id="ab-reviewed-discard" disabled title="Discard selected files">Discard</button>
+                </div>
+                <!-- Discarded mode actions -->
+                <div class="action-group" data-action-mode="discarded" style="display: none;">
+                    <button class="btn-pill btn-pill-success" id="ab-restore" disabled title="Restore selected files">Restore</button>
+                </div>
+            </div>
+            <div class="action-bar-right">
+                <button class="btn-pill btn-pill-subtle action-overflow-trigger" id="action-overflow-trigger" title="More actions">&#8943;</button>
+                <div class="action-overflow-menu" id="action-overflow-menu">
+                    <button class="action-overflow-item" data-action="select-all">Select All</button>
+                    <button class="action-overflow-item" data-action="examine">
+                        <span id="examine-btn-label">Examine</span>
+                    </button>
+                    <div class="action-overflow-divider"></div>
+                    <div class="action-overflow-tag">
+                        <input type="text" id="quick-tag-input" class="action-overflow-tag-input" placeholder="Add tag...">
+                        <button class="btn-pill btn-pill-subtle btn-pill-xs" id="add-quick-tag">Tag</button>
+                    </div>
+                    <div class="action-overflow-divider"></div>
+                    <button class="action-overflow-item" data-action="clear-selection">Clear Selection</button>
+                </div>
             </div>
         </div>
 
-        <!-- Filter Bar (single row: confidence chips, bulk actions, tile size) -->
+        <!-- Filter Bar (single row: confidence chips, tile size) -->
         <div class="filter-bar" id="filter-bar">
             <div class="filter-chips">
                 <div class="confidence-filters" id="confidence-filters">
@@ -219,42 +248,6 @@
                 </div>
             </div>
             <div class="filter-actions">
-                <div class="bulk-actions-dropdown" id="bulk-actions-dropdown">
-                    <button class="btn btn-secondary btn-sm bulk-actions-trigger" id="bulk-actions-trigger">
-                        Bulk Actions ▾
-                    </button>
-                    <div class="bulk-actions-menu" id="bulk-actions-menu">
-                        <div class="bulk-menu-section">
-                            <div class="bulk-menu-header">Current Filter (<span id="bulk-filtered-count">0</span> files)</div>
-                            <button class="bulk-menu-item" data-action="accept_review" data-scope="filtered">
-                                <span class="bulk-item-icon">✓</span> Accept & Review All
-                            </button>
-                            <button class="bulk-menu-item" data-action="mark_reviewed" data-scope="filtered">
-                                <span class="bulk-item-icon">☑</span> Mark All Reviewed
-                            </button>
-                            <button class="bulk-menu-item" data-action="clear_review" data-scope="filtered">
-                                <span class="bulk-item-icon">↺</span> Clear All Reviews
-                            </button>
-                        </div>
-                        <div class="bulk-menu-divider"></div>
-                        <div class="bulk-menu-section">
-                            <div class="bulk-menu-header">By Confidence</div>
-                            <button class="bulk-menu-item" data-action="accept_review" data-scope="confidence" data-level="high">
-                                <span class="chip-badge confidence-high">H</span> Accept All HIGH (<span data-bulk-count="high">0</span>)
-                            </button>
-                            <button class="bulk-menu-item" data-action="accept_review" data-scope="confidence" data-level="medium">
-                                <span class="chip-badge confidence-medium">M</span> Accept All MEDIUM (<span data-bulk-count="medium">0</span>)
-                            </button>
-                            <button class="bulk-menu-item" data-action="accept_review" data-scope="confidence" data-level="low">
-                                <span class="chip-badge confidence-low">L</span> Accept All LOW (<span data-bulk-count="low">0</span>)
-                            </button>
-                            <button class="bulk-menu-item" data-action="mark_reviewed" data-scope="confidence" data-level="none">
-                                <span class="chip-badge confidence-none">-</span> Mark All NONE Reviewed (<span data-bulk-count="none">0</span>)
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <span class="filter-divider"></span>
                 <input type="range" id="tile-size-slider" class="tile-size-slider" min="80" max="240" value="150" title="Tile size">
             </div>
         </div>

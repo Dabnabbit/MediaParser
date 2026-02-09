@@ -62,6 +62,7 @@ class FilterHandler {
         this.modeChips.forEach(seg => lockObserver.observe(seg));
 
         this.initEventListeners();
+        this.initSegmentDropdowns();
         this.loadState();
         this.updateStyles();
     }
@@ -69,15 +70,21 @@ class FilterHandler {
     initEventListeners() {
         // Listen for duplicate group resolutions to refresh counts
         window.addEventListener('duplicateGroupResolved', () => {
-            // Refresh filter counts after duplicate resolution
             if (window.resultsHandler) {
                 window.resultsHandler.loadSummary();
             }
         });
 
+        // Listen for all duplicates resolved — auto-switch mode
+        window.addEventListener('duplicatesResolved', () => {
+            this.autoSelectMode();
+        });
+
         // Mode chip clicks (mutually exclusive)
         this.modeChips.forEach(chip => {
             chip.addEventListener('click', (e) => {
+                // Don't switch mode if clicking the chevron
+                if (e.target.closest('.seg-chevron')) return;
                 const mode = chip.dataset.mode;
                 this.setMode(mode);
             });
@@ -100,8 +107,313 @@ class FilterHandler {
                 this.toggleConfidence(filter);
             });
         });
+    }
 
-        // Sort removed from UI - using defaults (detected_timestamp asc)
+    // ==========================================
+    // Segment Dropdowns
+    // ==========================================
+
+    initSegmentDropdowns() {
+        this.modeChips.forEach(seg => {
+            const chevron = seg.querySelector('.seg-chevron');
+            if (!chevron) return;
+
+            // Chevron click opens dropdown
+            chevron.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                this.openSegmentDropdown(seg);
+            });
+
+            // Right-click on segment opens dropdown
+            seg.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.openSegmentDropdown(seg);
+            });
+
+            // Long-press on segment opens dropdown (touch)
+            let longPressTimer = null;
+            seg.addEventListener('touchstart', (e) => {
+                longPressTimer = setTimeout(() => {
+                    e.preventDefault();
+                    this.openSegmentDropdown(seg);
+                }, 500);
+            }, { passive: false });
+
+            seg.addEventListener('touchend', () => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+            });
+
+            seg.addEventListener('touchmove', () => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+            });
+        });
+
+        // Close segment dropdowns on outside click
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.seg-dropdown') && !e.target.closest('.seg-chevron')) {
+                this._closeSegmentDropdowns();
+            }
+        });
+    }
+
+    openSegmentDropdown(segment) {
+        // Close any existing
+        this._closeSegmentDropdowns();
+
+        const mode = segment.dataset.mode;
+        const count = this.counts[mode] || 0;
+        if (count === 0) return;
+
+        segment.classList.add('seg-dropdown-open');
+
+        // Build dropdown
+        const dropdown = document.createElement('div');
+        dropdown.className = 'seg-dropdown';
+
+        if (mode === 'duplicates' || mode === 'similar') {
+            const label = mode === 'duplicates' ? 'Duplicate' : 'Similar';
+            dropdown.innerHTML = `
+                <div class="seg-dropdown-header">Auto-resolve ${label} Groups</div>
+                <button class="seg-dropdown-item" data-resolve="high">
+                    <span class="chip-badge confidence-high">H</span> Auto-resolve HIGH groups
+                </button>
+                <button class="seg-dropdown-item" data-resolve="medium">
+                    <span class="chip-badge confidence-medium">M</span> Auto-resolve MEDIUM groups
+                </button>
+                <div class="seg-dropdown-divider"></div>
+                <button class="seg-dropdown-item" data-resolve="keep-all">Keep all (not ${mode === 'duplicates' ? 'duplicates' : 'similar'})</button>
+            `;
+        } else if (mode === 'unreviewed') {
+            dropdown.innerHTML = `
+                <div class="seg-dropdown-header">Bulk Review</div>
+                <button class="seg-dropdown-item" data-resolve="accept-high">
+                    <span class="chip-badge confidence-high">H</span> Accept all HIGH
+                </button>
+                <button class="seg-dropdown-item" data-resolve="accept-medium">
+                    <span class="chip-badge confidence-medium">M</span> Accept all MEDIUM
+                </button>
+                <button class="seg-dropdown-item" data-resolve="accept-low">
+                    <span class="chip-badge confidence-low">L</span> Accept all LOW
+                </button>
+                <div class="seg-dropdown-divider"></div>
+                <button class="seg-dropdown-item" data-resolve="mark-all-reviewed">Mark all reviewed</button>
+            `;
+        }
+
+        // Position dropdown below the chevron using fixed positioning
+        // (can't use segment as parent because it has overflow: hidden)
+        const chevron = segment.querySelector('.seg-chevron');
+        const anchor = chevron || segment;
+        const anchorRect = anchor.getBoundingClientRect();
+        const segRect = segment.getBoundingClientRect();
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = (segRect.bottom + 4) + 'px';
+        // Center dropdown on the chevron, but clamp to viewport
+        const dropdownWidth = 240; // min-width from CSS
+        let left = anchorRect.left + anchorRect.width / 2 - dropdownWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - dropdownWidth - 8));
+        dropdown.style.left = left + 'px';
+        dropdown.dataset.segMode = mode;
+        document.body.appendChild(dropdown);
+
+        // Wire item clicks
+        dropdown.querySelectorAll('.seg-dropdown-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const resolve = item.dataset.resolve;
+                this._handleSegmentAction(mode, resolve);
+                this._closeSegmentDropdowns();
+            });
+        });
+    }
+
+    _closeSegmentDropdowns() {
+        document.querySelectorAll('.seg-dropdown').forEach(d => d.remove());
+        document.querySelectorAll('.seg-dropdown-open').forEach(s => s.classList.remove('seg-dropdown-open'));
+    }
+
+    _handleSegmentAction(mode, resolve) {
+        if (resolve === 'keep-all') {
+            this.keepAllInMode(mode);
+        } else if (resolve === 'high' || resolve === 'medium') {
+            this.autoResolveByConfidence(mode, resolve);
+        } else if (resolve === 'accept-high') {
+            this._bulkReviewByConfidence('accept_review', 'high');
+        } else if (resolve === 'accept-medium') {
+            this._bulkReviewByConfidence('accept_review', 'medium');
+        } else if (resolve === 'accept-low') {
+            this._bulkReviewByConfidence('accept_review', 'low');
+        } else if (resolve === 'mark-all-reviewed') {
+            this._bulkReviewAll('mark_reviewed');
+        }
+    }
+
+    /**
+     * Auto-resolve groups at a given confidence level.
+     * Fetches all files for the mode, groups them, keeps recommended, discards rest.
+     */
+    async autoResolveByConfidence(mode, confidence) {
+        const jobId = window.resultsHandler?.jobId;
+        if (!jobId) return;
+
+        const groupKey = mode === 'similar' ? 'similar_group_id' : 'exact_group_id';
+
+        try {
+            // Fetch ALL files for this mode (no confidence filter)
+            const params = new URLSearchParams({
+                mode: mode,
+                confidence: 'high,medium,low,none',
+                sort: 'detected_timestamp',
+                order: 'asc',
+                limit: 10000
+            });
+
+            const response = await fetch(`/api/jobs/${jobId}/files?${params}`);
+            if (!response.ok) throw new Error('Failed to fetch files');
+
+            const data = await response.json();
+            const files = data.files || [];
+
+            // Group files by group key
+            const groups = new Map();
+            for (const f of files) {
+                const gid = f[groupKey];
+                if (!gid) continue;
+                if (!groups.has(gid)) groups.set(gid, []);
+                groups.get(gid).push(f);
+            }
+
+            // Filter to groups matching target confidence
+            const targetGroups = [];
+            for (const [gid, members] of groups) {
+                // Group confidence is the confidence of the group match
+                const groupConfidence = members[0]?.confidence?.toLowerCase() ||
+                                       members[0]?.match_confidence?.toLowerCase();
+                if (groupConfidence === confidence) {
+                    targetGroups.push(members);
+                }
+            }
+
+            if (targetGroups.length === 0) {
+                window.selectionHandler?.showToast(`No ${confidence.toUpperCase()} confidence groups found`);
+                return;
+            }
+
+            // For each group: keep recommended, collect rest as discard targets
+            const toDiscard = [];
+            let keepCount = 0;
+            for (const members of targetGroups) {
+                const recommended = members.find(f => f.is_recommended) || members[0];
+                keepCount++;
+                for (const f of members) {
+                    if (f.id !== recommended.id) {
+                        toDiscard.push(f.id);
+                    }
+                }
+            }
+
+            if (toDiscard.length === 0) {
+                window.selectionHandler?.showToast('Nothing to discard');
+                return;
+            }
+
+            const msg = `Auto-resolve ${targetGroups.length} ${confidence.toUpperCase()} groups? Keep ${keepCount}, discard ${toDiscard.length}.`;
+            if (!confirm(msg)) return;
+
+            const discardResp = await fetch('/api/files/bulk/discard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_ids: toDiscard })
+            });
+
+            if (discardResp.ok) {
+                window.resultsHandler?.loadFiles();
+                window.resultsHandler?.loadSummary();
+                window.selectionHandler?.showToast(`Resolved ${targetGroups.length} groups`);
+            }
+
+        } catch (error) {
+            console.error('Auto-resolve failed:', error);
+            alert(`Auto-resolve failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Keep all files in a mode — mark them as not-duplicate or not-similar.
+     */
+    async keepAllInMode(mode) {
+        const jobId = window.resultsHandler?.jobId;
+        if (!jobId) return;
+
+        const count = this.counts[mode] || 0;
+        const label = mode === 'duplicates' ? 'duplicate' : 'similar';
+        const msg = `Mark all ${count} files as not ${label}? This removes them from their groups.`;
+        if (!confirm(msg)) return;
+
+        try {
+            // Fetch all files for this mode
+            const params = new URLSearchParams({
+                mode: mode,
+                confidence: 'high,medium,low,none',
+                sort: 'detected_timestamp',
+                order: 'asc',
+                limit: 10000
+            });
+
+            const response = await fetch(`/api/jobs/${jobId}/files?${params}`);
+            if (!response.ok) throw new Error('Failed to fetch files');
+
+            const data = await response.json();
+            const fileIds = (data.files || []).map(f => f.id);
+
+            if (fileIds.length === 0) return;
+
+            const endpoint = mode === 'duplicates'
+                ? '/api/files/bulk/not-duplicate'
+                : '/api/files/bulk/not-similar';
+
+            const clearResp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_ids: fileIds })
+            });
+
+            if (clearResp.ok) {
+                window.resultsHandler?.loadFiles();
+                window.resultsHandler?.loadSummary();
+                window.selectionHandler?.showToast(`Cleared ${fileIds.length} files from ${label} groups`);
+            }
+
+        } catch (error) {
+            console.error('Keep all failed:', error);
+            alert(`Failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Bulk review by confidence level (for unreviewed segment dropdown)
+     */
+    _bulkReviewByConfidence(action, confidence) {
+        const count = this.counts[confidence] || 0;
+        if (window.selectionHandler) {
+            window.selectionHandler.bulkReview(action, 'confidence', {
+                confidence_level: confidence,
+                count: count
+            });
+        }
+    }
+
+    /**
+     * Bulk review all files in current mode (for unreviewed segment dropdown)
+     */
+    _bulkReviewAll(action) {
+        const mode = this.currentMode;
+        const count = this.counts[mode] || 0;
+        if (window.selectionHandler) {
+            window.selectionHandler.bulkReview(action, 'filtered', { count });
+        }
     }
 
     setMode(mode) {
