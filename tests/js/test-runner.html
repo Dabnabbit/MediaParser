@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaParser JS Tests</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 24px;
+            line-height: 1.5;
+        }
+        h1 {
+            font-size: 1.4rem;
+            margin-bottom: 16px;
+            color: #4fc3f7;
+        }
+        .test-summary {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 1rem;
+        }
+        .test-summary.all-pass {
+            background: #1b5e20;
+            border: 1px solid #4caf50;
+        }
+        .test-summary.has-fail {
+            background: #b71c1c;
+            border: 1px solid #f44336;
+        }
+        .test-suite {
+            margin-bottom: 12px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .test-suite.pass { border-color: #2e7d32; }
+        .test-suite.fail { border-color: #c62828; }
+        .suite-header {
+            padding: 8px 12px;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        .test-suite.pass .suite-header { background: #1b5e2033; color: #81c784; }
+        .test-suite.fail .suite-header { background: #b71c1c33; color: #ef9a9a; }
+        .test-case {
+            padding: 4px 12px 4px 24px;
+            font-size: 0.85rem;
+            border-top: 1px solid #222;
+        }
+        .test-case.pass { color: #a5d6a7; }
+        .test-case.fail { color: #ef9a9a; }
+        .test-pass-icon { color: #4caf50; margin-right: 6px; }
+        .test-fail-icon { color: #f44336; margin-right: 6px; }
+        .test-error {
+            margin: 2px 0 4px 20px;
+            padding: 4px 8px;
+            background: #2a1010;
+            border-left: 3px solid #f44336;
+            font-size: 0.8rem;
+            color: #ffab91;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .footer {
+            margin-top: 24px;
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        /* Hide test fixture tiles */
+        #test-fixture { display: none; }
+    </style>
+</head>
+<body>
+    <h1>MediaParser JS Unit Tests</h1>
+    <div id="test-results">Loading...</div>
+
+    <!-- Hidden fixture for DOM-dependent tests -->
+    <div id="test-fixture">
+        <div class="thumbnail-grid" id="fixture-grid" style="display:grid; width:600px; gap:8px;">
+            <div class="thumbnail" data-file-id="1">
+                <img class="tile-image" src="" alt="test1">
+            </div>
+            <div class="thumbnail" data-file-id="2">
+                <img class="tile-image" src="" alt="test2">
+            </div>
+            <div class="thumbnail" data-file-id="3">
+                <img class="tile-image" src="" alt="test3">
+            </div>
+        </div>
+    </div>
+
+    <!-- Assertion library + test runner -->
+    <script src="assert.js"></script>
+
+    <!--
+        Production scripts — loaded in the same order as base.html.
+        We only load the ones needed for unit-testable logic.
+        Scripts that require a running Flask server (upload, progress, etc.) are skipped.
+    -->
+    <script src="../../app/static/js/tile.js"></script>
+    <script src="../../app/static/js/virtual-scroll.js"></script>
+    <script src="../../app/static/js/tile-manager.js"></script>
+    <script src="../../app/static/js/viewport-core.js"></script>
+    <script src="../../app/static/js/viewport-animation.js"></script>
+    <script src="../../app/static/js/viewport-navigation.js"></script>
+    <script src="../../app/static/js/viewport-ui.js"></script>
+    <script src="../../app/static/js/viewport-compare.js"></script>
+
+    <!-- Test suites -->
+    <script src="test-virtual-scroll.js"></script>
+    <script src="test-viewport-state.js"></script>
+    <script src="test-viewport-navigation.js"></script>
+    <script src="test-tile-positions.js"></script>
+    <script src="test-tile-resolution.js"></script>
+    <script src="test-tile-manager.js"></script>
+
+    <!-- Render results after all tests have run -->
+    <script>
+        testRunner.renderResults();
+        const stats = testRunner.getStats();
+        document.querySelector('.footer')?.remove();
+        const footer = document.createElement('div');
+        footer.className = 'footer';
+        footer.textContent = `Ran at ${new Date().toLocaleTimeString()} — ${stats.totalPass + stats.totalFail} tests`;
+        document.body.appendChild(footer);
+    </script>
+</body>
+</html>

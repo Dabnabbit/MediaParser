@@ -67,6 +67,8 @@
     <script src="{{ url_for('static', filename='js/vendor/chrono.min.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/timestamp.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/tags.js') }}" defer></script>
+    <!-- Viewport debug toolkit (no-op until called from console) -->
+    <script src="{{ url_for('static', filename='js/debug-viewport.js') }}" defer></script>
     {% block extra_js %}{% endblock %}
 
     <!-- Settings Drawer -->
