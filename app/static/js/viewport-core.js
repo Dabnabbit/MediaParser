@@ -95,6 +95,11 @@ class ViewportController {
         // when viewport tiles leave flow via position:fixed
         this.lockGridPositions();
 
+        // Pause virtual scroll so ResizeObserver doesn't override locked grid
+        if (this.tileManager.virtualScroll) {
+            this.tileManager.virtualScroll.pause();
+        }
+
         // Capture viewport tiles' grid positions BEFORE mode switch
         const currentTile = this.tileManager.getTile(fileId);
         const prevTile = this.tileManager.getTile(this.navigationFiles[this.currentIndex - 1]);
@@ -162,39 +167,148 @@ class ViewportController {
     }
 
     /**
-     * Exit viewport mode
+     * Exit viewport mode with reverse FLIP animation.
+     * Uses position:fixed freeze + animate (same pattern as navigation FLIP
+     * for leaving tiles in updateTilePositions). Tiles animate from their
+     * viewport positions back to their grid cells via left/top/width/height.
      */
     exit() {
         if (!this.isActive || this.isTransitioning) return;
 
-        // Set inactive and transitioning immediately to prevent re-entry during animation
         this.isActive = false;
         this.isTransitioning = true;
 
         const container = this.tileManager.container;
 
-        // Clear compare layout before exit animation
+        // Clear compare inline styles and pending nav FLIP before capturing
         this._clearCompareLayout();
+        this._cleanupFlipStyles();
+        if (this._flipCleanupTimeout) {
+            clearTimeout(this._flipCleanupTimeout);
+            this._flipCleanupTimeout = null;
+        }
+        this._clearViewportZIndices();
 
-        // Add exit animation class
+        // --- FLIP: First ---
+        // Capture viewport tiles' current screen positions (position:fixed from CSS)
+        const flipEntries = [];
+        this.tileManager.tiles.forEach(tile => {
+            if (tile.position !== Tile.POSITIONS.GRID &&
+                tile.position !== Tile.POSITIONS.HIDDEN &&
+                tile.element) {
+                flipEntries.push({
+                    tile,
+                    firstRect: tile.element.getBoundingClientRect()
+                });
+            }
+        });
+
+        // Suppress CSS transitions BEFORE changing data-vp-pos
+        // (prevents browser from starting CSS animations on the attribute change)
+        flipEntries.forEach(({ tile }) => {
+            tile.element.style.transition = 'none';
+        });
+
+        // Start backdrop fade
         container.classList.add('viewport-exiting');
 
-        // Clean up after animation
+        // Switch tiles to grid position (removes position:fixed via CSS).
+        // Don't use setPosition() — it triggers resolution downgrade.
+        // Don't use resetToGrid() — it clears VS exemptions.
+        this.tileManager.tiles.forEach(tile => {
+            if (tile.position !== Tile.POSITIONS.GRID) {
+                tile.position = Tile.POSITIONS.GRID;
+                if (tile.element) {
+                    tile.element.dataset.vpPos = 'grid';
+                    tile.element.classList.remove('vp-prev', 'vp-current', 'vp-next', 'vp-hidden');
+                    tile.element.classList.add('vp-grid');
+                    tile.unobserveSize();
+                }
+            }
+        });
+
+        // --- FLIP: Last ---
+        // Force layout — tiles are now in grid flow
+        void container.offsetHeight;
+
+        flipEntries.forEach(entry => {
+            if (entry.tile.element) {
+                entry.lastRect = entry.tile.element.getBoundingClientRect();
+            }
+        });
+
+        // --- Freeze at First positions ---
+        // Pin tiles at their viewport positions using inline position:fixed.
+        // This prevents any visual snap to grid — tiles stay exactly where they were.
+        flipEntries.forEach(({ tile, firstRect }) => {
+            const el = tile.element;
+            el.style.position = 'fixed';
+            el.style.left = `${firstRect.left}px`;
+            el.style.top = `${firstRect.top}px`;
+            el.style.width = `${firstRect.width}px`;
+            el.style.height = `${firstRect.height}px`;
+            el.style.transform = 'none';
+            el.style.zIndex = '1001';
+            // transition: none already set above
+        });
+
+        // Force reflow to lock frozen state
+        void container.offsetHeight;
+
+        // Read transition timing from CSS
+        const cs = getComputedStyle(container);
+        const durationStr = cs.getPropertyValue('--vp-transition-duration').trim() || '0.35s';
+        const durationMs = parseFloat(durationStr) * (durationStr.includes('ms') ? 1 : 1000) || 350;
+        const easingStr = cs.getPropertyValue('--vp-transition-easing').trim() ||
+            'cubic-bezier(0.4, 0, 0.2, 1)';
+
+        // --- FLIP: Animate to grid positions ---
+        // Animate left/top/width/height from viewport positions to grid positions
+        requestAnimationFrame(() => {
+            flipEntries.forEach(({ tile, lastRect }) => {
+                if (tile.element && lastRect) {
+                    tile.element.style.transition = [
+                        `left ${durationStr} ${easingStr}`,
+                        `top ${durationStr} ${easingStr}`,
+                        `width ${durationStr} ${easingStr}`,
+                        `height ${durationStr} ${easingStr}`,
+                    ].join(', ');
+                    tile.element.style.left = `${lastRect.left}px`;
+                    tile.element.style.top = `${lastRect.top}px`;
+                    tile.element.style.width = `${lastRect.width}px`;
+                    tile.element.style.height = `${lastRect.height}px`;
+                }
+            });
+        });
+
+        // Phase 2: Full teardown after animation completes
         setTimeout(() => {
+            // Clean up inline styles — tiles return to grid flow
+            flipEntries.forEach(({ tile }) => {
+                if (tile.element) {
+                    tile.element.style.position = '';
+                    tile.element.style.left = '';
+                    tile.element.style.top = '';
+                    tile.element.style.width = '';
+                    tile.element.style.height = '';
+                    tile.element.style.transform = '';
+                    tile.element.style.transition = '';
+                    tile.element.style.zIndex = '';
+                }
+            });
+
+            // Remove viewport mode
             document.body.classList.remove('viewport-active');
             container.classList.remove(
                 'viewport-mode', 'viewport-exiting', 'with-details',
                 'view-carousel', 'view-compare', 'view-fullscreen'
             );
 
-            // Reset all tile positions to grid and unlock grid positions
-            this._cleanupFlipStyles();
-            if (this._flipCleanupTimeout) {
-                clearTimeout(this._flipCleanupTimeout);
-                this._flipCleanupTimeout = null;
+            // Clear exemptions and unlock grid
+            if (this.tileManager.virtualScroll) {
+                this.tileManager.virtualScroll.clearExemptions();
+                this.tileManager.virtualScroll.resume();
             }
-            this._clearViewportZIndices();
-            this.tileManager.resetToGrid();
             this.unlockGridPositions();
 
             // Remove UI elements
@@ -208,36 +322,18 @@ class ViewportController {
             // Restore scroll position
             window.scrollTo(0, this.lastScrollPosition);
 
-            // Scroll the grid to show the last viewed tile.
-            // Use VirtualScrollManager.scrollToIndex if available (ensures tile is rendered),
-            // otherwise fall back to scrollIntoView on the tile element.
-            const lastFileId = this.getCurrentFileId();
-            const vs = this.tileManager.virtualScroll;
-            if (vs) {
-                const fileIdx = this.tileManager.getFileIndex(lastFileId);
-                if (fileIdx >= 0) {
-                    vs.scrollToIndex(fileIdx);
-                }
-            } else {
-                const lastTile = this.tileManager.getTile(lastFileId);
-                if (lastTile?.element) {
-                    lastTile.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }
-
             // Callback
             if (this.options.onExit) {
                 this.options.onExit();
             }
 
-            // Emit event
+            // Emit event — results.js handles scroll-to-file after grid rebuild
             window.dispatchEvent(new CustomEvent('viewportExit', {
                 detail: { lastFileId: this.getCurrentFileId() }
             }));
 
-            // Clear transition guard
             this.isTransitioning = false;
-        }, 300);
+        }, durationMs + 50);
     }
 
     /**
@@ -330,6 +426,9 @@ class ViewportController {
             this._clearViewportZIndices();
             this.tileManager.resetToGrid();
             this.unlockGridPositions();
+            if (this.tileManager.virtualScroll) {
+                this.tileManager.virtualScroll.resume();
+            }
             this.removeUI();
             document.removeEventListener('keydown', this.handleKeydown);
             this.tileManager.container.removeEventListener('click', this.handleClick);

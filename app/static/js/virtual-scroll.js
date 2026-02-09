@@ -50,10 +50,13 @@ class VirtualScrollManager {
         // Callback: called with (startIdx, endIdx) when visible range changes
         this.onRender = null;
 
+        // Pause flag — skips recalculation and scroll handling (viewport mode)
+        this._paused = false;
+
         // Scroll listener (RAF-throttled)
         this._rafId = null;
         this._onScroll = () => {
-            if (this._rafId || this._rendering) return;
+            if (this._rafId || this._rendering || this._paused) return;
             this._rafId = requestAnimationFrame(() => {
                 this._rafId = null;
                 this.handleScroll();
@@ -67,7 +70,7 @@ class VirtualScrollManager {
         this._lastWidth = 0;
         this._lastHeight = 0;
         this._resizeObserver = new ResizeObserver((entries) => {
-            if (this._rendering) return;
+            if (this._rendering || this._paused) return;
             const entry = entries[0];
             const w = entry.contentRect.width;
             const h = entry.contentRect.height;
@@ -100,7 +103,7 @@ class VirtualScrollManager {
      * Skips DOM updates and re-render if layout hasn't actually changed.
      */
     recalculateLayout() {
-        if (!this.container || this._recalculating) return;
+        if (!this.container || this._recalculating || this._paused) return;
         this._recalculating = true;
 
         try {
@@ -164,7 +167,7 @@ class VirtualScrollManager {
      * Calculate visible range from scrollTop and render if changed.
      */
     handleScroll() {
-        if (this.files.length === 0 || this._rendering) return;
+        if (this.files.length === 0 || this._rendering || this._paused) return;
 
         const scrollTop = this.container.scrollTop;
         const clientHeight = this.container.clientHeight;
@@ -283,6 +286,20 @@ class VirtualScrollManager {
         if (targetScrollTop < scrollTop || targetScrollTop > scrollTop + clientHeight - this.rowHeight) {
             this.container.scrollTop = Math.max(0, targetScrollTop - clientHeight / 3);
         }
+    }
+
+    /**
+     * Pause scroll handling and layout recalculation (viewport mode).
+     */
+    pause() {
+        this._paused = true;
+    }
+
+    /**
+     * Resume scroll handling and layout recalculation.
+     */
+    resume() {
+        this._paused = false;
     }
 
     /**

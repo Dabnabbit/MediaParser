@@ -537,11 +537,6 @@ body.viewport-details-open > .viewport-hints {
    DETAILS PANEL IN VIEWPORT MODE
    ============================================ */
 
-/* When viewport is active with details panel */
-.thumbnail-grid.viewport-mode.with-details {
-    padding-right: 380px;
-}
-
 /* Adjust all carousel positions when details panel is open */
 .thumbnail-grid.viewport-mode.with-details .thumbnail[data-vp-pos="current"],
 .thumbnail-grid.viewport-mode.with-details .thumbnail.vp-current {
@@ -649,18 +644,14 @@ body.viewport-details-open > .viewport-hints {
    ANIMATION STATES
    ============================================ */
 
-/* Exit animation */
-.thumbnail-grid.viewport-mode.viewport-exiting {
-    animation: viewportFadeOut 0.3s ease forwards;
+/* Exit animation — fade the ::before backdrop */
+.thumbnail-grid.viewport-mode.viewport-exiting::before {
+    animation: backdropFadeOut 0.3s ease forwards;
 }
 
-@keyframes viewportFadeOut {
-    from {
-        background: var(--vp-backdrop);
-    }
-    to {
-        background: transparent;
-    }
+@keyframes backdropFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
 }
 
 /* Tile slide animations for navigation */
@@ -949,11 +940,6 @@ body.viewport-details-open > .viewport-hints {
     margin: 4px 0;
 }
 
-/* Adjust viewport when details panel is open */
-body.viewport-details-open .thumbnail-grid.viewport-mode {
-    padding-right: 360px;
-}
-
 body.viewport-details-open > .viewport-close {
     right: 380px;
 }
@@ -969,10 +955,6 @@ body.viewport-details-open > .viewport-counter {
 @media (max-width: 900px) {
     .viewport-details-panel {
         width: 320px;
-    }
-
-    body.viewport-details-open .thumbnail-grid.viewport-mode {
-        padding-right: 340px;
     }
 
     body.viewport-details-open .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"],
@@ -1004,11 +986,6 @@ body.viewport-details-open > .viewport-counter {
 
     .viewport-details-panel.visible {
         transform: translateY(0);
-    }
-
-    body.viewport-details-open .thumbnail-grid.viewport-mode {
-        padding-right: 0;
-        padding-bottom: 50vh;
     }
 
     body.viewport-details-open .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"],

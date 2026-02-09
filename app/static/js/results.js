@@ -84,7 +84,8 @@ class ResultsHandler {
 
         // Reload grid when viewport exits (reflects any changes made during examination)
         // Then auto-select mode if current mode is now empty (e.g., last unreviewed confirmed)
-        window.addEventListener('viewportExit', async () => {
+        window.addEventListener('viewportExit', async (event) => {
+            const lastFileId = event.detail?.lastFileId;
             await this.loadSummary();
             if (window.filterHandler) {
                 const mode = window.filterHandler.currentMode;
@@ -93,7 +94,14 @@ class ResultsHandler {
                     window.filterHandler.autoSelectMode();
                 }
             }
-            this.loadFiles();
+            await this.loadFiles();
+            // After grid rebuild, scroll to the last viewed tile
+            if (lastFileId && this.tileManager?.virtualScroll) {
+                const fileIdx = this.tileManager.virtualScroll.getFileIndex(lastFileId);
+                if (fileIdx >= 0) {
+                    this.tileManager.virtualScroll.scrollToIndex(fileIdx);
+                }
+            }
         });
 
         // Tile size slider - live update + sync scrollbar after resize
