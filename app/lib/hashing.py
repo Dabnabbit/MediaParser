@@ -52,7 +52,7 @@ def calculate_perceptual_hash(file_path: Path | str) -> Optional[str]:
     """
     Calculate perceptual hash for near-duplicate detection.
 
-    Uses imagehash.dhash() algorithm (fast, good for duplicates).
+    Uses imagehash.phash() (DCT-based) for better accuracy than dHash.
     Only works on image files - returns None for non-images or corrupt files.
 
     Args:
@@ -72,8 +72,7 @@ def calculate_perceptual_hash(file_path: Path | str) -> Optional[str]:
 
     try:
         with Image.open(path) as img:
-            # dHash is faster than pHash and good for duplicate detection
-            phash = imagehash.dhash(img)
+            phash = imagehash.phash(img)
             return str(phash)
     except Exception as e:
         # Expected behavior for non-images (videos, documents, etc.)

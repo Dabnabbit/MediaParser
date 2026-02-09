@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Detection thresholds
 EXACT_THRESHOLD = 5         # Hamming distance 0-5 = exact duplicate
-SIMILAR_THRESHOLD = 12      # Hamming distance 6-12 = similar
+SIMILAR_THRESHOLD = 16      # Hamming distance 6-16 = similar
 BURST_THRESHOLD = 2         # Seconds gap for burst detection
 PANORAMA_THRESHOLD = 30     # Seconds gap for panorama detection
 
@@ -92,7 +92,7 @@ def detect_sequence_type(file_a, file_b) -> str:
 
 # Thresholds for average pairwise distance → confidence
 SIMILAR_CONF_HIGH = 8       # avg ≤ 8 → high
-SIMILAR_CONF_MEDIUM = 10    # avg ≤ 10 → medium, else low
+SIMILAR_CONF_MEDIUM = 11    # avg ≤ 11 → medium, else low
 
 
 def _compute_similar_group_confidence(members: list) -> str:
