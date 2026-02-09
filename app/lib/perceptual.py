@@ -91,6 +91,8 @@ def detect_sequence_type(file_a, file_b) -> str:
 
 
 # Thresholds for average pairwise distance → confidence
+EXACT_CONF_HIGH = 1         # avg ≤ 1 → high (byte-identical or near-identical)
+EXACT_CONF_MEDIUM = 3       # avg ≤ 3 → medium, else low
 SIMILAR_CONF_HIGH = 8       # avg ≤ 8 → high
 SIMILAR_CONF_MEDIUM = 13    # avg ≤ 13 → medium, else low
 
@@ -166,6 +168,47 @@ def _finalize_similar_groups(files: list):
             f.similar_group_type = group_type
 
 
+def _finalize_exact_groups(files: list):
+    """
+    Post-process files to compute group-level confidence for exact groups.
+
+    Called after all pairwise merges. Groups with no computable perceptual
+    distances (e.g. SHA256-only matches without perceptual hashes) default
+    to 'high' since byte-identical files are always high confidence.
+
+    Args:
+        files: List of file objects (some may have exact_group_id set)
+    """
+    from collections import defaultdict
+
+    groups = defaultdict(list)
+    for f in files:
+        if f.exact_group_id:
+            groups[f.exact_group_id].append(f)
+
+    for group_id, members in groups.items():
+        distances = []
+        for i, a in enumerate(members):
+            for b in members[i + 1:]:
+                if a.file_hash_perceptual and b.file_hash_perceptual:
+                    distances.append(hamming_distance(a.file_hash_perceptual, b.file_hash_perceptual))
+
+        if not distances:
+            # No perceptual hashes (SHA256-only groups) → always high
+            confidence = 'high'
+        else:
+            avg = sum(distances) / len(distances)
+            if avg <= EXACT_CONF_HIGH:
+                confidence = 'high'
+            elif avg <= EXACT_CONF_MEDIUM:
+                confidence = 'medium'
+            else:
+                confidence = 'low'
+
+        for f in members:
+            f.exact_group_confidence = confidence
+
+
 def _generate_group_id() -> str:
     """
     Generate a unique group ID for duplicate/similar groups.
@@ -181,23 +224,21 @@ def _merge_into_exact_group(file_a, file_b):
     Merge two files into an exact duplicate group.
 
     If either file is already in a group, reuse that group_id.
-    Otherwise, generate a new group_id. Confidence is always 'high'
-    since perceptual distance 0-5 is a near-certain match.
+    Otherwise, generate a new group_id. Confidence is computed
+    later by _finalize_exact_groups().
 
     Args:
         file_a: First file object
         file_b: Second file object
 
     Side effects:
-        Sets exact_group_id and exact_group_confidence on both files
+        Sets exact_group_id on both files
     """
     # Reuse existing group or create new
     group_id = file_a.exact_group_id or file_b.exact_group_id or _generate_group_id()
 
     file_a.exact_group_id = group_id
-    file_a.exact_group_confidence = 'high'
     file_b.exact_group_id = group_id
-    file_b.exact_group_confidence = 'high'
 
 
 def _merge_into_similar_group(file_a, file_b):
@@ -249,7 +290,8 @@ def _compare_all_pairs(files: List):
             elif distance <= SIMILAR_THRESHOLD:
                 _merge_into_similar_group(file_a, file_b)
 
-    # Compute group-level confidence and type for all similar groups
+    # Compute group-level confidence for exact and similar groups
+    _finalize_exact_groups(files)
     _finalize_similar_groups(files)
 
 

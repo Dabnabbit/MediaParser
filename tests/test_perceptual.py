@@ -155,11 +155,37 @@ class TestCompareAllPairs:
         _compare_all_pairs([a, b])
         assert a.similar_group_confidence == 'high'
 
-        # Distance 12 (0xfff = 12 bits) → low confidence (>10)
+        # Distance 12 (0xfff = 12 bits) → medium confidence (≤13)
         c = make_file('c.jpg', perceptual_hash='0000000000000000')
         d = make_file('d.jpg', perceptual_hash='0000000000000fff')
         _compare_all_pairs([c, d])
-        assert c.similar_group_confidence == 'low'
+        assert c.similar_group_confidence == 'medium'
+
+        # Distance 15 (0x7fff = 15 bits) → low confidence (>13)
+        e = make_file('e.jpg', perceptual_hash='0000000000000000')
+        f = make_file('f.jpg', perceptual_hash='0000000000007fff')
+        _compare_all_pairs([e, f])
+        assert e.similar_group_confidence == 'low'
+
+    def test_exact_group_confidence_levels(self):
+        """Exact groups get confidence based on average pairwise distance."""
+        # Distance 0 (identical) → high (≤1)
+        a = make_file('a.jpg', perceptual_hash='abcdef0000000000')
+        b = make_file('b.jpg', perceptual_hash='abcdef0000000000')
+        _compare_all_pairs([a, b])
+        assert a.exact_group_confidence == 'high'
+
+        # Distance 3 (0x07 = 3 bits) → medium (≤3)
+        c = make_file('c.jpg', perceptual_hash='0000000000000000')
+        d = make_file('d.jpg', perceptual_hash='0000000000000007')
+        _compare_all_pairs([c, d])
+        assert c.exact_group_confidence == 'medium'
+
+        # Distance 5 (0x1f = 5 bits) → low (>3)
+        e = make_file('e.jpg', perceptual_hash='0000000000000000')
+        f = make_file('f.jpg', perceptual_hash='000000000000001f')
+        _compare_all_pairs([e, f])
+        assert e.exact_group_confidence == 'low'
 
     def test_beyond_threshold_not_grouped(self):
         """Distance beyond SIMILAR_THRESHOLD (12) is not grouped."""

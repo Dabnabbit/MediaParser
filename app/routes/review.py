@@ -116,6 +116,7 @@ def get_file_detail(file_id):
         'file_hash': file.file_hash_sha256,
         'discarded': file.discarded,
         'exact_group_id': file.exact_group_id,
+        'exact_group_confidence': file.exact_group_confidence,
         'similar_group_id': file.similar_group_id,
         'similar_group_confidence': file.similar_group_confidence,
         'similar_group_type': file.similar_group_type,
