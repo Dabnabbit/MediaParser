@@ -92,7 +92,7 @@ def detect_sequence_type(file_a, file_b) -> str:
 
 # Thresholds for average pairwise distance → confidence
 SIMILAR_CONF_HIGH = 8       # avg ≤ 8 → high
-SIMILAR_CONF_MEDIUM = 11    # avg ≤ 11 → medium, else low
+SIMILAR_CONF_MEDIUM = 13    # avg ≤ 13 → medium, else low
 
 
 def _compute_similar_group_confidence(members: list) -> str:
