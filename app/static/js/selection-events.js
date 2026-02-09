@@ -98,65 +98,32 @@
         });
 
         // ==========================================
-        // Action Bar — Primary Buttons
+        // Action Bar — Selection Button (Select All / Clear)
         // ==========================================
 
-        // Duplicates: Keep Selected
-        document.getElementById('ab-keep-selected')?.addEventListener('click', () => {
-            this.selectBestFromGroup();
+        const selectionBtn = document.getElementById('ab-selection-btn');
+        selectionBtn?.addEventListener('click', (e) => {
+            if (e.target.closest('.pill-chevron')) return;
+            if (this.selectedIds.size > 0) {
+                this.clearSelection();
+            } else {
+                this.selectAll();
+            }
         });
 
-        // Similar: Keep Selected
-        document.getElementById('ab-similar-keep')?.addEventListener('click', () => {
-            this.selectBestFromGroup();
-        });
-
-        // Unreviewed: Accept & Review
-        document.getElementById('ab-accept-review')?.addEventListener('click', () => {
-            this.bulkReview('accept_review', 'selection');
-        });
-
-        // Reviewed: Clear Review
-        document.getElementById('ab-clear-review')?.addEventListener('click', () => {
-            this.bulkReview('clear_review', 'selection');
-        });
-
-        // Reviewed: Discard
-        document.getElementById('ab-reviewed-discard')?.addEventListener('click', () => {
-            this.confirmDiscard();
-        });
-
-        // Discarded: Restore
-        document.getElementById('ab-restore')?.addEventListener('click', () => {
-            this.undiscardSelected();
+        // Chevron opens the actions dropdown
+        selectionBtn?.querySelector('.pill-chevron')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const dropdown = document.getElementById('ab-actions-dropdown');
+            if (!dropdown) return;
+            const wasOpen = dropdown.classList.contains('open');
+            window.filterHandler?._closeAllDropdowns();
+            if (!wasOpen) dropdown.classList.add('open');
         });
 
         // ==========================================
-        // Action Bar — Split Button Carets
-        // ==========================================
-
-        const setupCaret = (caretId, dropdownId) => {
-            const caret = document.getElementById(caretId);
-            const dropdown = document.getElementById(dropdownId);
-            if (!caret || !dropdown) return;
-
-            caret.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Close other dropdowns
-                document.querySelectorAll('.split-dropdown.open, .action-overflow-menu.open').forEach(d => {
-                    if (d !== dropdown) d.classList.remove('open');
-                });
-                dropdown.classList.toggle('open');
-            });
-        };
-
-        setupCaret('ab-keep-caret', 'ab-keep-dropdown');
-        setupCaret('ab-similar-caret', 'ab-similar-dropdown');
-        setupCaret('ab-accept-caret', 'ab-accept-dropdown');
-        setupCaret('ab-restore-caret', 'ab-restore-dropdown');
-
-        // ==========================================
-        // Action Bar — Split Dropdown Items
+        // Action Bar — Dropdown Items
         // ==========================================
 
         document.querySelectorAll('.split-dropdown-item').forEach(item => {
@@ -164,33 +131,19 @@
                 e.stopPropagation();
                 const action = item.dataset.action;
                 this.handleDropdownAction(action);
-                // Close dropdown
                 item.closest('.split-dropdown')?.classList.remove('open');
             });
         });
 
         // ==========================================
-        // Action Bar — Overflow Menu
+        // Action Bar — Selection Count (click to examine)
         // ==========================================
 
-        const overflowTrigger = document.getElementById('action-overflow-trigger');
-        const overflowMenu = document.getElementById('action-overflow-menu');
-
-        overflowTrigger?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            // Close other dropdowns
-            document.querySelectorAll('.split-dropdown.open').forEach(d => d.classList.remove('open'));
-            overflowMenu?.classList.toggle('open');
-        });
-
-        // Overflow menu items
-        overflowMenu?.querySelectorAll('.action-overflow-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const action = item.dataset.action;
-                this.handleDropdownAction(action);
-                overflowMenu.classList.remove('open');
-            });
+        document.getElementById('selection-count')?.addEventListener('click', () => {
+            if (this.selectedIds.size >= 1 && this.selectedIds.size <= 4) {
+                const fileId = Array.from(this.selectedIds)[0];
+                this.openExamination(fileId);
+            }
         });
 
         // Quick tag add
@@ -213,20 +166,8 @@
             e.stopPropagation();
         });
 
-        // ==========================================
-        // Close all dropdowns on outside click
-        // ==========================================
-
-        document.addEventListener('click', (e) => {
-            // Close split dropdowns
-            if (!e.target.closest('.split-btn')) {
-                document.querySelectorAll('.split-dropdown.open').forEach(d => d.classList.remove('open'));
-            }
-            // Close overflow menu
-            if (!e.target.closest('.action-bar-right')) {
-                document.getElementById('action-overflow-menu')?.classList.remove('open');
-            }
-        });
+        // Outside-click closing is handled by filterHandler._closeAllDropdowns()
+        // via the unified handler in initSegmentDropdowns().
     };
 
     /**
@@ -234,6 +175,9 @@
      */
     proto.handleDropdownAction = function(action) {
         switch (action) {
+            case 'keep-selected':
+                this.selectBestFromGroup();
+                break;
             case 'discard-selected':
                 this.confirmDiscard();
                 break;
@@ -252,23 +196,26 @@
                 }
                 break;
             }
+            case 'accept-review':
+                this.bulkReview('accept_review', 'selection');
+                break;
             case 'mark-reviewed':
                 this.bulkReview('mark_reviewed', 'selection');
                 break;
+            case 'clear-review':
+                this.bulkReview('clear_review', 'selection');
+                break;
+            case 'restore-selected':
+                this.undiscardSelected();
+                break;
             case 'restore-all':
                 this.restoreAllDiscarded();
-                break;
-            case 'select-all':
-                this.selectAll();
                 break;
             case 'examine':
                 if (this.selectedIds.size >= 1 && this.selectedIds.size <= 4) {
                     const fileId = Array.from(this.selectedIds)[0];
                     this.openExamination(fileId);
                 }
-                break;
-            case 'clear-selection':
-                this.clearSelection();
                 break;
         }
     };

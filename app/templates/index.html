@@ -91,6 +91,7 @@
             <span class="summary-divider summary-divider-discarded" id="divider-discarded" style="display: none;">&bull;</span>
             <button class="summary-item summary-indicator summary-indicator-discarded" id="indicator-discarded" data-mode="discarded" style="display: none;" title="View discarded files">
                 <strong data-count="discards">0</strong> discarded
+                <span class="indicator-chevron">&#9662;</span>
             </button>
         </div>
     </div>
@@ -164,97 +165,69 @@
         <!-- Action Bar (always visible, mode-aware) -->
         <div class="action-bar" id="action-bar">
             <div class="action-bar-left">
-                <span class="action-bar-count" id="selection-count">0 selected</span>
-            </div>
-            <div class="action-bar-center">
-                <!-- Duplicates mode actions -->
-                <div class="action-group" data-action-mode="duplicates" style="display: none;">
-                    <div class="split-btn">
-                        <button class="btn-pill btn-pill-primary" id="ab-keep-selected" disabled title="Keep selected, discard others in group">Keep Selected</button>
-                        <button class="btn-pill btn-pill-primary split-caret" id="ab-keep-caret" disabled title="More actions">&#9662;</button>
-                        <div class="split-dropdown" id="ab-keep-dropdown">
-                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
-                            <button class="split-dropdown-item" data-action="not-duplicate">Not Duplicate</button>
-                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
-                        </div>
-                    </div>
-                </div>
-                <!-- Similar mode actions -->
-                <div class="action-group" data-action-mode="similar" style="display: none;">
-                    <div class="split-btn">
-                        <button class="btn-pill btn-pill-primary" id="ab-similar-keep" disabled title="Keep selected, discard others in group">Keep Selected</button>
-                        <button class="btn-pill btn-pill-primary split-caret" id="ab-similar-caret" disabled title="More actions">&#9662;</button>
-                        <div class="split-dropdown" id="ab-similar-dropdown">
-                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
-                            <button class="split-dropdown-item" data-action="not-similar">Not Similar</button>
-                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
-                        </div>
-                    </div>
-                </div>
-                <!-- Unreviewed mode actions -->
-                <div class="action-group" data-action-mode="unreviewed" style="display: none;">
-                    <div class="split-btn">
-                        <button class="btn-pill btn-pill-success" id="ab-accept-review" disabled title="Accept detected timestamp and mark as reviewed">Accept &amp; Review</button>
-                        <button class="btn-pill btn-pill-success split-caret" id="ab-accept-caret" disabled title="More actions">&#9662;</button>
-                        <div class="split-dropdown" id="ab-accept-dropdown">
-                            <button class="split-dropdown-item" data-action="mark-reviewed">Mark Reviewed</button>
-                            <button class="split-dropdown-item" data-action="discard-selected">Discard</button>
-                        </div>
-                    </div>
-                </div>
-                <!-- Reviewed mode actions -->
-                <div class="action-group" data-action-mode="reviewed" style="display: none;">
-                    <button class="btn-pill btn-pill-secondary" id="ab-clear-review" disabled title="Clear review status">Clear Review</button>
-                    <button class="btn-pill btn-pill-danger" id="ab-reviewed-discard" disabled title="Discard selected files">Discard</button>
-                </div>
-                <!-- Discarded mode actions -->
-                <div class="action-group" data-action-mode="discarded" style="display: none;">
-                    <div class="split-btn">
-                        <button class="btn-pill btn-pill-success" id="ab-restore" disabled title="Restore selected files">Restore</button>
-                        <button class="btn-pill btn-pill-success split-caret" id="ab-restore-caret" disabled title="More actions">&#9662;</button>
-                        <div class="split-dropdown" id="ab-restore-dropdown">
-                            <button class="split-dropdown-item" data-action="restore-all">Restore All</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="action-bar-right">
-                <button class="btn-pill btn-pill-subtle action-overflow-trigger" id="action-overflow-trigger" title="More actions">&#8943;</button>
-                <div class="action-overflow-menu" id="action-overflow-menu">
-                    <button class="action-overflow-item" data-action="select-all">Select All</button>
-                    <button class="action-overflow-item" data-action="examine">
-                        <span id="examine-btn-label">Examine</span>
-                    </button>
-                    <div class="action-overflow-divider"></div>
-                    <div class="action-overflow-tag">
-                        <input type="text" id="quick-tag-input" class="action-overflow-tag-input" placeholder="Add tag...">
-                        <button class="btn-pill btn-pill-subtle btn-pill-xs" id="add-quick-tag">Tag</button>
-                    </div>
-                    <div class="action-overflow-divider"></div>
-                    <button class="action-overflow-item" data-action="clear-selection">Clear Selection</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filter Bar (single row: confidence chips, tile size) -->
-        <div class="filter-bar" id="filter-bar">
-            <div class="filter-chips">
                 <div class="confidence-filters" id="confidence-filters">
                     <button class="filter-chip active" data-filter="high">
                         <span class="chip-badge confidence-high">H</span>
                         <span class="chip-count" data-count="high">0</span>
+                        <span class="chip-chevron">&#9662;</span>
                     </button>
                     <button class="filter-chip active" data-filter="medium">
                         <span class="chip-badge confidence-medium">M</span>
                         <span class="chip-count" data-count="medium">0</span>
+                        <span class="chip-chevron">&#9662;</span>
                     </button>
                     <button class="filter-chip active" data-filter="low">
                         <span class="chip-badge confidence-low">L</span>
                         <span class="chip-count" data-count="low">0</span>
+                        <span class="chip-chevron">&#9662;</span>
                     </button>
                 </div>
             </div>
-            <div class="filter-actions">
+            <div class="action-bar-center">
+                <div class="action-selection" id="action-selection">
+                    <button class="btn-pill" id="ab-selection-btn" title="Select All">
+                        <span id="ab-selection-label">Select All</span>
+                        <span class="pill-chevron">&#9662;</span>
+                    </button>
+                    <div class="split-dropdown" id="ab-actions-dropdown">
+                        <!-- Duplicates actions -->
+                        <div class="action-mode-section" data-action-mode="duplicates">
+                            <button class="split-dropdown-item" data-action="keep-selected">Keep Selected</button>
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
+                            <button class="split-dropdown-item" data-action="not-duplicate">Not Duplicate</button>
+                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
+                        </div>
+                        <!-- Similar actions -->
+                        <div class="action-mode-section" data-action-mode="similar">
+                            <button class="split-dropdown-item" data-action="keep-selected">Keep Selected</button>
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
+                            <button class="split-dropdown-item" data-action="not-similar">Not Similar</button>
+                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
+                        </div>
+                        <!-- Unreviewed actions -->
+                        <div class="action-mode-section" data-action-mode="unreviewed">
+                            <button class="split-dropdown-item" data-action="accept-review">Accept &amp; Review</button>
+                            <button class="split-dropdown-item" data-action="mark-reviewed">Mark Reviewed</button>
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard</button>
+                        </div>
+                        <!-- Reviewed actions -->
+                        <div class="action-mode-section" data-action-mode="reviewed">
+                            <button class="split-dropdown-item" data-action="clear-review">Clear Review</button>
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard</button>
+                        </div>
+                        <!-- Discarded actions -->
+                        <div class="action-mode-section" data-action-mode="discarded">
+                            <button class="split-dropdown-item" data-action="restore-selected">Restore Selected</button>
+                            <button class="split-dropdown-item" data-action="restore-all">Restore All</button>
+                        </div>
+                        <!-- Failed — no actions -->
+                    </div>
+                </div>
+                <button class="action-bar-count" id="selection-count" title="Click to examine selected files">0 selected</button>
+            </div>
+            <div class="action-bar-right">
+                <input type="text" id="quick-tag-input" class="inline-tag-input" placeholder="Tag...">
+                <button class="btn-pill btn-pill-subtle btn-pill-xs" id="add-quick-tag" title="Tag selected files">Tag</button>
                 <input type="range" id="tile-size-slider" class="tile-size-slider" min="80" max="240" value="150" title="Tile size">
             </div>
         </div>

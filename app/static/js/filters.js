@@ -45,7 +45,6 @@ class FilterHandler {
         this.strictMode = localStorage.getItem('strictWorkflow') === 'true';
 
         // Cache DOM elements
-        this.filterBar = document.getElementById('filter-bar');
         this.modeChips = document.querySelectorAll('.mode-segment:not(.export-segment)');
         this.exportSegment = document.querySelector('.export-segment');
         this.confidenceChips = document.querySelectorAll('.confidence-filters .filter-chip');
@@ -63,6 +62,8 @@ class FilterHandler {
 
         this.initEventListeners();
         this.initSegmentDropdowns();
+        this.initChipDropdowns();
+        this.initIndicatorDropdowns();
         this.loadState();
         this.updateStyles();
     }
@@ -96,16 +97,18 @@ class FilterHandler {
             this.setMode('reviewed');
         });
 
-        // Summary indicator clicks (discarded/failed)
+        // Summary indicator clicks (discarded/failed) — ignore chevron clicks
         [this.indicatorDiscarded, this.indicatorFailed].forEach(btn => {
-            btn?.addEventListener('click', () => {
+            btn?.addEventListener('click', (e) => {
+                if (e.target.closest('.indicator-chevron')) return;
                 this.setMode(btn.dataset.mode);
             });
         });
 
-        // Confidence filter clicks (toggleable)
+        // Confidence filter clicks (toggleable) — ignore chevron clicks
         this.confidenceChips.forEach(chip => {
             chip.addEventListener('click', (e) => {
+                if (e.target.closest('.chip-chevron')) return;
                 const filter = chip.dataset.filter;
                 this.toggleConfidence(filter);
             });
@@ -113,155 +116,337 @@ class FilterHandler {
     }
 
     // ==========================================
+    // Dropdown Helpers (shared by segment + chip dropdowns)
+    // ==========================================
+
+    /**
+     * Wire chevron-click, right-click, and long-press on a set of elements,
+     * each opening a dropdown via the provided callback.
+     */
+    _wireDropdownTriggers(elements, chevronSelector, openFn) {
+        elements.forEach(el => {
+            const chevron = el.querySelector(chevronSelector);
+            if (!chevron) return;
+
+            chevron.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                openFn(el);
+            });
+
+            el.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openFn(el);
+            });
+
+            let longPressTimer = null;
+            el.addEventListener('touchstart', (e) => {
+                longPressTimer = setTimeout(() => {
+                    e.preventDefault();
+                    openFn(el);
+                }, 500);
+            }, { passive: false });
+
+            el.addEventListener('touchend', () => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+            });
+
+            el.addEventListener('touchmove', () => {
+                if (longPressTimer) clearTimeout(longPressTimer);
+            });
+        });
+    }
+
+    /**
+     * Create a dropdown, position it below an anchor element.
+     * Returns the dropdown element, or null if toggled closed.
+     * @param {Element} anchor - element to position below
+     * @param {string} openClass - class added to openTarget when open
+     * @param {Element} [openTarget=anchor] - element that receives the open class
+     */
+    _createDropdown(anchor, openClass, openTarget) {
+        const target = openTarget || anchor;
+
+        // Toggle: if already open, just close
+        if (target.classList.contains(openClass)) {
+            this._closeAllDropdowns();
+            return null;
+        }
+
+        this._closeAllDropdowns();
+        target.classList.add(openClass);
+
+        const dropdown = document.createElement('div');
+        dropdown.className = 'seg-dropdown filter-dropdown';
+
+        const anchorRect = anchor.getBoundingClientRect();
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = (anchorRect.bottom + 4) + 'px';
+        const dropdownWidth = 240; // matches min-width in CSS
+        let left = anchorRect.left + anchorRect.width / 2 - dropdownWidth / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - dropdownWidth - 8));
+        dropdown.style.left = left + 'px';
+
+        return dropdown;
+    }
+
+    /**
+     * Append dropdown to body and wire item click handlers.
+     * Each item calls actionFn(item.dataset) then closes all dropdowns.
+     */
+    _wireDropdownItems(dropdown, actionFn) {
+        document.body.appendChild(dropdown);
+        dropdown.querySelectorAll('.seg-dropdown-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                actionFn(item.dataset);
+                this._closeAllDropdowns();
+            });
+        });
+    }
+
+    /**
+     * Close ALL dropdowns app-wide (filter dropdowns + action bar split/overflow).
+     * Called from both filters.js and selection-events.js.
+     */
+    _closeAllDropdowns() {
+        // Filter dropdowns (body-appended)
+        document.querySelectorAll('.filter-dropdown').forEach(d => d.remove());
+        document.querySelectorAll('.seg-dropdown-open').forEach(s => s.classList.remove('seg-dropdown-open'));
+        document.querySelectorAll('.chip-dropdown-open').forEach(c => c.classList.remove('chip-dropdown-open'));
+        document.querySelectorAll('.indicator-dropdown-open').forEach(c => c.classList.remove('indicator-dropdown-open'));
+        // Action bar dropdown
+        document.querySelectorAll('.split-dropdown.open').forEach(d => d.classList.remove('open'));
+    }
+
+    // ==========================================
     // Segment Dropdowns
     // ==========================================
 
     initSegmentDropdowns() {
-        // Collect all segments that can have dropdowns (mode chips + reviewed overlay)
         const allSegments = [...this.modeChips];
         if (this.reviewedOverlay) allSegments.push(this.reviewedOverlay);
 
-        allSegments.forEach(seg => {
-            const chevron = seg.querySelector('.seg-chevron');
-            if (!chevron) return;
+        this._wireDropdownTriggers(allSegments, '.seg-chevron', (seg) => this.openSegmentDropdown(seg));
 
-            // Chevron click opens dropdown
-            chevron.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                this.openSegmentDropdown(seg);
-            });
-
-            // Right-click on segment opens dropdown
-            seg.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.openSegmentDropdown(seg);
-            });
-
-            // Long-press on segment opens dropdown (touch)
-            let longPressTimer = null;
-            seg.addEventListener('touchstart', (e) => {
-                longPressTimer = setTimeout(() => {
-                    e.preventDefault();
-                    this.openSegmentDropdown(seg);
-                }, 500);
-            }, { passive: false });
-
-            seg.addEventListener('touchend', () => {
-                if (longPressTimer) clearTimeout(longPressTimer);
-            });
-
-            seg.addEventListener('touchmove', () => {
-                if (longPressTimer) clearTimeout(longPressTimer);
-            });
-        });
-
-        // Close segment dropdowns on outside click
+        // Close all dropdowns on outside click (registered once, covers all types)
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.seg-dropdown') && !e.target.closest('.seg-chevron')) {
-                this._closeSegmentDropdowns();
-            }
+            if (e.target.closest('.filter-dropdown, .seg-chevron, .chip-chevron, .indicator-chevron, .action-selection, .split-dropdown')) return;
+            this._closeAllDropdowns();
         });
     }
 
     openSegmentDropdown(segment) {
-        // Close any existing
-        this._closeSegmentDropdowns();
-
         const mode = segment.dataset.mode;
         const count = this.counts[mode] || 0;
         if (count === 0) return;
 
-        segment.classList.add('seg-dropdown-open');
-
-        // Build dropdown
-        const dropdown = document.createElement('div');
-        dropdown.className = 'seg-dropdown';
+        // Position on chevron if present, open class goes on segment
+        const chevron = segment.querySelector('.seg-chevron');
+        const dropdown = this._createDropdown(chevron || segment, 'seg-dropdown-open', segment);
+        if (!dropdown) return;
 
         if (mode === 'duplicates' || mode === 'similar') {
             const label = mode === 'duplicates' ? 'Duplicate' : 'Similar';
             dropdown.innerHTML = `
                 <div class="seg-dropdown-header">Auto-resolve ${label} Groups</div>
-                <button class="seg-dropdown-item" data-resolve="high">
+                <button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="high">
                     <span class="chip-badge confidence-high">H</span> Auto-resolve HIGH groups
                 </button>
-                <button class="seg-dropdown-item" data-resolve="medium">
+                <button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="medium">
                     <span class="chip-badge confidence-medium">M</span> Auto-resolve MEDIUM groups
                 </button>
                 <div class="seg-dropdown-divider"></div>
-                <button class="seg-dropdown-item" data-resolve="keep-all">Keep all (not ${mode === 'duplicates' ? 'duplicates' : 'similar'})</button>
+                <button class="seg-dropdown-item" data-action="keep-all">Keep all (not ${mode === 'duplicates' ? 'duplicates' : 'similar'})</button>
             `;
         } else if (mode === 'unreviewed') {
             dropdown.innerHTML = `
                 <div class="seg-dropdown-header">Bulk Review</div>
-                <button class="seg-dropdown-item" data-resolve="accept-high">
+                <button class="seg-dropdown-item" data-action="accept-review" data-confidence="high">
                     <span class="chip-badge confidence-high">H</span> Accept all HIGH
                 </button>
-                <button class="seg-dropdown-item" data-resolve="accept-medium">
+                <button class="seg-dropdown-item" data-action="accept-review" data-confidence="medium">
                     <span class="chip-badge confidence-medium">M</span> Accept all MEDIUM
                 </button>
-                <button class="seg-dropdown-item" data-resolve="accept-low">
+                <button class="seg-dropdown-item" data-action="accept-review" data-confidence="low">
                     <span class="chip-badge confidence-low">L</span> Accept all LOW
                 </button>
                 <div class="seg-dropdown-divider"></div>
-                <button class="seg-dropdown-item" data-resolve="mark-all-reviewed">Mark all reviewed</button>
+                <button class="seg-dropdown-item" data-action="mark-all-reviewed">Mark all reviewed</button>
             `;
         } else if (mode === 'reviewed') {
             dropdown.innerHTML = `
                 <div class="seg-dropdown-header">Reviewed Files</div>
-                <button class="seg-dropdown-item" data-resolve="clear-all-reviews">Clear all reviews</button>
+                <button class="seg-dropdown-item" data-action="clear-all-reviews">Clear all reviews</button>
             `;
         }
 
-        // Position dropdown below the chevron using fixed positioning
-        // (can't use segment as parent because it has overflow: hidden)
-        const chevron = segment.querySelector('.seg-chevron');
-        const anchor = chevron || segment;
-        const anchorRect = anchor.getBoundingClientRect();
-        const segRect = segment.getBoundingClientRect();
-        dropdown.style.position = 'fixed';
-        dropdown.style.top = (segRect.bottom + 4) + 'px';
-        // Center dropdown on the chevron, but clamp to viewport
-        const dropdownWidth = 240; // min-width from CSS
-        let left = anchorRect.left + anchorRect.width / 2 - dropdownWidth / 2;
-        left = Math.max(8, Math.min(left, window.innerWidth - dropdownWidth - 8));
-        dropdown.style.left = left + 'px';
-        dropdown.dataset.segMode = mode;
-        document.body.appendChild(dropdown);
-
-        // Wire item clicks
-        dropdown.querySelectorAll('.seg-dropdown-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const resolve = item.dataset.resolve;
-                this._handleSegmentAction(mode, resolve);
-                this._closeSegmentDropdowns();
-            });
-        });
+        this._wireDropdownItems(dropdown, (data) => this._handleDropdownAction(mode, data));
     }
 
-    _closeSegmentDropdowns() {
-        document.querySelectorAll('.seg-dropdown').forEach(d => d.remove());
-        document.querySelectorAll('.seg-dropdown-open').forEach(s => s.classList.remove('seg-dropdown-open'));
+    // ==========================================
+    // Chip Dropdowns (confidence filter chips)
+    // ==========================================
+
+    initChipDropdowns() {
+        this._wireDropdownTriggers(this.confidenceChips, '.chip-chevron', (chip) => this.openChipDropdown(chip));
     }
 
-    _handleSegmentAction(mode, resolve) {
-        if (resolve === 'keep-all') {
-            this.keepAllInMode(mode);
-        } else if (resolve === 'high' || resolve === 'medium') {
-            this.autoResolveByConfidence(mode, resolve);
-        } else if (resolve === 'accept-high') {
-            this._bulkReviewByConfidence('accept_review', 'high');
-        } else if (resolve === 'accept-medium') {
-            this._bulkReviewByConfidence('accept_review', 'medium');
-        } else if (resolve === 'accept-low') {
-            this._bulkReviewByConfidence('accept_review', 'low');
-        } else if (resolve === 'mark-all-reviewed') {
-            this._bulkReviewAll('mark_reviewed');
-        } else if (resolve === 'clear-all-reviews') {
-            this._bulkReviewAll('clear_review');
+    openChipDropdown(chip) {
+        const level = chip.dataset.filter;
+        const mode = this.currentMode;
+
+        // No dropdown for discarded/failed modes
+        if (mode === 'discarded' || mode === 'failed') return;
+
+        const count = this.counts[level] || 0;
+        if (count === 0) return;
+
+        const dropdown = this._createDropdown(chip, 'chip-dropdown-open');
+        if (!dropdown) return;
+        const levelUpper = level.toUpperCase();
+
+        if (mode === 'duplicates' || mode === 'similar') {
+            const label = mode === 'duplicates' ? 'duplicate' : 'similar';
+            dropdown.innerHTML = `
+                <div class="seg-dropdown-header">${levelUpper} Confidence ${label} groups</div>
+                <button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="${level}">
+                    Auto-resolve ${levelUpper} ${label}s
+                </button>
+            `;
+        } else if (mode === 'unreviewed') {
+            dropdown.innerHTML = `
+                <div class="seg-dropdown-header">${levelUpper} Confidence files</div>
+                <button class="seg-dropdown-item" data-action="accept-review" data-confidence="${level}">
+                    Accept all ${levelUpper}
+                </button>
+                <button class="seg-dropdown-item" data-action="mark-reviewed" data-confidence="${level}">
+                    Mark all ${levelUpper} reviewed
+                </button>
+            `;
+        } else if (mode === 'reviewed') {
+            dropdown.innerHTML = `
+                <div class="seg-dropdown-header">${levelUpper} Confidence files</div>
+                <button class="seg-dropdown-item" data-action="clear-review" data-confidence="${level}">
+                    Clear review from ${levelUpper}
+                </button>
+            `;
         }
+
+        this._wireDropdownItems(dropdown, (data) => this._handleDropdownAction(mode, data));
+    }
+
+    // ==========================================
+    // Indicator Dropdowns (discarded/failed summary indicators)
+    // ==========================================
+
+    initIndicatorDropdowns() {
+        const indicators = [this.indicatorDiscarded, this.indicatorFailed].filter(Boolean);
+        this._wireDropdownTriggers(indicators, '.indicator-chevron', (btn) => this.openIndicatorDropdown(btn));
+    }
+
+    openIndicatorDropdown(indicator) {
+        const mode = indicator.dataset.mode;
+
+        if (mode === 'discarded') {
+            const count = this.counts.discards || 0;
+            if (count === 0) return;
+
+            const dropdown = this._createDropdown(indicator, 'indicator-dropdown-open');
+            if (!dropdown) return;
+            dropdown.innerHTML = `
+                <div class="seg-dropdown-header">Discarded Files</div>
+                <button class="seg-dropdown-item" data-action="restore-all">Restore all ${count} discarded</button>
+            `;
+            this._wireDropdownItems(dropdown, (data) => this._handleDropdownAction(mode, data));
+        }
+        // failed mode: no bulk actions currently available
+    }
+
+    // ==========================================
+    // Dropdown Action Dispatch (shared)
+    // ==========================================
+
+    /**
+     * Unified action handler for both segment and chip dropdown items.
+     * Each item carries data-action and optionally data-confidence.
+     */
+    _handleDropdownAction(mode, data) {
+        switch (data.action) {
+            case 'auto-resolve':
+                this.autoResolveByConfidence(mode, data.confidence);
+                break;
+            case 'accept-review':
+                this._bulkReviewByConfidence('accept_review', data.confidence);
+                break;
+            case 'mark-reviewed':
+                this._bulkReviewByConfidence('mark_reviewed', data.confidence);
+                break;
+            case 'clear-review':
+                this._bulkReviewByConfidence('clear_review', data.confidence);
+                break;
+            case 'keep-all':
+                this.keepAllInMode(mode);
+                break;
+            case 'mark-all-reviewed':
+                this._bulkReviewAll('mark_reviewed');
+                break;
+            case 'clear-all-reviews':
+                this._bulkReviewAll('clear_review');
+                break;
+            case 'restore-all':
+                if (window.selectionHandler) {
+                    window.selectionHandler.restoreAllDiscarded();
+                }
+                break;
+        }
+    }
+
+    // ==========================================
+    // Mode-Aware Chip Tooltips
+    // ==========================================
+
+    _updateChipTooltips() {
+        const tooltips = {
+            duplicates: {
+                high: 'Near-identical match (distance 0\u20131)',
+                medium: 'Close match (distance 2\u20133)',
+                low: 'Weak match (distance 4\u20135)'
+            },
+            similar: {
+                high: 'Strong visual similarity',
+                medium: 'Moderate similarity',
+                low: 'Marginal similarity'
+            },
+            unreviewed: {
+                high: 'Multiple sources agree',
+                medium: 'Single reliable source',
+                low: 'Filename only or conflicts'
+            },
+            reviewed: {
+                high: 'Multiple sources agree',
+                medium: 'Single reliable source',
+                low: 'Filename only or conflicts'
+            },
+            discarded: {
+                high: 'Multiple sources agree',
+                medium: 'Single reliable source',
+                low: 'Filename only or conflicts'
+            },
+            failed: {
+                high: 'Multiple sources agree',
+                medium: 'Single reliable source',
+                low: 'Filename only or conflicts'
+            }
+        };
+
+        const modeTooltips = tooltips[this.currentMode] || tooltips.unreviewed;
+
+        this.confidenceChips.forEach(chip => {
+            const level = chip.dataset.filter;
+            chip.title = modeTooltips[level] || '';
+        });
     }
 
     /**
@@ -571,10 +756,16 @@ class FilterHandler {
 
         // Update confidence chips
         this.confidenceChips.forEach(chip => {
-            const isActive = this.visibleConfidence.has(chip.dataset.filter);
+            const level = chip.dataset.filter;
+            const isActive = this.visibleConfidence.has(level);
+            const isEmpty = (this.counts[level] || 0) === 0;
             chip.classList.toggle('active', isActive);
             chip.classList.toggle('hidden-filter', !isActive);
+            chip.classList.toggle('empty-filter', isEmpty);
         });
+
+        // Update mode-aware tooltips on confidence chips
+        this._updateChipTooltips();
     }
 
     updateCounts(counts) {

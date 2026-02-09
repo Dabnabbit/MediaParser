@@ -1100,6 +1100,7 @@ body {
 .summary-row {
     display: flex;
     flex-wrap: wrap;
+    align-items: baseline;
     gap: var(--spacing-sm);
     font-size: 0.85rem;
 }
@@ -1313,21 +1314,7 @@ body {
    FILTER BAR
    ============================================ */
 
-.filter-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--spacing-xs) 0;
-    margin-bottom: var(--spacing-sm);
-    border-bottom: 1px solid var(--color-border);
-}
-
-.filter-chips {
-    display: flex;
-    gap: var(--spacing-xs);
-    align-items: center;
-    flex-wrap: wrap;
-}
+/* Confidence chips now live inside .action-bar-left */
 
 .filter-chip {
     display: inline-flex;
@@ -1722,6 +1709,9 @@ body {
 }
 
 .action-bar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
     flex-shrink: 0;
 }
 
@@ -1730,6 +1720,21 @@ body {
     font-weight: 500;
     color: var(--color-text-muted);
     white-space: nowrap;
+    background: none;
+    border: none;
+    border-bottom: 1px dashed transparent;
+    padding: 0;
+    cursor: default;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.action-bar-count.has-selection {
+    cursor: pointer;
+    color: var(--color-text);
+}
+
+.action-bar-count.has-selection:hover {
+    border-bottom-color: var(--color-text-muted);
 }
 
 .action-bar-center {
@@ -1741,15 +1746,23 @@ body {
 }
 
 .action-bar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
     flex-shrink: 0;
     position: relative;
 }
 
-/* Action groups (one per mode, shown/hidden by JS) */
-.action-group {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
+/* Action selection (universal select/clear button + mode dropdown) */
+.action-selection {
+    position: relative;
+}
+
+.action-mode-section {
+    display: none;
+}
+.action-mode-section.active {
+    display: block;
 }
 
 /* Pill buttons — subtle, chip-like */
@@ -1837,23 +1850,21 @@ body {
     color: var(--color-text);
 }
 
-/* Split button (primary + caret) */
-.split-btn {
-    display: inline-flex;
-    align-items: center;
-    position: relative;
+/* Pill chevron (inline dropdown trigger inside action buttons) */
+.pill-chevron {
+    display: inline-block;
+    font-size: 0.85rem;
+    opacity: 0.6;
+    margin-left: 4px;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    pointer-events: auto;
+    cursor: pointer;
+    line-height: 1;
 }
 
-.split-btn .btn-pill:first-child {
-    border-radius: 16px 0 0 16px;
-    border-right: none;
-}
-
-.split-caret {
-    border-radius: 0 16px 16px 0;
-    padding: 4px 6px;
-    font-size: 0.65rem;
-    min-width: 22px;
+.action-selection:has(.split-dropdown.open) .pill-chevron {
+    opacity: 1;
+    transform: rotate(180deg);
 }
 
 /* Split dropdown */
@@ -1897,84 +1908,27 @@ body {
     background: var(--color-bg-hover);
 }
 
-/* Overflow menu (three dots) */
-.action-overflow-trigger {
-    font-size: 1.1rem;
-    padding: 4px 8px;
-    line-height: 1;
-}
-
-.action-overflow-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 4px;
-    min-width: 200px;
-    background: var(--color-bg);
+/* Inline tag input */
+.inline-tag-input {
+    width: 70px;
+    padding: 3px 8px;
     border: 1px solid var(--color-border);
-    border-radius: var(--border-radius);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    z-index: 200;
-    overflow: hidden;
-}
-
-.action-overflow-menu.open {
-    display: block;
-}
-
-.action-overflow-item {
-    display: block;
-    width: 100%;
-    padding: var(--spacing-sm) var(--spacing-md);
-    border: none;
-    background: transparent;
-    text-align: left;
-    font-size: 0.85rem;
-    color: var(--color-text);
-    cursor: pointer;
-    transition: background-color 0.1s ease;
-}
-
-.action-overflow-item:hover {
-    background: var(--color-bg-alt);
-}
-
-.action-overflow-item:active {
-    background: var(--color-bg-hover);
-}
-
-.action-overflow-divider {
-    height: 1px;
-    background: var(--color-border);
-    margin: var(--spacing-xs) 0;
-}
-
-.action-overflow-tag {
-    display: flex;
-    gap: 4px;
-    padding: var(--spacing-xs) var(--spacing-md);
-    align-items: center;
-}
-
-.action-overflow-tag-input {
-    flex: 1;
-    padding: 4px 8px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-sm);
+    border-radius: 12px;
     background: var(--color-bg);
     color: var(--color-text);
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    transition: width 0.15s ease, border-color 0.15s ease;
 }
-
-.action-overflow-tag-input:focus {
+.inline-tag-input:focus {
     outline: none;
+    width: 100px;
     border-color: var(--color-primary);
 }
-
-.action-overflow-tag-input::placeholder {
+.inline-tag-input::placeholder {
     color: var(--color-text-muted);
 }
+
+/* Overflow menu removed — Examine + Tag are now inline in action-bar-right */
 
 /* ============================================
    THUMBNAIL SELECTION STATE (enhanced)
@@ -2200,19 +2154,69 @@ body {
     display: none !important;
 }
 
-/* ============================================
-   FILTER ACTIONS (tile slider area)
-   ============================================ */
-
-.filter-actions {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
+/* Tile slider now lives inside .action-bar-right */
 
 .chip-badge.confidence-none {
     background: var(--color-secondary);
     color: white;
+}
+
+/* Chip chevron (confidence filter dropdown trigger) */
+.chip-chevron {
+    display: inline-block; /* breaks text-decoration propagation from parent */
+    font-size: 0.85rem;
+    opacity: 0.3;
+    margin-left: 1px;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    pointer-events: auto;
+    cursor: pointer;
+    padding: 2px 4px;
+    margin-right: -6px;
+}
+
+.filter-chip:hover .chip-chevron {
+    opacity: 0.7;
+}
+
+.filter-chip.chip-dropdown-open .chip-chevron {
+    opacity: 1;
+    transform: rotate(180deg);
+}
+
+/* Muted chevron on hidden (toggled off) chips */
+.filter-chip.hidden-filter .chip-chevron {
+    opacity: 0.15;
+}
+.filter-chip.hidden-filter:hover .chip-chevron {
+    opacity: 0.4;
+}
+
+/* Disabled chevron on empty (0 count) chips */
+.filter-chip.empty-filter .chip-chevron {
+    opacity: 0.1;
+    pointer-events: none;
+    cursor: default;
+}
+
+/* Indicator chevron (summary indicator dropdown trigger) */
+.indicator-chevron {
+    display: inline-block;
+    font-size: 0.85rem;
+    opacity: 0.3;
+    margin-left: 2px;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    pointer-events: auto;
+    cursor: pointer;
+    padding: 2px 4px;
+}
+
+.summary-indicator:hover .indicator-chevron {
+    opacity: 0.7;
+}
+
+.summary-indicator.indicator-dropdown-open .indicator-chevron {
+    opacity: 1;
+    transform: rotate(180deg);
 }
 
 /* ============================================
@@ -2220,11 +2224,11 @@ body {
    ============================================ */
 
 .seg-chevron {
-    font-size: 0.7rem;
+    font-size: 0.85rem;
     opacity: 0.3;
     margin-left: 2px;
     flex-shrink: 0;
-    transition: opacity 0.15s ease;
+    transition: opacity 0.15s ease, transform 0.15s ease;
     pointer-events: auto;
     cursor: pointer;
     filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.3));
@@ -2244,6 +2248,11 @@ body {
 .reviewed-overlay:hover .seg-chevron,
 .reviewed-overlay.seg-dropdown-open .seg-chevron {
     opacity: 1;
+}
+
+.mode-segment.seg-dropdown-open .seg-chevron,
+.reviewed-overlay.seg-dropdown-open .seg-chevron {
+    transform: rotate(180deg);
 }
 
 /* Hide chevron on collapsed (empty) segments */

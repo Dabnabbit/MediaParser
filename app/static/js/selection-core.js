@@ -18,8 +18,10 @@ class SelectionHandler {
         this.countDisplay = document.getElementById('selection-count');
         this.unifiedGrid = document.getElementById('unified-grid');
 
-        // Action groups (one per mode)
-        this.actionGroups = document.querySelectorAll('.action-group[data-action-mode]');
+        // Selection button + mode sections
+        this.selectionBtn = document.getElementById('ab-selection-btn');
+        this.selectionLabel = document.getElementById('ab-selection-label');
+        this.actionModeSections = document.querySelectorAll('.action-mode-section[data-action-mode]');
 
         // ViewportController instance (initialized later when TileManager is ready)
         this.viewportController = null;
@@ -256,21 +258,21 @@ class SelectionHandler {
             }
         });
 
-        // Update selection count (always visible)
+        // Update selection count (clickable to examine)
         const count = this.selectedIds.size;
         if (this.countDisplay) {
             this.countDisplay.textContent = count > 0
                 ? `${count} selected`
                 : '0 selected';
-        }
+            this.countDisplay.classList.toggle('has-selection', count > 0);
 
-        // Update examine button label in overflow menu
-        const examineBtnLabel = document.getElementById('examine-btn-label');
-        if (examineBtnLabel) {
+            // Tooltip hints at examine/compare
             if (count >= 2 && count <= 4) {
-                examineBtnLabel.textContent = 'Compare';
+                this.countDisplay.title = 'Click to compare selected files';
+            } else if (count === 1) {
+                this.countDisplay.title = 'Click to examine selected file';
             } else {
-                examineBtnLabel.textContent = 'Examine';
+                this.countDisplay.title = '';
             }
         }
 
@@ -279,54 +281,22 @@ class SelectionHandler {
     }
 
     /**
-     * Show the correct action group for current mode, hide others.
-     * Enable/disable buttons based on selection state.
+     * Show the correct action mode section in the dropdown.
+     * Update selection button text based on selection state.
      */
     updateModeActions() {
         const mode = this._currentMode || window.filterHandler?.getCurrentMode() || 'unreviewed';
         const hasSelection = this.selectedIds.size > 0;
         const count = this.selectedIds.size;
 
-        // Show/hide action groups by mode
-        this.actionGroups.forEach(group => {
-            group.style.display = group.dataset.actionMode === mode ? 'flex' : 'none';
+        // Show the correct mode section in the actions dropdown
+        this.actionModeSections.forEach(section => {
+            section.classList.toggle('active', section.dataset.actionMode === mode);
         });
 
-        // Enable/disable all primary buttons based on selection
-        const buttons = this.actionBar?.querySelectorAll('.btn-pill:not(.action-overflow-trigger):not(.btn-pill-xs)');
-        buttons?.forEach(btn => {
-            btn.disabled = !hasSelection;
-        });
-
-        // Enable carets only when selection exists
-        this.actionBar?.querySelectorAll('.split-caret').forEach(caret => {
-            caret.disabled = !hasSelection;
-        });
-
-        // Mode-specific logic for group actions
-        if (mode === 'duplicates' || mode === 'similar') {
-            const visibleFiles = window.resultsHandler?.allFiles || [];
-            const selectedFiles = visibleFiles.filter(f => this.selectedIds.has(f.id));
-
-            const groupKey = mode === 'duplicates' ? 'exact_group_id' : 'similar_group_id';
-            const isGroupMember = mode === 'duplicates' ? 'is_duplicate' : 'is_similar';
-
-            const groupIds = new Set(
-                selectedFiles.filter(f => f[isGroupMember] && f[groupKey]).map(f => f[groupKey])
-            );
-            const hasUnselectedInGroup = visibleFiles.some(f =>
-                f[groupKey] &&
-                groupIds.has(f[groupKey]) &&
-                !this.selectedIds.has(f.id)
-            );
-
-            // Keep Selected only makes sense if there are unselected group members
-            const keepBtn = mode === 'duplicates'
-                ? document.getElementById('ab-keep-selected')
-                : document.getElementById('ab-similar-keep');
-            if (keepBtn) {
-                keepBtn.disabled = !hasSelection || !hasUnselectedInGroup;
-            }
+        // Update selection button text
+        if (this.selectionLabel) {
+            this.selectionLabel.textContent = hasSelection ? `Clear (${count})` : 'Select All';
         }
     }
 
