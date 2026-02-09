@@ -140,10 +140,10 @@ class Tile {
     }
 
     /**
-     * Get the effective confidence for badge display based on current mode.
-     * - duplicates mode: use exact_group_confidence
-     * - similar mode: use similar_group_confidence
-     * - default: use timestamp confidence
+     * Get the effective confidence for badge display based on mode.
+     * - duplicates mode: match confidence (how close the duplicate is)
+     * - similar mode: match confidence (how similar the files are)
+     * - other modes: timestamp confidence
      * @returns {string} confidence value (high/medium/low/none)
      */
     getEffectiveConfidence() {

@@ -293,8 +293,16 @@ class ViewportDetailsPanel {
     renderStatusBadges(file) {
         const badges = [];
 
-        // Confidence
-        const confidence = file.confidence || 'none';
+        // Confidence — match confidence in group modes, timestamp confidence otherwise
+        const mode = this.currentMode;
+        let confidence;
+        if (mode === 'duplicates') {
+            confidence = file.exact_group_confidence || file.confidence || 'none';
+        } else if (mode === 'similar') {
+            confidence = file.similar_group_confidence || file.confidence || 'none';
+        } else {
+            confidence = file.confidence || 'none';
+        }
         badges.push(`<span class="vp-badge confidence-${confidence}">${confidence.toUpperCase()}</span>`);
 
         // Reviewed
