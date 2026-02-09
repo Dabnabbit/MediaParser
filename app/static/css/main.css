@@ -756,6 +756,12 @@ body {
     opacity: 0.6;
 }
 
+/* Hide chevron on locked segments — strict workflow blocks all interaction */
+.mode-segment.locked .seg-chevron {
+    opacity: 0;
+    pointer-events: none;
+}
+
 /* Lock icons overlay (strict workflow dividers) */
 .seg-lock-overlay {
     position: absolute;
@@ -801,8 +807,9 @@ body {
     flex-shrink: 0;
 }
 
-/* Small segments: hide label, show icon + count */
-.mode-segment.seg-small .seg-label {
+/* Small segments: hide label and count, show icon + chevron */
+.mode-segment.seg-small .seg-label,
+.mode-segment.seg-small .seg-count {
     display: none;
 }
 
@@ -2214,7 +2221,7 @@ body {
 
 .seg-chevron {
     font-size: 0.7rem;
-    opacity: 0;
+    opacity: 0.3;
     margin-left: 2px;
     flex-shrink: 0;
     transition: opacity 0.15s ease;
@@ -2226,14 +2233,23 @@ body {
     margin: -6px -8px -6px 0;
 }
 
-/* Always visible on the active mode segment */
-.mode-segment.active .seg-chevron {
+/* Brighter on the active mode segment */
+.mode-segment.active .seg-chevron,
+.reviewed-overlay.active .seg-chevron {
     opacity: 0.7;
 }
 
 .mode-segment:hover .seg-chevron,
-.mode-segment.seg-dropdown-open .seg-chevron {
+.mode-segment.seg-dropdown-open .seg-chevron,
+.reviewed-overlay:hover .seg-chevron,
+.reviewed-overlay.seg-dropdown-open .seg-chevron {
     opacity: 1;
+}
+
+/* Hide chevron on collapsed (empty) segments */
+.mode-segment.collapsed .seg-chevron {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .seg-dropdown {

@@ -90,8 +90,11 @@ class FilterHandler {
             });
         });
 
-        // Reviewed overlay click
-        this.reviewedOverlay?.addEventListener('click', () => this.setMode('reviewed'));
+        // Reviewed overlay click (but not on chevron)
+        this.reviewedOverlay?.addEventListener('click', (e) => {
+            if (e.target.closest('.seg-chevron')) return;
+            this.setMode('reviewed');
+        });
 
         // Summary indicator clicks (discarded/failed)
         [this.indicatorDiscarded, this.indicatorFailed].forEach(btn => {
@@ -114,7 +117,11 @@ class FilterHandler {
     // ==========================================
 
     initSegmentDropdowns() {
-        this.modeChips.forEach(seg => {
+        // Collect all segments that can have dropdowns (mode chips + reviewed overlay)
+        const allSegments = [...this.modeChips];
+        if (this.reviewedOverlay) allSegments.push(this.reviewedOverlay);
+
+        allSegments.forEach(seg => {
             const chevron = seg.querySelector('.seg-chevron');
             if (!chevron) return;
 
@@ -200,6 +207,11 @@ class FilterHandler {
                 <div class="seg-dropdown-divider"></div>
                 <button class="seg-dropdown-item" data-resolve="mark-all-reviewed">Mark all reviewed</button>
             `;
+        } else if (mode === 'reviewed') {
+            dropdown.innerHTML = `
+                <div class="seg-dropdown-header">Reviewed Files</div>
+                <button class="seg-dropdown-item" data-resolve="clear-all-reviews">Clear all reviews</button>
+            `;
         }
 
         // Position dropdown below the chevron using fixed positioning
@@ -247,6 +259,8 @@ class FilterHandler {
             this._bulkReviewByConfidence('accept_review', 'low');
         } else if (resolve === 'mark-all-reviewed') {
             this._bulkReviewAll('mark_reviewed');
+        } else if (resolve === 'clear-all-reviews') {
+            this._bulkReviewAll('clear_review');
         }
     }
 
@@ -286,11 +300,10 @@ class FilterHandler {
             }
 
             // Filter to groups matching target confidence
+            const confKey = mode === 'similar' ? 'similar_group_confidence' : 'exact_group_confidence';
             const targetGroups = [];
             for (const [gid, members] of groups) {
-                // Group confidence is the confidence of the group match
-                const groupConfidence = members[0]?.confidence?.toLowerCase() ||
-                                       members[0]?.match_confidence?.toLowerCase();
+                const groupConfidence = members[0]?.[confKey]?.toLowerCase();
                 if (groupConfidence === confidence) {
                     targetGroups.push(members);
                 }
