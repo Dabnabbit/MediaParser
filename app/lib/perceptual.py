@@ -72,7 +72,15 @@ def detect_sequence_type(file_a, file_b) -> str:
     if not (file_a.detected_timestamp and file_b.detected_timestamp):
         return 'similar'
 
-    gap = abs((file_a.detected_timestamp - file_b.detected_timestamp).total_seconds())
+    # Normalize to naive UTC to avoid mixed tz-aware/naive subtraction errors
+    ts_a = file_a.detected_timestamp
+    ts_b = file_b.detected_timestamp
+    if ts_a.tzinfo is not None:
+        ts_a = ts_a.replace(tzinfo=None) - ts_a.utcoffset()
+    if ts_b.tzinfo is not None:
+        ts_b = ts_b.replace(tzinfo=None) - ts_b.utcoffset()
+
+    gap = abs((ts_a - ts_b).total_seconds())
 
     if gap < BURST_THRESHOLD:
         return 'burst'
