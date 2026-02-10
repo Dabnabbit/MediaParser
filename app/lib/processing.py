@@ -144,13 +144,19 @@ def process_single_file(
 
         file_size = os.path.getsize(path)
 
-        # Check for type mismatch (log warning if detected)
+        # Check for type mismatch — fail the file if contents don't match extension
         extension, mime_type, is_mismatch = detect_file_type_mismatch(path)
         if is_mismatch:
-            logger.warning(
-                f"File type mismatch detected: {path.name} "
+            msg = (
+                f"File type mismatch: {path.name} "
                 f"has extension .{extension} but detected as {mime_type}"
             )
+            logger.warning(msg)
+            return {
+                'status': 'error',
+                'file_path': str(path.absolute()),
+                'error': msg
+            }
 
         # Step 2: Calculate hashes
         logger.debug(f"Calculating hashes for {path.name}")
