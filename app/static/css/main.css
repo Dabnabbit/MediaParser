@@ -906,6 +906,9 @@ body {
 }
 
 .workflow-phases .phase {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     transition: color 0.2s ease, font-weight 0.2s ease;
 }
 
@@ -919,7 +922,45 @@ body {
 }
 
 .workflow-phases .phase.completed::before {
-    content: '\2713 ';
+    content: '\2713';
+}
+
+/* Spinner on active phase during upload/processing */
+[data-state="uploading"] .phase.active::before,
+[data-state="processing"]:not([data-status="PAUSED"]):not([data-status="HALTED"]) .phase.active::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* Paused — pulsing dot */
+[data-status="PAUSED"] .phase.active {
+    color: var(--color-paused);
+}
+[data-status="PAUSED"] .phase.active::before {
+    content: '\23F8';
+    font-size: 0.7em;
+    opacity: 0.9;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Failed/Halted — error indicator */
+[data-status="FAILED"] .phase.active,
+[data-status="HALTED"] .phase.active {
+    color: var(--color-failed);
+}
+[data-status="HALTED"] .phase.active::before {
+    content: '\26A0';
+    font-size: 0.75em;
+}
+[data-status="FAILED"] .phase.active::before {
+    content: '\2717';
+    font-size: 0.8em;
 }
 
 .workflow-phases .phase-sep {
@@ -990,54 +1031,6 @@ body {
     gap: var(--spacing-xs);
 }
 
-/* Status Badge */
-.status-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--border-radius-sm);
-    font-weight: 600;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-}
-
-.status-badge-sm {
-    padding: 0.15rem 0.5rem;
-    font-size: 0.7rem;
-}
-
-.status-badge[data-status="PENDING"] {
-    background-color: rgba(107, 114, 128, 0.15);
-    color: var(--color-pending);
-}
-
-.status-badge[data-status="UPLOADING"] {
-    background-color: rgba(139, 92, 246, 0.15);
-    color: var(--color-uploading);
-}
-
-.status-badge[data-status="RUNNING"] {
-    background-color: rgba(59, 130, 246, 0.15);
-    color: var(--color-running);
-}
-
-.status-badge[data-status="COMPLETED"] {
-    background-color: rgba(34, 197, 94, 0.15);
-    color: var(--color-completed);
-}
-
-.status-badge[data-status="FAILED"] {
-    background-color: rgba(239, 68, 68, 0.15);
-    color: var(--color-failed);
-}
-
-.status-badge[data-status="PAUSED"] {
-    background-color: rgba(245, 158, 11, 0.15);
-    color: var(--color-paused);
-}
-
-.status-badge[data-status="HALTED"] {
-    background-color: rgba(239, 68, 68, 0.15);
-    color: var(--color-halted);
-}
 
 /* Job Progress */
 .job-progress {
@@ -1055,7 +1048,8 @@ body {
 .metrics-row {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--spacing-sm);
+    justify-content: center;
+    gap: var(--spacing-sm) var(--spacing-md);
     padding: var(--spacing-sm) var(--spacing-md);
     background-color: var(--color-bg-alt);
     border-radius: var(--border-radius-sm);
@@ -1087,55 +1081,58 @@ body {
     color: var(--color-failed);
 }
 
-/* Job Summary (inline in header when complete) */
+/* Job Summary (centered above bar, shown on completion) */
 .job-summary {
-    display: inline-flex;
-    align-items: baseline;
-    gap: var(--spacing-sm);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: var(--spacing-sm);
     font-size: 0.8rem;
 }
 
-.summary-item {
-    display: inline;
+/* Summary pill — base (subtle, non-interactive) */
+.summary-pill {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: var(--color-bg-alt);
+    border: 1px solid transparent;
+    font-size: 0.8rem;
+    white-space: nowrap;
 }
 
-.summary-divider {
-    color: var(--color-text-muted);
-}
-
-.summary-success strong {
+.summary-pill-ok strong {
     color: var(--color-completed);
 }
 
-.summary-error strong {
+/* Summary indicator chips (failed/discarded) — 3-zone filter-chip pattern */
+.summary-chip .chip-zone-icon {
+    padding: 4px 5px 4px 8px;
+}
+
+.summary-chip .chip-icon-svg {
+    flex-shrink: 0;
+    display: block;
+}
+
+.summary-chip-failed .chip-icon-svg,
+.summary-chip-failed .chip-count {
     color: var(--color-failed);
 }
 
-/* Summary indicators for discarded/failed (clickable inline stats) */
-.summary-indicator {
-    background: none;
-    border: none;
-    border-bottom: 1px dashed transparent;
-    padding: 0;
-    font: inherit;
-    font-size: inherit;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: border-color 0.15s ease, color 0.15s ease;
+.summary-chip-discarded .chip-icon-svg,
+.summary-chip-discarded .chip-count {
+    color: var(--color-mode-discarded);
 }
 
-.summary-indicator:hover {
-    color: var(--color-text);
-    border-bottom-color: var(--color-text-muted);
+.summary-chip.active {
+    border-color: var(--color-primary);
+    background: rgba(59, 130, 246, 0.08);
 }
-
-.summary-indicator.active {
-    color: var(--color-text);
-    border-bottom-color: var(--color-primary);
-}
-
-.summary-indicator-discarded strong { color: var(--color-mode-discarded); }
-.summary-indicator-failed strong { color: var(--color-failed); }
 
 /* (Thumbnail size toggle removed - replaced by tile-size-slider) */
 
@@ -2252,26 +2249,6 @@ body {
     opacity: 0.5;
 }
 
-/* Indicator chevron (summary indicator dropdown trigger) */
-.indicator-chevron {
-    display: inline-block;
-    font-size: 0.85rem;
-    opacity: 0.3;
-    margin-left: 2px;
-    transition: opacity 0.15s ease, transform 0.15s ease;
-    pointer-events: auto;
-    cursor: pointer;
-    padding: 2px 4px;
-}
-
-.summary-indicator:hover .indicator-chevron {
-    opacity: 0.7;
-}
-
-.summary-indicator.indicator-dropdown-open .indicator-chevron {
-    opacity: 1;
-    transform: rotate(180deg);
-}
 
 /* ============================================
    SEGMENT CHEVRONS & DROPDOWNS

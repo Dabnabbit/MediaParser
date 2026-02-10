@@ -50,8 +50,6 @@ class FilterHandler {
         this.confidenceChips = document.querySelectorAll('.confidence-filters .filter-chip');
         this.indicatorDiscarded = document.getElementById('indicator-discarded');
         this.indicatorFailed = document.getElementById('indicator-failed');
-        this.dividerDiscarded = document.getElementById('divider-discarded');
-        this.dividerFailed = document.getElementById('divider-failed');
         this.reviewedOverlay = document.getElementById('reviewed-overlay');
         this.modeSegmentsContainer = document.getElementById('mode-segments');
         this.lockOverlay = document.getElementById('seg-lock-overlay');
@@ -97,10 +95,10 @@ class FilterHandler {
             this.setMode('reviewed');
         });
 
-        // Summary indicator clicks (discarded/failed) — ignore chevron clicks
+        // Summary indicator clicks (discarded/failed) — ignore menu zone clicks
         [this.indicatorDiscarded, this.indicatorFailed].forEach(btn => {
             btn?.addEventListener('click', (e) => {
-                if (e.target.closest('.indicator-chevron')) return;
+                if (e.target.closest('.chip-zone-menu')) return;
                 this.setMode(btn.dataset.mode);
             });
         });
@@ -216,7 +214,6 @@ class FilterHandler {
         document.querySelectorAll('.filter-dropdown').forEach(d => d.remove());
         document.querySelectorAll('.seg-dropdown-open').forEach(s => s.classList.remove('seg-dropdown-open'));
         document.querySelectorAll('.chip-dropdown-open').forEach(c => c.classList.remove('chip-dropdown-open'));
-        document.querySelectorAll('.indicator-dropdown-open').forEach(c => c.classList.remove('indicator-dropdown-open'));
         // Action bar dropdown
         document.querySelectorAll('.split-dropdown.open').forEach(d => d.classList.remove('open'));
     }
@@ -233,7 +230,7 @@ class FilterHandler {
 
         // Close all dropdowns on outside click (registered once, covers all types)
         document.addEventListener('click', (e) => {
-            if (e.target.closest('.filter-dropdown, .seg-chevron, .chip-chevron, .indicator-chevron, .action-selection, .split-dropdown')) return;
+            if (e.target.closest('.filter-dropdown, .seg-chevron, .chip-chevron, .chip-zone-menu, .action-selection, .split-dropdown')) return;
             this._closeAllDropdowns();
         });
     }
@@ -353,7 +350,7 @@ class FilterHandler {
 
     initIndicatorDropdowns() {
         const indicators = [this.indicatorDiscarded, this.indicatorFailed].filter(Boolean);
-        this._wireDropdownTriggers(indicators, '.indicator-chevron', (btn) => this.openIndicatorDropdown(btn));
+        this._wireDropdownTriggers(indicators, '.chip-zone-menu', (btn) => this.openIndicatorDropdown(btn));
     }
 
     openIndicatorDropdown(indicator) {
@@ -363,7 +360,7 @@ class FilterHandler {
             const count = this.counts.discards || 0;
             if (count === 0) return;
 
-            const dropdown = this._createDropdown(indicator, 'indicator-dropdown-open');
+            const dropdown = this._createDropdown(indicator, 'chip-dropdown-open');
             if (!dropdown) return;
             dropdown.innerHTML = `
                 <div class="seg-dropdown-header">Discarded Files</div>
@@ -885,10 +882,8 @@ class FilterHandler {
         // Show/hide summary indicators for side-channel modes
         const showFailed = (this.counts.failed || 0) > 0;
         const showDiscarded = (this.counts.discards || 0) > 0;
-        if (this.indicatorFailed) this.indicatorFailed.style.display = showFailed ? 'inline' : 'none';
-        if (this.dividerFailed) this.dividerFailed.style.display = showFailed ? 'inline' : 'none';
-        if (this.indicatorDiscarded) this.indicatorDiscarded.style.display = showDiscarded ? 'inline' : 'none';
-        if (this.dividerDiscarded) this.dividerDiscarded.style.display = showDiscarded ? 'inline' : 'none';
+        if (this.indicatorFailed) this.indicatorFailed.style.display = showFailed ? 'inline-flex' : 'none';
+        if (this.indicatorDiscarded) this.indicatorDiscarded.style.display = showDiscarded ? 'inline-flex' : 'none';
 
         // Show/hide export segment reactively based on review completion
         const allReviewed = (this.counts.duplicates || 0) === 0
@@ -1077,11 +1072,9 @@ class FilterHandler {
             this.modeSegmentsContainer.style.left = '0';
             this.modeSegmentsContainer.style.width = '100%';
         }
-        // Hide summary indicators and their dividers
+        // Hide summary indicator pills
         if (this.indicatorDiscarded) this.indicatorDiscarded.style.display = 'none';
         if (this.indicatorFailed) this.indicatorFailed.style.display = 'none';
-        if (this.dividerDiscarded) this.dividerDiscarded.style.display = 'none';
-        if (this.dividerFailed) this.dividerFailed.style.display = 'none';
         this.updateStyles();
     }
 

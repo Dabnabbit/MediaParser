@@ -18,8 +18,6 @@ class ProgressHandler {
 
         // Job section elements
         this.jobSection = document.querySelector('[data-section="job"]');
-        this.statusBadge = document.getElementById('job-status-badge');
-        this.statusText = document.getElementById('job-status-text');
         this.uploadArea = document.getElementById('upload-area');
 
         // Progress elements (layered fills)
@@ -158,11 +156,6 @@ class ProgressHandler {
         // Progress area: visible in uploading, processing, and complete states
         if (this.jobProgress) {
             this.jobProgress.style.display = ['uploading', 'processing', 'complete', 'failed'].includes(state) ? 'block' : 'none';
-        }
-
-        // Status badge: hidden in idle state
-        if (this.statusBadge) {
-            this.statusBadge.style.display = state === 'idle' ? 'none' : 'inline-flex';
         }
 
         // Controls visibility
@@ -313,12 +306,6 @@ class ProgressHandler {
         if (this.jobSection) {
             this.jobSection.dataset.status = 'UPLOADING';
         }
-        if (this.statusBadge) {
-            this.statusBadge.dataset.status = 'UPLOADING';
-        }
-        if (this.statusText) {
-            this.statusText.textContent = 'UPLOADING';
-        }
         if (this.filesProcessed) {
             this.filesProcessed.textContent = `0 / ${fileCount}`;
         }
@@ -408,14 +395,8 @@ class ProgressHandler {
         if (this.progressText) {
             this.progressText.textContent = '0%';
         }
-        // Keep status as "Processing" while waiting for worker to pick up
+        // Set RUNNING status on section while waiting for worker to pick up
         // (avoids grey PENDING flash between purple upload and blue processing)
-        if (this.statusText) {
-            this.statusText.textContent = 'PROCESSING';
-        }
-        if (this.statusBadge) {
-            this.statusBadge.dataset.status = 'RUNNING';
-        }
         if (this.jobSection) {
             this.jobSection.dataset.status = 'RUNNING';
         }
@@ -513,13 +494,7 @@ class ProgressHandler {
         const displayStatus = status === 'PENDING' ? 'RUNNING' : status;
         const displayText = status === 'PENDING' ? 'PROCESSING' : status;
 
-        // Update status badge and section
-        if (this.statusBadge) {
-            this.statusBadge.dataset.status = displayStatus;
-        }
-        if (this.statusText) {
-            this.statusText.textContent = displayText;
-        }
+        // Update section status (drives breadcrumb phase indicators + border glow)
         if (this.jobSection) {
             this.jobSection.dataset.status = displayStatus;
         }
@@ -677,7 +652,7 @@ class ProgressHandler {
 
         // Show summary
         if (this.jobSummary) {
-            this.jobSummary.style.display = 'inline-flex';
+            this.jobSummary.style.display = 'flex';
 
             // Populate summary
             const summary = data.summary || {};
@@ -750,8 +725,6 @@ class ProgressHandler {
         const resultsContainer = document.getElementById('results-container');
         if (resultsContainer) resultsContainer.style.display = 'none';
         if (this.jobControls) this.jobControls.style.display = 'none';
-        if (this.statusBadge) this.statusBadge.style.display = 'none';
-
         // Set finalized state so card is visible but upload area is not
         if (this.jobSection) {
             this.jobSection.dataset.state = 'finalized';
@@ -794,11 +767,8 @@ class ProgressHandler {
         if (this.currentFilename) {
             this.currentFilename.innerHTML = '<span style="color: #dc3545;">Worker not responding - is Huey running?</span>';
         }
-        if (this.statusText) {
-            this.statusText.textContent = 'WAITING';
-        }
-        if (this.statusBadge) {
-            this.statusBadge.dataset.status = 'HALTED';
+        if (this.jobSection) {
+            this.jobSection.dataset.status = 'HALTED';
         }
     }
 
