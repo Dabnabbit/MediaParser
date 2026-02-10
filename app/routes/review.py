@@ -301,12 +301,16 @@ def add_tags_to_file(file_id):
         # Normalize to lowercase
         normalized_name = tag_name.strip().lower()
 
-        # Find or create tag
+        # Find or create tag (handle concurrent inserts)
         tag = Tag.query.filter_by(name=normalized_name).first()
         if tag is None:
-            tag = Tag(name=normalized_name, usage_count=0)
-            db.session.add(tag)
-            db.session.flush()  # Get the ID
+            try:
+                tag = Tag(name=normalized_name, usage_count=0)
+                db.session.add(tag)
+                db.session.flush()
+            except Exception:
+                db.session.rollback()
+                tag = Tag.query.filter_by(name=normalized_name).first()
 
         # Add to file if not already present
         if tag not in file.tags:
@@ -386,7 +390,7 @@ def bulk_add_tags():
     success_count = 0
     files_updated = []
 
-    # Get or create tags first
+    # Get or create tags first (handle concurrent inserts)
     tags_to_add = []
     for tag_name in data['tags']:
         if not isinstance(tag_name, str) or not tag_name.strip():
@@ -394,11 +398,14 @@ def bulk_add_tags():
         normalized_name = tag_name.strip().lower()
         tag = Tag.query.filter_by(name=normalized_name).first()
         if tag is None:
-            tag = Tag(name=normalized_name, usage_count=0)
-            db.session.add(tag)
+            try:
+                tag = Tag(name=normalized_name, usage_count=0)
+                db.session.add(tag)
+                db.session.flush()
+            except Exception:
+                db.session.rollback()
+                tag = Tag.query.filter_by(name=normalized_name).first()
         tags_to_add.append(tag)
-
-    db.session.flush()
 
     # Add tags to each file
     for file_id in data['file_ids']:

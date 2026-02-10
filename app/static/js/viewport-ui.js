@@ -233,6 +233,18 @@
     proto.handleKeydown = function(e) {
         if (!this.isActive) return;
 
+        // Don't intercept keys when user is typing in an input field
+        // (except Escape, which blurs the input first, then exits viewport on second press)
+        const tag = e.target.tagName;
+        const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable;
+        if (isInput) {
+            if (e.key === 'Escape') {
+                e.target.blur();
+                e.preventDefault();
+            }
+            return;
+        }
+
         switch (e.key) {
             case 'ArrowLeft':
             case 'ArrowUp':

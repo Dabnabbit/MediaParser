@@ -295,9 +295,13 @@ class SettingsHandler {
      * Clear database tables.
      */
     async clearDatabase() {
-        if (!confirm('Clear all data from database? This cannot be undone.')) {
-            return;
-        }
+        const { confirmed } = await showModal({
+            title: 'Clear Database',
+            body: 'Clear all data from database? This cannot be undone.',
+            confirmText: 'Clear Database',
+            dangerous: true
+        });
+        if (!confirmed) return;
 
         try {
             this.clearDbBtn.disabled = true;
@@ -328,9 +332,13 @@ class SettingsHandler {
      * Clear storage folders.
      */
     async clearStorage() {
-        if (!confirm('Delete all uploaded files and thumbnails? This cannot be undone.')) {
-            return;
-        }
+        const { confirmed } = await showModal({
+            title: 'Clear Storage',
+            body: 'Delete all uploaded files and thumbnails? This cannot be undone.',
+            confirmText: 'Clear Storage',
+            dangerous: true
+        });
+        if (!confirmed) return;
 
         try {
             this.clearStorageBtn.disabled = true;
@@ -361,9 +369,13 @@ class SettingsHandler {
      * Clear both database and storage.
      */
     async clearAll() {
-        if (!confirm('Clear ALL data (database AND files)? This cannot be undone.')) {
-            return;
-        }
+        const { confirmed } = await showModal({
+            title: 'Clear All Data',
+            body: 'Clear ALL data (database AND files)? This cannot be undone.',
+            confirmText: 'Clear All',
+            dangerous: true
+        });
+        if (!confirmed) return;
 
         try {
             this.clearAllBtn.disabled = true;

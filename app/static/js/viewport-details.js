@@ -615,7 +615,7 @@ class ViewportDetailsPanel {
 
         } catch (error) {
             console.error('Error confirming:', error);
-            alert('Failed to save review');
+            window.showToast('Failed to save review', 'error');
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -644,7 +644,7 @@ class ViewportDetailsPanel {
 
         } catch (error) {
             console.error('Error unreviewing:', error);
-            alert('Failed to unreview');
+            window.showToast('Failed to unreview', 'error');
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -653,7 +653,13 @@ class ViewportDetailsPanel {
     async discardFile() {
         if (!this.currentFile) return;
 
-        if (!confirm(`Discard "${this.currentFile.original_filename}"?`)) return;
+        const { confirmed } = await showModal({
+            title: 'Discard File',
+            body: `Discard "${this.currentFile.original_filename}"?`,
+            confirmText: 'Discard',
+            dangerous: true
+        });
+        if (!confirmed) return;
 
         const btn = this.elements.actionsFooter.querySelector('#vp-discard');
         if (btn) btn.disabled = true;
@@ -672,7 +678,7 @@ class ViewportDetailsPanel {
 
         } catch (error) {
             console.error('Error discarding:', error);
-            alert('Failed to discard');
+            window.showToast('Failed to discard', 'error');
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -698,7 +704,7 @@ class ViewportDetailsPanel {
 
         } catch (error) {
             console.error('Error restoring:', error);
-            alert('Failed to restore');
+            window.showToast('Failed to restore', 'error');
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -721,8 +727,13 @@ class ViewportDetailsPanel {
             return;
         }
 
-        const confirmMsg = `Keep "${this.currentFile.original_filename}" and discard ${othersToDiscard.length} other file(s)?`;
-        if (!confirm(confirmMsg)) return;
+        const { confirmed } = await showModal({
+            title: 'Keep Duplicate',
+            body: `Keep "${this.currentFile.original_filename}" and discard ${othersToDiscard.length} other file(s)?`,
+            confirmText: 'Keep This',
+            dangerous: true
+        });
+        if (!confirmed) return;
 
         const btn = this.elements.actionsFooter.querySelector('#vp-keep-duplicate');
         if (btn) {
@@ -755,7 +766,7 @@ class ViewportDetailsPanel {
 
         } catch (error) {
             console.error('Error keeping duplicate:', error);
-            alert(`Failed to resolve duplicates: ${error.message}`);
+            window.showToast(`Failed to resolve duplicates: ${error.message}`, 'error');
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -768,7 +779,12 @@ class ViewportDetailsPanel {
         if (!this.currentFile) return;
 
         const filename = this.currentFile.original_filename;
-        if (!confirm(`Remove "${filename}" from the duplicate group?`)) return;
+        const { confirmed } = await showModal({
+            title: 'Not a Duplicate',
+            body: `Remove "${filename}" from the duplicate group?`,
+            confirmText: 'Remove'
+        });
+        if (!confirmed) return;
 
         const btn = this.elements.actionsFooter.querySelector('#vp-not-duplicate');
         if (btn) {
@@ -814,7 +830,7 @@ class ViewportDetailsPanel {
 
         } catch (error) {
             console.error('Error removing from duplicate group:', error);
-            alert(`Failed to remove from duplicate group: ${error.message}`);
+            window.showToast(`Failed to remove from duplicate group: ${error.message}`, 'error');
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -847,8 +863,13 @@ class ViewportDetailsPanel {
             return;
         }
 
-        const confirmMsg = `Keep "${this.currentFile.original_filename}" and discard ${othersToDiscard.length} other file(s)?`;
-        if (!confirm(confirmMsg)) return;
+        const { confirmed } = await showModal({
+            title: 'Keep Similar',
+            body: `Keep "${this.currentFile.original_filename}" and discard ${othersToDiscard.length} other file(s)?`,
+            confirmText: 'Keep This',
+            dangerous: true
+        });
+        if (!confirmed) return;
 
         const btn = this.elements.actionsFooter.querySelector('#vp-keep-similar');
         if (btn) {
@@ -876,7 +897,7 @@ class ViewportDetailsPanel {
 
         } catch (error) {
             console.error('Error keeping similar file:', error);
-            alert(`Failed to resolve similar group: ${error.message}`);
+            window.showToast(`Failed to resolve similar group: ${error.message}`, 'error');
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -894,7 +915,12 @@ class ViewportDetailsPanel {
             return;
         }
 
-        if (!confirm('Keep all files in this similar group?')) return;
+        const { confirmed } = await showModal({
+            title: 'Keep All Similar',
+            body: 'Keep all files in this similar group?',
+            confirmText: 'Keep All'
+        });
+        if (!confirmed) return;
 
         const btn = this.elements.actionsFooter.querySelector('#vp-keep-all-similar');
         if (btn) {
@@ -917,7 +943,7 @@ class ViewportDetailsPanel {
 
         } catch (error) {
             console.error('Error keeping all similar files:', error);
-            alert(`Failed to keep all: ${error.message}`);
+            window.showToast(`Failed to keep all: ${error.message}`, 'error');
         } finally {
             if (btn) {
                 btn.disabled = false;
@@ -930,7 +956,12 @@ class ViewportDetailsPanel {
         if (!this.currentFile) return;
 
         const filename = this.currentFile.original_filename;
-        if (!confirm(`Remove "${filename}" from the similar group?`)) return;
+        const { confirmed } = await showModal({
+            title: 'Not Similar',
+            body: `Remove "${filename}" from the similar group?`,
+            confirmText: 'Remove'
+        });
+        if (!confirmed) return;
 
         const btn = this.elements.actionsFooter.querySelector('#vp-not-similar');
         if (btn) {
@@ -976,7 +1007,7 @@ class ViewportDetailsPanel {
 
         } catch (error) {
             console.error('Error removing from similar group:', error);
-            alert(`Failed to remove from similar group: ${error.message}`);
+            window.showToast(`Failed to remove from similar group: ${error.message}`, 'error');
         } finally {
             if (btn) {
                 btn.disabled = false;

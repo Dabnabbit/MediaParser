@@ -67,15 +67,47 @@ class TagsHandler {
             input.parentNode.appendChild(dropdown);
         }
 
+        // Track active index for keyboard nav
+        input._acActiveIndex = -1;
+
         // Show suggestions on input
         input.addEventListener('input', (e) => {
+            input._acActiveIndex = -1;
             const value = e.target.value.trim().toLowerCase();
             this.showSuggestions(dropdown, value, input);
         });
 
+        // Keyboard navigation for autocomplete
+        input.addEventListener('keydown', (e) => {
+            if (!dropdown.classList.contains('show')) return;
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+            if (items.length === 0) return;
+
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                input._acActiveIndex = Math.min(input._acActiveIndex + 1, items.length - 1);
+                this._highlightItem(items, input._acActiveIndex);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                input._acActiveIndex = Math.max(input._acActiveIndex - 1, -1);
+                this._highlightItem(items, input._acActiveIndex);
+            } else if (e.key === 'Enter' && input._acActiveIndex >= 0) {
+                e.preventDefault();
+                input.value = items[input._acActiveIndex].dataset.tag;
+                dropdown.classList.remove('show');
+                input._acActiveIndex = -1;
+            } else if (e.key === 'Escape') {
+                dropdown.classList.remove('show');
+                input._acActiveIndex = -1;
+            }
+        });
+
         // Hide on blur (with delay for click)
         input.addEventListener('blur', () => {
-            setTimeout(() => dropdown.classList.remove('show'), 200);
+            setTimeout(() => {
+                dropdown.classList.remove('show');
+                input._acActiveIndex = -1;
+            }, 200);
         });
 
         // Show on focus if has value
@@ -84,6 +116,12 @@ class TagsHandler {
             if (value.length > 0) {
                 this.showSuggestions(dropdown, value, input);
             }
+        });
+    }
+
+    _highlightItem(items, activeIndex) {
+        items.forEach((item, i) => {
+            item.classList.toggle('ac-active', i === activeIndex);
         });
     }
 
@@ -116,6 +154,7 @@ class TagsHandler {
                 e.preventDefault();
                 input.value = item.dataset.tag;
                 dropdown.classList.remove('show');
+                input._acActiveIndex = -1;
             });
         });
 
@@ -198,33 +237,32 @@ class TagsHandler {
     renderExaminationTags() {
         if (!this.examinationContainer) return;
 
-        if (this.currentTags.length === 0) {
-            this.examinationContainer.innerHTML = `
-                <div class="tags-empty">No tags</div>
-                ${this.renderTagInput()}
-            `;
-        } else {
-            this.examinationContainer.innerHTML = `
-                <div class="tags-list">
-                    ${this.currentTags.map(tag => `
-                        <span class="tag-pill" data-tag="${tag.name || tag}">
-                            ${tag.name || tag}
-                            <button class="tag-remove" title="Remove tag">&times;</button>
-                        </span>
-                    `).join('')}
-                </div>
-                ${this.renderTagInput()}
-            `;
+        // Inline layout: pills + input on one line, wrapping naturally
+        const pillsHtml = this.currentTags.map(tag => `
+            <span class="tag-pill" data-tag="${tag.name || tag}">
+                ${tag.name || tag}
+                <button class="tag-remove" title="Remove tag">&times;</button>
+            </span>
+        `).join('');
 
-            // Attach remove handlers
-            this.examinationContainer.querySelectorAll('.tag-remove').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const pill = e.target.closest('.tag-pill');
-                    const tagName = pill.dataset.tag;
-                    this.removeTag(tagName);
-                });
+        const emptyHtml = this.currentTags.length === 0
+            ? '<span class="tags-empty">No tags</span>'
+            : '';
+
+        this.examinationContainer.innerHTML = `
+            ${emptyHtml}
+            <div class="tags-list">${pillsHtml}</div>
+            ${this.renderTagInput()}
+        `;
+
+        // Attach remove handlers
+        this.examinationContainer.querySelectorAll('.tag-remove').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const pill = e.target.closest('.tag-pill');
+                const tagName = pill.dataset.tag;
+                this.removeTag(tagName);
             });
-        }
+        });
 
         // Setup autocomplete for examination input
         const examInput = this.examinationContainer.querySelector('.tag-input');
@@ -232,20 +270,13 @@ class TagsHandler {
             this.setupAutocomplete(examInput, 'exam-tag-autocomplete');
 
             examInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
+                // Only handle Enter when no autocomplete item is actively selected
+                // (autocomplete keyboard nav handles its own Enter)
+                if (e.key === 'Enter' && (examInput._acActiveIndex === undefined || examInput._acActiveIndex < 0)) {
                     e.preventDefault();
                     this.addTagToCurrentFile(examInput.value);
                     examInput.value = '';
                 }
-            });
-        }
-
-        const addBtn = this.examinationContainer.querySelector('.tag-add-btn');
-        if (addBtn) {
-            addBtn.addEventListener('click', () => {
-                const input = this.examinationContainer.querySelector('.tag-input');
-                this.addTagToCurrentFile(input.value);
-                input.value = '';
             });
         }
     }
@@ -253,9 +284,8 @@ class TagsHandler {
     renderTagInput() {
         return `
             <div class="tag-input-group">
-                <input type="text" class="form-input form-input-sm tag-input"
-                       placeholder="Add tag...">
-                <button class="btn btn-primary btn-sm tag-add-btn">Add</button>
+                <input type="text" class="tag-input"
+                       placeholder="Type tag, press Enter">
             </div>
         `;
     }
@@ -311,17 +341,7 @@ class TagsHandler {
     }
 
     showToast(message, type = 'success') {
-        // Simple toast notification
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-
-        setTimeout(() => toast.classList.add('show'), 10);
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 2000);
+        window.showToast(message, type);
     }
 
     reset() {

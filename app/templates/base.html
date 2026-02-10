@@ -36,6 +36,8 @@
         </div>
     </main>
 
+    <!-- Modal system (must load before other JS that calls showModal/showToast) -->
+    <script src="{{ url_for('static', filename='js/modal.js') }}" defer></script>
     <!-- Core JavaScript modules -->
     <script src="{{ url_for('static', filename='js/settings.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/upload.js') }}" defer></script>

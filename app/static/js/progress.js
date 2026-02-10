@@ -577,15 +577,23 @@ class ProgressHandler {
 
         if (state === 'complete' || state === 'failed') {
             // Job is done - this is "New" functionality
-            if (!confirm('Start a new import? Current results will be cleared.')) {
-                return;
-            }
+            const { confirmed } = await showModal({
+                title: 'New Import',
+                body: 'Start a new import? Current results will be cleared.',
+                confirmText: 'Start New',
+                dangerous: true
+            });
+            if (!confirmed) return;
             this.resetToIdle();
         } else {
             // Job is running - this is "Cancel" functionality
-            if (!confirm('Cancel this job and start over?')) {
-                return;
-            }
+            const { confirmed } = await showModal({
+                title: 'Cancel Job',
+                body: 'Cancel this job and start over?',
+                confirmText: 'Cancel Job',
+                dangerous: true
+            });
+            if (!confirmed) return;
             const success = await this.sendControlCommand('cancel');
             if (success) {
                 this.resetToIdle();
@@ -609,12 +617,12 @@ class ProgressHandler {
                 return true;
             } else {
                 const error = await response.json();
-                alert(`Failed to ${action} job: ${error.error || 'Unknown error'}`);
+                window.showToast(`Failed to ${action} job: ${error.error || 'Unknown error'}`, 'error');
                 return false;
             }
         } catch (error) {
             console.error(`Control command error (${action}):`, error);
-            alert(`Failed to ${action} job`);
+            window.showToast(`Failed to ${action} job`, 'error');
             return false;
         }
     }
@@ -793,15 +801,49 @@ class ProgressHandler {
         try {
             // Show confirmation dialog (skip for force-retry on duplicate override)
             if (!force) {
+                // Fetch current output directory setting
+                let outputDir = '';
+                try {
+                    const settingsResp = await fetch('/api/settings');
+                    const settings = await settingsResp.json();
+                    outputDir = settings.output_directory || '';
+                } catch (e) {
+                    console.warn('Failed to fetch settings for export dialog:', e);
+                }
+
                 const count = window.filterHandler?.counts?.reviewed || 0;
-                const confirmed = confirm(
-                    `Export ${count} file${count !== 1 ? 's' : ''} and finalize?\n\n` +
-                    'This will:\n' +
-                    '  \u2022 Export files to output directory\n' +
-                    '  \u2022 Clean up source files and thumbnails\n' +
-                    '  \u2022 Remove all working data\n\n' +
-                    'This cannot be undone.'
-                );
+                const { confirmed, data } = await showModal({
+                    title: 'Export & Finalize',
+                    body: `<p>Export ${count} file${count !== 1 ? 's' : ''} and finalize?</p>
+                           <ul class="modal-list">
+                               <li>Export files to output directory</li>
+                               <li>Clean up source files and thumbnails</li>
+                               <li>Remove all working data</li>
+                           </ul>
+                           <p class="modal-warning">This cannot be undone.</p>
+                           <label class="modal-field-label">Output directory</label>
+                           <input name="output_directory" class="modal-input" value="${outputDir.replace(/"/g, '&quot;')}">`,
+                    confirmText: 'Export',
+                    dangerous: true,
+                    onBeforeConfirm: async (formData) => {
+                        if (formData.output_directory !== outputDir) {
+                            try {
+                                const saveResp = await fetch('/api/settings', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ output_directory: formData.output_directory })
+                                });
+                                const result = await saveResp.json();
+                                if (!saveResp.ok || !result.success) {
+                                    return result.error || 'Invalid output directory';
+                                }
+                            } catch (e) {
+                                return 'Failed to save output directory';
+                            }
+                        }
+                        return true;
+                    }
+                });
                 if (!confirmed) return;
             }
 
@@ -819,17 +861,27 @@ class ProgressHandler {
                 try {
                     error = await response.json();
                 } catch {
-                    alert(`Export failed: server error (${response.status})`);
+                    window.showToast(`Export failed: server error (${response.status})`, 'error');
                     return;
                 }
                 if (error.unresolved_exact_groups || error.unresolved_similar_groups) {
-                    const msg = `${error.message}\n\nUnresolved duplicates: ${error.unresolved_exact_groups || 0}\nUnresolved similar: ${error.unresolved_similar_groups || 0}`;
-                    if (confirm(msg + '\n\nForce export anyway?')) {
+                    const { confirmed } = await showModal({
+                        title: 'Unresolved Groups',
+                        body: `<p>${error.message}</p>
+                               <ul class="modal-list">
+                                   <li>Unresolved duplicates: ${error.unresolved_exact_groups || 0}</li>
+                                   <li>Unresolved similar: ${error.unresolved_similar_groups || 0}</li>
+                               </ul>
+                               <p>Force export anyway?</p>`,
+                        confirmText: 'Force Export',
+                        dangerous: true
+                    });
+                    if (confirmed) {
                         return this.startExport(importJobId, true);
                     }
                     return;
                 }
-                alert(`Export failed: ${error.error || 'Unknown error'}`);
+                window.showToast(`Export failed: ${error.error || 'Unknown error'}`, 'error');
                 return;
             }
 
@@ -841,7 +893,7 @@ class ProgressHandler {
             this.startPolling(data.job_id);
         } catch (error) {
             console.error('Export error:', error);
-            alert('Failed to start export');
+            window.showToast('Failed to start export', 'error');
         }
     }
 }

@@ -547,7 +547,13 @@ class FilterHandler {
 
             const confLabel = confidence ? `${confidence.toUpperCase()} ` : '';
             const msg = `Auto-resolve ${targetGroups.length} ${confLabel}groups? Keep ${keepCount}, discard ${toDiscard.length}.`;
-            if (!confirm(msg)) return;
+            const { confirmed } = await showModal({
+                title: 'Auto-resolve Groups',
+                body: msg,
+                confirmText: 'Resolve',
+                dangerous: true
+            });
+            if (!confirmed) return;
 
             const discardResp = await fetch('/api/files/bulk/discard', {
                 method: 'POST',
@@ -563,7 +569,7 @@ class FilterHandler {
 
         } catch (error) {
             console.error('Auto-resolve failed:', error);
-            alert(`Auto-resolve failed: ${error.message}`);
+            window.showToast(`Auto-resolve failed: ${error.message}`, 'error');
         }
     }
 
@@ -577,7 +583,12 @@ class FilterHandler {
         const count = this.counts[mode] || 0;
         const label = mode === 'duplicates' ? 'duplicate' : 'similar';
         const msg = `Mark all ${count} files as not ${label}? This removes them from their groups.`;
-        if (!confirm(msg)) return;
+        const { confirmed } = await showModal({
+            title: `Keep All (Not ${label.charAt(0).toUpperCase() + label.slice(1)})`,
+            body: msg,
+            confirmText: 'Keep All'
+        });
+        if (!confirmed) return;
 
         try {
             // Fetch all files for this mode
@@ -615,7 +626,7 @@ class FilterHandler {
 
         } catch (error) {
             console.error('Keep all failed:', error);
-            alert(`Failed: ${error.message}`);
+            window.showToast(`Failed: ${error.message}`, 'error');
         }
     }
 

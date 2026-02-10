@@ -14,7 +14,7 @@
     // Discard Actions
     // ==========================================
 
-    proto.confirmDiscard = function() {
+    proto.confirmDiscard = async function() {
         const count = this.selectedIds.size;
         if (count === 0) return;
 
@@ -22,7 +22,13 @@
             ? 'Discard this file from output?'
             : `Discard ${count} files from output?`;
 
-        if (confirm(message)) {
+        const { confirmed } = await showModal({
+            title: 'Discard Files',
+            body: message,
+            confirmText: 'Discard',
+            dangerous: true
+        });
+        if (confirmed) {
             this.discardSelected();
         }
     };
@@ -59,7 +65,7 @@
 
         } catch (error) {
             console.error('Error discarding files:', error);
-            alert(`Failed to discard: ${error.message}`);
+            window.showToast(`Failed to discard: ${error.message}`, 'error');
         }
     };
 
@@ -75,7 +81,12 @@
             ? 'Restore this file?'
             : `Restore ${fileIds.length} files?`;
 
-        if (!confirm(message)) return;
+        const { confirmed } = await showModal({
+            title: 'Restore Files',
+            body: message,
+            confirmText: 'Restore'
+        });
+        if (!confirmed) return;
 
         try {
             const response = await fetch('/api/files/bulk/undiscard', {
@@ -100,7 +111,7 @@
 
         } catch (error) {
             console.error('Error restoring files:', error);
-            alert(`Failed to restore: ${error.message}`);
+            window.showToast(`Failed to restore: ${error.message}`, 'error');
         }
     };
 
@@ -126,7 +137,12 @@
                 return;
             }
 
-            if (!confirm(`Restore all ${fileIds.length} discarded files?`)) return;
+            const { confirmed } = await showModal({
+                title: 'Restore All',
+                body: `Restore all ${fileIds.length} discarded files?`,
+                confirmText: 'Restore All'
+            });
+            if (!confirmed) return;
 
             const restoreResp = await fetch('/api/files/bulk/undiscard', {
                 method: 'POST',
@@ -148,7 +164,7 @@
 
         } catch (error) {
             console.error('Restore all failed:', error);
-            alert(`Failed to restore: ${error.message}`);
+            window.showToast(`Failed to restore: ${error.message}`, 'error');
         }
     };
 
@@ -173,7 +189,7 @@
             }
         } catch (error) {
             console.error('Failed to mark as not duplicate:', error);
-            alert('Failed to update duplicate status');
+            window.showToast('Failed to update duplicate status', 'error');
         }
     };
 
@@ -199,7 +215,7 @@
             }
         } catch (error) {
             console.error('Failed to mark as not similar:', error);
-            alert('Failed to update similar status');
+            window.showToast('Failed to update similar status', 'error');
         }
     };
 
@@ -230,7 +246,7 @@
         ).map(f => f.id);
 
         if (toDiscard.length === 0) {
-            alert('No other files in group to discard');
+            window.showToast('No other files in group to discard');
             return;
         }
 
@@ -243,7 +259,13 @@
             confirmMsg = `Keep ${fileIds.length} selected file(s) and discard ${toDiscard.length} other(s) from group?`;
         }
 
-        if (!confirm(confirmMsg)) return;
+        const { confirmed } = await showModal({
+            title: 'Keep Selected',
+            body: confirmMsg,
+            confirmText: 'Keep Selected',
+            dangerous: true
+        });
+        if (!confirmed) return;
 
         try {
             const response = await fetch('/api/files/bulk/discard', {
@@ -259,7 +281,7 @@
             }
         } catch (error) {
             console.error('Failed to select best:', error);
-            alert('Failed to discard group files');
+            window.showToast('Failed to discard group files', 'error');
         }
     };
 
@@ -289,7 +311,7 @@
             }
         } catch (error) {
             console.error('Failed to add tag:', error);
-            alert('Failed to add tag');
+            window.showToast('Failed to add tag', 'error');
         }
     };
 
@@ -328,7 +350,12 @@
             confirmMsg = `${this.getActionLabel(action)} ${count} filtered files?`;
         }
 
-        if (!confirm(confirmMsg)) return;
+        const { confirmed } = await showModal({
+            title: 'Bulk Review',
+            body: confirmMsg,
+            confirmText: 'Confirm'
+        });
+        if (!confirmed) return;
 
         try {
             const response = await fetch(`/api/jobs/${jobId}/bulk-review`, {
@@ -344,7 +371,7 @@
 
             const result = await response.json();
 
-            this.showToast(`${result.affected_count} files updated`);
+            window.showToast(`${result.affected_count} files updated`);
 
             window.resultsHandler?.loadFiles();
             window.resultsHandler?.loadSummary();
@@ -355,7 +382,7 @@
 
         } catch (error) {
             console.error('Bulk review failed:', error);
-            alert(`Failed to update files: ${error.message}`);
+            window.showToast(`Failed to update files: ${error.message}`, 'error');
         }
     };
 

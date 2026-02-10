@@ -93,7 +93,7 @@ class UploadHandler {
     async handleServerImport() {
         const path = this.serverPathInput.value.trim();
         if (!path) {
-            alert('Please enter a server path');
+            window.showToast('Please enter a server path', 'error');
             return;
         }
 
@@ -115,11 +115,11 @@ class UploadHandler {
                     window.progressHandler.startPolling(result.job_id);
                 }
             } else {
-                alert(`Error: ${result.error || 'Failed to import from server path'}`);
+                window.showToast(`Error: ${result.error || 'Failed to import from server path'}`, 'error');
             }
         } catch (error) {
             console.error('Server import error:', error);
-            alert('Failed to import from server path');
+            window.showToast('Failed to import from server path', 'error');
         }
     }
 
@@ -127,7 +127,7 @@ class UploadHandler {
         const validFiles = this.filterFiles(files);
 
         if (validFiles.length === 0) {
-            alert('No valid media files selected. Supported formats: ' + this.allowedExtensions.join(', '));
+            window.showToast('No valid media files selected. Supported: ' + this.allowedExtensions.join(', '), 'error', 5000);
             return;
         }
 
@@ -141,12 +141,22 @@ class UploadHandler {
             const healthData = await healthResponse.json();
 
             if (!healthData.worker_alive) {
-                alert('Background worker is not running.\n\nPlease start the worker with:\n  python run_worker.py');
+                await showModal({
+                    title: 'Worker Not Running',
+                    body: '<p>Background worker is not running.</p><p>Please start the worker with:</p><code style="display:block;margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;">python run_worker.py</code>',
+                    confirmText: 'OK',
+                    cancelText: null
+                });
                 return;
             }
         } catch (error) {
             console.error('Worker health check failed:', error);
-            alert('Cannot verify worker status. The background worker may not be running.\n\nPlease ensure the worker is started with:\n  python run_worker.py');
+            await showModal({
+                title: 'Worker Status Unknown',
+                body: '<p>Cannot verify worker status. The background worker may not be running.</p><p>Please ensure the worker is started with:</p><code style="display:block;margin-top:8px;padding:8px;background:var(--color-bg-alt);border-radius:4px;">python run_worker.py</code>',
+                confirmText: 'OK',
+                cancelText: null
+            });
             return;
         }
 
@@ -195,7 +205,7 @@ class UploadHandler {
                     window.progressHandler.hideJobSection();
                 }
                 const error = JSON.parse(xhr.responseText);
-                alert(`Upload failed: ${error.error || 'Unknown error'}`);
+                window.showToast(`Upload failed: ${error.error || 'Unknown error'}`, 'error');
             }
         });
 
@@ -204,7 +214,7 @@ class UploadHandler {
             if (window.progressHandler) {
                 window.progressHandler.hideJobSection();
             }
-            alert('Upload failed: Network error');
+            window.showToast('Upload failed: Network error', 'error');
         });
 
         // Upload aborted
@@ -212,7 +222,7 @@ class UploadHandler {
             if (window.progressHandler) {
                 window.progressHandler.hideJobSection();
             }
-            alert('Upload cancelled');
+            window.showToast('Upload cancelled', 'error');
         });
 
         // Start upload
