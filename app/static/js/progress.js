@@ -817,7 +817,15 @@ class ProgressHandler {
                     console.warn('Failed to fetch settings for export dialog:', e);
                 }
 
-                const count = window.filterHandler?.counts?.reviewed || 0;
+                const counts = window.filterHandler?.counts || {};
+                const exportCount = counts.reviewed || 0;
+                const discardCount = counts.discards || 0;
+                const failedCount = counts.failed || 0;
+
+                // Build export summary line
+                const summaryParts = [`${exportCount} file${exportCount !== 1 ? 's' : ''} to export`];
+                if (discardCount > 0) summaryParts.push(`${discardCount} discarded`);
+                if (failedCount > 0) summaryParts.push(`${failedCount} failed`);
 
                 // Recall previous selections (sessionStorage = tab lifetime)
                 const prev = JSON.parse(sessionStorage.getItem('exportCleanupPrefs') || 'null');
@@ -829,7 +837,7 @@ class ProgressHandler {
 
                 const { confirmed, data } = await showModal({
                     title: 'Export & Finalize',
-                    body: `<p>Export ${count} file${count !== 1 ? 's' : ''} and finalize?</p>
+                    body: `<p>${summaryParts.join(' · ')}</p>
                            <label class="modal-field-label">Output directory</label>
                            <input name="output_directory" class="modal-input" value="${outputDir.replace(/"/g, '&quot;')}">
                            <div class="modal-checklist">

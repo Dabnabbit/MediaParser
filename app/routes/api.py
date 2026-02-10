@@ -86,8 +86,8 @@ def get_progress(job_id):
             'confidence_counts': confidence_counts,
             'duplicate_groups': duplicate_count,
             'failed_count': failed_count,
-            'success_count': job.progress_current - job.error_count,
-            'error_count': job.error_count,
+            'success_count': job.progress_current - failed_count,
+            'error_count': failed_count,
         }
 
         if job.completed_at and job.started_at:
