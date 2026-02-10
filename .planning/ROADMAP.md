@@ -152,7 +152,7 @@ Plans:
 
 ---
 
-### Phase 6: Duplicate Detection - Perceptual
+### Phase 6: Duplicate Detection - Perceptual ✓
 
 **Goal:** Users discover near-identical photos (burst shots, crops, format conversions, compressions) through perceptual hashing with conservative thresholds to minimize false positives.
 
@@ -160,17 +160,26 @@ Plans:
 
 **Requirements:** DUP-02, DUP-03
 
-**Success Criteria:**
-1. System groups near-duplicates based on perceptual hash similarity (configurable threshold)
-2. Same image in different formats (JPG/PNG/HEIC) grouped correctly
-3. Burst photos and slight crops identified as near-duplicates
-4. Format normalization applied before hashing to prevent false negatives
-5. Multi-algorithm consensus (pHash + dHash + aHash) reduces false positives
-6. Near-duplicate groups displayed with quality scores and recommended best version
+**Status:** Complete (2026-02-05)
+
+Plans:
+- [x] 06-01-PLAN.md — Perceptual hashing algorithms (pHash, dHash, aHash) with format normalization
+- [x] 06-02-PLAN.md — Multi-algorithm consensus detection and similarity grouping
+- [x] 06-03-PLAN.md — Similar groups API and resolution endpoints
+- [x] 06-04-PLAN.md — Similar mode UI with viewport and workflow enforcement
+- [x] 06-05-PLAN.md — Perceptual detection and duplicate quality tests (48 new, 128 total pass)
+
+**Success Criteria:** All 6 verified ✓
+1. ✓ System groups near-duplicates based on perceptual hash similarity (configurable threshold)
+2. ✓ Same image in different formats (JPG/PNG/HEIC) grouped correctly
+3. ✓ Burst photos and slight crops identified as near-duplicates
+4. ✓ Format normalization applied before hashing to prevent false negatives
+5. ✓ Multi-algorithm consensus (pHash + dHash + aHash) reduces false positives
+6. ✓ Near-duplicate groups displayed with quality scores and recommended best version
 
 ---
 
-### Phase 7: Output Generation + Tagging
+### Phase 7: Output Generation + Tagging ✓
 
 **Goal:** Users apply review decisions to generate final organized output with corrected timestamps, year-based folders, standardized filenames, and auto-extracted tags.
 
@@ -178,25 +187,25 @@ Plans:
 
 **Requirements:** TAG-01, TAG-02, TAG-03, TAG-04, PROC-02, PROC-03, PROC-04, PROC-05
 
-**Plans:** 5 plans
+**Status:** Complete (2026-02-06)
 
 Plans:
-- [ ] 07-01-PLAN.md — Export task + file copy engine (year folders, YYYYMMDD_HHMMSS filenames)
-- [ ] 07-02-PLAN.md — EXIF metadata write-back (timestamps + tags via PyExifTool)
-- [ ] 07-03-PLAN.md — Tag auto-generation (filename syntax + folder structure)
-- [ ] 07-04-PLAN.md — Export UI + source cleanup + tag filter integration
-- [ ] 07-05-PLAN.md — Integration testing and regression verification
+- [x] 07-01-PLAN.md — Export task + file copy engine (year folders, YYYYMMDD_HHMMSS filenames)
+- [x] 07-02-PLAN.md — EXIF metadata write-back (timestamps + tags via PyExifTool)
+- [x] 07-03-PLAN.md — Tag auto-generation (filename syntax + folder structure)
+- [x] 07-04-PLAN.md — Export UI + source cleanup + tag filter integration
+- [x] 07-05-PLAN.md — Integration testing and regression verification (39 new, 80 total pass)
 
-**Success Criteria:**
-1. Output job writes corrected EXIF metadata based on user timestamp decisions
-2. Files renamed to YYYYMMDD_HHMMSS.ext format in output directory
-3. Files organized into subdirectories by year (e.g., output/2023/, output/2024/)
-4. Tags auto-generated from folder structure and {tag1,tag2} filename syntax
-5. User can bulk assign tags to multiple selected files via UI
-6. User can remove tags from selected files
-7. User can filter thumbnail grid by tag
-8. User chooses to keep or delete source files after output generation
-9. System handles tens of thousands of files without memory exhaustion (streaming/batching)
+**Success Criteria:** All 9 verified ✓
+1. ✓ Output job writes corrected EXIF metadata based on user timestamp decisions
+2. ✓ Files renamed to YYYYMMDD_HHMMSS.ext format in output directory
+3. ✓ Files organized into subdirectories by year (e.g., output/2023/, output/2024/)
+4. ✓ Tags auto-generated from folder structure and {tag1,tag2} filename syntax
+5. ✓ User can bulk assign tags to multiple selected files via UI
+6. ✓ User can remove tags from selected files
+7. ✓ User can filter thumbnail grid by tag
+8. ✓ User chooses to keep or delete source files after output generation
+9. ✓ System handles tens of thousands of files without memory exhaustion (streaming/batching)
 
 ---
 
@@ -209,11 +218,11 @@ Plans:
 | 3 - Web UI - Upload + Status | ✓ Complete | 5 | 100% |
 | 4 - Review Queues - Timestamps | ✓ Complete | 5 | 100% |
 | 5 - Duplicate Detection - Exact | ✓ Complete | 4 | 100% |
-| 6 - Duplicate Detection - Perceptual | Pending | 2 | 0% |
-| 7 - Output Generation + Tagging | Pending | 8 | 0% |
+| 6 - Duplicate Detection - Perceptual | ✓ Complete | 2 | 100% |
+| 7 - Output Generation + Tagging | ✓ Complete | 8 | 100% |
 
-**Overall:** 5/7 phases complete (71%)
+**Overall:** 7/7 phases complete (100%)
 
 ---
 
-*Last updated: 2026-02-04*
+*Last updated: 2026-02-10*
