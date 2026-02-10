@@ -23,13 +23,13 @@ pgrep -af flask          # Shows Flask's working directory
 ### Flask (development server)
 ```bash
 cd /home/dab/Projects/MediaParser
-.venv/bin/flask run --debug
+.venv/bin/python run.py
 ```
 
 ### Huey (background worker)
 ```bash
 cd /home/dab/Projects/MediaParser
-.venv/bin/huey_consumer huey_config.huey -w 2 -k thread
+.venv/bin/python run_worker.py
 ```
 
 ## Environment
@@ -38,10 +38,10 @@ cd /home/dab/Projects/MediaParser
 - **Python:** 3.11+ with venv at `.venv/`
 
 ## Current Development Focus
-- Phase 5 complete: Duplicate Detection (Exact)
+- All 7 GSD phases complete (v1 milestone)
 - Carousel viewport refactor complete (replaces examination modal)
 - FLIP animations for enter, navigation, and partial exit
-- Ready for Phase 6 (Perceptual Duplicate Detection) or Phase 7 (Output Generation)
+- Ongoing UI polish and sound/particle enhancements
 
 ## Recent Session Work (outside GSD tracking)
 The following was tested and fixed in sessions not tracked by GSD:
