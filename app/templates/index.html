@@ -166,20 +166,53 @@
         <div class="action-bar" id="action-bar">
             <div class="action-bar-left">
                 <div class="confidence-filters" id="confidence-filters">
-                    <button class="filter-chip active" data-filter="high">
-                        <span class="chip-badge confidence-high">H</span>
-                        <span class="chip-count" data-count="high">0</span>
-                        <span class="chip-chevron">&#9662;</span>
+                    <button class="filter-chip chip-empty" data-filter="high">
+                        <span class="chip-zone chip-zone-eye">
+                            <svg class="chip-eye" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/>
+                                <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none"/>
+                                <line class="eye-slash" x1="2" y1="14" x2="14" y2="2"/>
+                            </svg>
+                        </span>
+                        <span class="chip-zone chip-zone-info">
+                            <span class="chip-badge confidence-high">H</span>
+                            <span class="chip-count" data-count="high">0</span>
+                        </span>
+                        <span class="chip-zone chip-zone-menu">
+                            <span class="chip-chevron">&#9662;</span>
+                        </span>
                     </button>
-                    <button class="filter-chip active" data-filter="medium">
-                        <span class="chip-badge confidence-medium">M</span>
-                        <span class="chip-count" data-count="medium">0</span>
-                        <span class="chip-chevron">&#9662;</span>
+                    <button class="filter-chip chip-empty" data-filter="medium">
+                        <span class="chip-zone chip-zone-eye">
+                            <svg class="chip-eye" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/>
+                                <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none"/>
+                                <line class="eye-slash" x1="2" y1="14" x2="14" y2="2"/>
+                            </svg>
+                        </span>
+                        <span class="chip-zone chip-zone-info">
+                            <span class="chip-badge confidence-medium">M</span>
+                            <span class="chip-count" data-count="medium">0</span>
+                        </span>
+                        <span class="chip-zone chip-zone-menu">
+                            <span class="chip-chevron">&#9662;</span>
+                        </span>
                     </button>
-                    <button class="filter-chip active" data-filter="low">
-                        <span class="chip-badge confidence-low">L</span>
-                        <span class="chip-count" data-count="low">0</span>
-                        <span class="chip-chevron">&#9662;</span>
+                    <button class="filter-chip chip-empty" data-filter="low">
+                        <span class="chip-zone chip-zone-eye">
+                            <svg class="chip-eye" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/>
+                                <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none"/>
+                                <line class="eye-slash" x1="2" y1="14" x2="14" y2="2"/>
+                            </svg>
+                        </span>
+                        <span class="chip-zone chip-zone-info">
+                            <span class="chip-badge confidence-low">L</span>
+                            <span class="chip-count" data-count="low">0</span>
+                        </span>
+                        <span class="chip-zone chip-zone-menu">
+                            <span class="chip-chevron">&#9662;</span>
+                        </span>
                     </button>
                 </div>
             </div>

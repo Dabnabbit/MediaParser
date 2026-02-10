@@ -105,10 +105,11 @@ class FilterHandler {
             });
         });
 
-        // Confidence filter clicks (toggleable) — ignore chevron clicks
+        // Confidence filter clicks — eye/info zones toggle, menu zone is handled by dropdown
         this.confidenceChips.forEach(chip => {
             chip.addEventListener('click', (e) => {
-                if (e.target.closest('.chip-chevron')) return;
+                if (e.target.closest('.chip-zone-menu')) return;
+                if (chip.classList.contains('chip-empty')) return;
                 const filter = chip.dataset.filter;
                 this.toggleConfidence(filter);
             });
@@ -290,7 +291,7 @@ class FilterHandler {
     // ==========================================
 
     initChipDropdowns() {
-        this._wireDropdownTriggers(this.confidenceChips, '.chip-chevron', (chip) => this.openChipDropdown(chip));
+        this._wireDropdownTriggers(this.confidenceChips, '.chip-zone-menu', (chip) => this.openChipDropdown(chip));
     }
 
     openChipDropdown(chip) {
@@ -754,14 +755,17 @@ class FilterHandler {
             this.indicatorFailed.classList.toggle('active', this.currentMode === 'failed');
         }
 
-        // Update confidence chips
+        // Update confidence chips — mutually exclusive states
         this.confidenceChips.forEach(chip => {
             const level = chip.dataset.filter;
-            const isActive = this.visibleConfidence.has(level);
-            const isEmpty = (this.counts[level] || 0) === 0;
-            chip.classList.toggle('active', isActive);
-            chip.classList.toggle('hidden-filter', !isActive);
-            chip.classList.toggle('empty-filter', isEmpty);
+            const count = this.counts[level] || 0;
+            const isVisible = this.visibleConfidence.has(level);
+            const state = count === 0 ? 'chip-empty'
+                        : isVisible   ? 'chip-enabled'
+                        :               'chip-disabled';
+            chip.classList.remove('chip-enabled', 'chip-disabled', 'chip-empty',
+                                  'active', 'hidden-filter', 'empty-filter');
+            chip.classList.add(state);
         });
 
         // Update mode-aware tooltips on confidence chips
@@ -904,6 +908,9 @@ class FilterHandler {
             }
         }
 
+        // Re-apply chip states now that counts have changed
+        this.updateStyles();
+
         // Emit counts updated event for other components
         window.dispatchEvent(new CustomEvent('filterCountsUpdated', {
             detail: { counts: this.counts, mode: this.currentMode }
@@ -1001,7 +1008,7 @@ class FilterHandler {
 
     reset() {
         this.currentMode = 'unreviewed';
-        this.visibleConfidence = new Set(['high', 'medium', 'low']);
+        // Preserve user's confidence visibility preference (restored by loadState)
         this.counts = {
             duplicates: 0, similar: 0, unreviewed: 0, reviewed: 0, discards: 0, failed: 0,
             high: 0, medium: 0, low: 0, none: 0, total: 0
