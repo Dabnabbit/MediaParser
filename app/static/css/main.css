@@ -1361,16 +1361,8 @@ body {
     padding: 4px 6px 4px 4px;
 }
 
-/* Collapse eye + menu zones and their dividers when empty */
-.chip-empty .chip-zone-eye,
-.chip-empty .chip-zone-menu {
-    display: none;
-}
-.chip-empty .chip-zone-info {
-    border-left: none;
-    border-right: none;
-    padding: 4px 10px;
-}
+
+/* Empty chips: structure stays, just fully dimmed + inert via .chip-empty opacity/pointer-events */
 
 .filter-chip:hover {
     border-color: var(--color-primary);
@@ -1447,10 +1439,7 @@ body {
     display: inline;
 }
 
-/* Empty: hide eye entirely */
-.chip-empty .chip-eye {
-    display: none;
-}
+/* Empty: eye stays visible (dimmed by chip-level opacity) */
 
 .chip-icon {
     font-size: 0.9rem;
@@ -1811,27 +1800,6 @@ body {
     flex-shrink: 0;
 }
 
-.action-bar-count {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--color-text-muted);
-    white-space: nowrap;
-    background: none;
-    border: none;
-    border-bottom: 1px dashed transparent;
-    padding: 0;
-    cursor: default;
-    transition: color 0.15s ease, border-color 0.15s ease;
-}
-
-.action-bar-count.has-selection {
-    cursor: pointer;
-    color: var(--color-text);
-}
-
-.action-bar-count.has-selection:hover {
-    border-bottom-color: var(--color-text-muted);
-}
 
 .action-bar-center {
     display: flex;
@@ -1946,19 +1914,27 @@ body {
     color: var(--color-text);
 }
 
-/* Pill chevron (inline dropdown trigger inside action buttons) */
-.pill-chevron {
-    display: inline-block;
-    font-size: 0.85rem;
-    opacity: 0.6;
-    margin-left: 4px;
-    transition: opacity 0.15s ease, transform 0.15s ease;
-    pointer-events: auto;
-    cursor: pointer;
-    line-height: 1;
+/* Selection button checkbox icon */
+.chip-checkbox {
+    flex-shrink: 0;
+    opacity: 0.5;
+    transition: opacity 0.15s ease;
 }
 
-.action-selection:has(.split-dropdown.open) .pill-chevron {
+.chip-checkbox .check-mark {
+    display: none;
+}
+
+#ab-selection-btn.has-selection .chip-checkbox {
+    opacity: 1;
+}
+
+#ab-selection-btn.has-selection .chip-checkbox .check-mark {
+    display: inline;
+}
+
+/* Selection button chevron open state */
+.action-selection:has(.split-dropdown.open) .chip-chevron {
     opacity: 1;
     transform: rotate(180deg);
 }

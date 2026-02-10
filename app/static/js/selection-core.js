@@ -15,12 +15,11 @@ class SelectionHandler {
 
         // Cache DOM elements — new action bar
         this.actionBar = document.getElementById('action-bar');
-        this.countDisplay = document.getElementById('selection-count');
         this.unifiedGrid = document.getElementById('unified-grid');
 
         // Selection button + mode sections
         this.selectionBtn = document.getElementById('ab-selection-btn');
-        this.selectionLabel = document.getElementById('ab-selection-label');
+        this.selectionCount = document.getElementById('ab-selection-count');
         this.actionModeSections = document.querySelectorAll('.action-mode-section[data-action-mode]');
 
         // ViewportController instance (initialized later when TileManager is ready)
@@ -32,6 +31,11 @@ class SelectionHandler {
         // Listen for mode changes to update action bar
         window.addEventListener('filterChange', (e) => {
             this._currentMode = e.detail?.mode || null;
+            this.updateModeActions();
+        });
+
+        // Refresh visible count when grid data changes
+        window.addEventListener('filterCountsUpdated', () => {
             this.updateModeActions();
         });
 
@@ -162,6 +166,17 @@ class SelectionHandler {
         this.syncWithResultsHandler();
     }
 
+    selectByConfidence(level) {
+        const visibleFiles = window.resultsHandler?.allFiles || [];
+        visibleFiles.forEach(file => {
+            if (file.confidence === level) {
+                this.selectedIds.add(file.id);
+            }
+        });
+        this.updateUI();
+        this.syncWithResultsHandler();
+    }
+
     clearSelection() {
         this.selectedIds.clear();
         this.lastSelectedIndex = null;
@@ -258,24 +273,6 @@ class SelectionHandler {
             }
         });
 
-        // Update selection count (clickable to examine)
-        const count = this.selectedIds.size;
-        if (this.countDisplay) {
-            this.countDisplay.textContent = count > 0
-                ? `${count} selected`
-                : '0 selected';
-            this.countDisplay.classList.toggle('has-selection', count > 0);
-
-            // Tooltip hints at examine/compare
-            if (count >= 2 && count <= 4) {
-                this.countDisplay.title = 'Click to compare selected files';
-            } else if (count === 1) {
-                this.countDisplay.title = 'Click to examine selected file';
-            } else {
-                this.countDisplay.title = '';
-            }
-        }
-
         // Update mode-specific actions (enable/disable based on selection)
         this.updateModeActions();
     }
@@ -294,9 +291,41 @@ class SelectionHandler {
             section.classList.toggle('active', section.dataset.actionMode === mode);
         });
 
-        // Update selection button text
-        if (this.selectionLabel) {
-            this.selectionLabel.textContent = hasSelection ? `Clear (${count})` : 'Select All';
+        // Update selection button icon and count
+        if (this.selectionBtn) {
+            this.selectionBtn.classList.toggle('has-selection', hasSelection);
+            this.selectionBtn.title = '';  // zones handle their own tooltips
+
+            const eyeZone = this.selectionBtn.querySelector('.chip-zone-eye');
+            const infoZone = this.selectionBtn.querySelector('.chip-zone-info');
+            const menuZone = this.selectionBtn.querySelector('.chip-zone-menu');
+
+            if (eyeZone) {
+                eyeZone.title = hasSelection ? 'Clear selection' : 'Select all visible files';
+            }
+            if (infoZone) {
+                if (count >= 2 && count <= 4) {
+                    infoZone.title = 'Click to compare selected files';
+                    infoZone.style.cursor = 'pointer';
+                } else if (count === 1) {
+                    infoZone.title = 'Click to examine selected file';
+                    infoZone.style.cursor = 'pointer';
+                } else {
+                    infoZone.title = hasSelection
+                        ? `${count} files selected`
+                        : 'Visible file count';
+                    infoZone.style.cursor = '';
+                }
+            }
+            if (menuZone) {
+                menuZone.title = 'Actions menu';
+            }
+        }
+        if (this.selectionCount) {
+            const visibleTotal = window.resultsHandler?.totalFiles || 0;
+            this.selectionCount.textContent = hasSelection
+                ? `${count} selected`
+                : `${visibleTotal} total`;
         }
     }
 

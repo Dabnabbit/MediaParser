@@ -98,12 +98,14 @@
         });
 
         // ==========================================
-        // Action Bar — Selection Button (Select All / Clear)
+        // Action Bar — Selection Button (3-zone pill)
         // ==========================================
 
         const selectionBtn = document.getElementById('ab-selection-btn');
-        selectionBtn?.addEventListener('click', (e) => {
-            if (e.target.closest('.pill-chevron')) return;
+
+        // Eye zone: toggle select/clear
+        selectionBtn?.querySelector('.chip-zone-eye')?.addEventListener('click', (e) => {
+            e.stopPropagation();
             if (this.selectedIds.size > 0) {
                 this.clearSelection();
             } else {
@@ -111,8 +113,19 @@
             }
         });
 
-        // Chevron opens the actions dropdown
-        selectionBtn?.querySelector('.pill-chevron')?.addEventListener('click', (e) => {
+        // Info zone: examine selected files (when selection exists), else select all
+        selectionBtn?.querySelector('.chip-zone-info')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (this.selectedIds.size >= 1 && this.selectedIds.size <= 4) {
+                const fileId = Array.from(this.selectedIds)[0];
+                this.openExamination(fileId);
+            } else if (this.selectedIds.size === 0) {
+                this.selectAll();
+            }
+        });
+
+        // Menu zone: open actions dropdown
+        selectionBtn?.querySelector('.chip-zone-menu')?.addEventListener('click', (e) => {
             e.stopPropagation();
             e.preventDefault();
             const dropdown = document.getElementById('ab-actions-dropdown');
@@ -133,17 +146,6 @@
                 this.handleDropdownAction(action);
                 item.closest('.split-dropdown')?.classList.remove('open');
             });
-        });
-
-        // ==========================================
-        // Action Bar — Selection Count (click to examine)
-        // ==========================================
-
-        document.getElementById('selection-count')?.addEventListener('click', () => {
-            if (this.selectedIds.size >= 1 && this.selectedIds.size <= 4) {
-                const fileId = Array.from(this.selectedIds)[0];
-                this.openExamination(fileId);
-            }
         });
 
         // Quick tag add

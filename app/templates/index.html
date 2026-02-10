@@ -165,6 +165,55 @@
         <!-- Action Bar (always visible, mode-aware) -->
         <div class="action-bar" id="action-bar">
             <div class="action-bar-left">
+                <div class="action-selection" id="action-selection">
+                    <button class="filter-chip chip-enabled" id="ab-selection-btn">
+                        <span class="chip-zone chip-zone-eye">
+                            <svg class="chip-checkbox" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="1" y="1" width="14" height="14" rx="2"/>
+                                <path class="check-mark" d="M4 8l3 3 5-6" stroke-width="2"/>
+                            </svg>
+                        </span>
+                        <span class="chip-zone chip-zone-info">
+                            <span class="chip-count" id="ab-selection-count">0 total</span>
+                        </span>
+                        <span class="chip-zone chip-zone-menu">
+                            <span class="chip-chevron">&#9662;</span>
+                        </span>
+                    </button>
+                    <div class="split-dropdown" id="ab-actions-dropdown">
+                        <!-- Duplicates actions -->
+                        <div class="action-mode-section" data-action-mode="duplicates">
+                            <button class="split-dropdown-item" data-action="keep-selected">Keep Selected</button>
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
+                            <button class="split-dropdown-item" data-action="not-duplicate">Not Duplicate</button>
+                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
+                        </div>
+                        <!-- Similar actions -->
+                        <div class="action-mode-section" data-action-mode="similar">
+                            <button class="split-dropdown-item" data-action="keep-selected">Keep Selected</button>
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
+                            <button class="split-dropdown-item" data-action="not-similar">Not Similar</button>
+                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
+                        </div>
+                        <!-- Unreviewed actions -->
+                        <div class="action-mode-section" data-action-mode="unreviewed">
+                            <button class="split-dropdown-item" data-action="accept-review">Accept &amp; Review</button>
+                            <button class="split-dropdown-item" data-action="mark-reviewed">Mark Reviewed</button>
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard</button>
+                        </div>
+                        <!-- Reviewed actions -->
+                        <div class="action-mode-section" data-action-mode="reviewed">
+                            <button class="split-dropdown-item" data-action="clear-review">Clear Review</button>
+                            <button class="split-dropdown-item" data-action="discard-selected">Discard</button>
+                        </div>
+                        <!-- Discarded actions -->
+                        <div class="action-mode-section" data-action-mode="discarded">
+                            <button class="split-dropdown-item" data-action="restore-selected">Restore Selected</button>
+                            <button class="split-dropdown-item" data-action="restore-all">Restore All</button>
+                        </div>
+                        <!-- Failed — no actions -->
+                    </div>
+                </div>
                 <div class="confidence-filters" id="confidence-filters">
                     <button class="filter-chip chip-empty" data-filter="high">
                         <span class="chip-zone chip-zone-eye">
@@ -217,46 +266,6 @@
                 </div>
             </div>
             <div class="action-bar-center">
-                <div class="action-selection" id="action-selection">
-                    <button class="btn-pill" id="ab-selection-btn" title="Select All">
-                        <span id="ab-selection-label">Select All</span>
-                        <span class="pill-chevron">&#9662;</span>
-                    </button>
-                    <div class="split-dropdown" id="ab-actions-dropdown">
-                        <!-- Duplicates actions -->
-                        <div class="action-mode-section" data-action-mode="duplicates">
-                            <button class="split-dropdown-item" data-action="keep-selected">Keep Selected</button>
-                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
-                            <button class="split-dropdown-item" data-action="not-duplicate">Not Duplicate</button>
-                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
-                        </div>
-                        <!-- Similar actions -->
-                        <div class="action-mode-section" data-action-mode="similar">
-                            <button class="split-dropdown-item" data-action="keep-selected">Keep Selected</button>
-                            <button class="split-dropdown-item" data-action="discard-selected">Discard Selected</button>
-                            <button class="split-dropdown-item" data-action="not-similar">Not Similar</button>
-                            <button class="split-dropdown-item" data-action="select-group">Select Group</button>
-                        </div>
-                        <!-- Unreviewed actions -->
-                        <div class="action-mode-section" data-action-mode="unreviewed">
-                            <button class="split-dropdown-item" data-action="accept-review">Accept &amp; Review</button>
-                            <button class="split-dropdown-item" data-action="mark-reviewed">Mark Reviewed</button>
-                            <button class="split-dropdown-item" data-action="discard-selected">Discard</button>
-                        </div>
-                        <!-- Reviewed actions -->
-                        <div class="action-mode-section" data-action-mode="reviewed">
-                            <button class="split-dropdown-item" data-action="clear-review">Clear Review</button>
-                            <button class="split-dropdown-item" data-action="discard-selected">Discard</button>
-                        </div>
-                        <!-- Discarded actions -->
-                        <div class="action-mode-section" data-action-mode="discarded">
-                            <button class="split-dropdown-item" data-action="restore-selected">Restore Selected</button>
-                            <button class="split-dropdown-item" data-action="restore-all">Restore All</button>
-                        </div>
-                        <!-- Failed — no actions -->
-                    </div>
-                </div>
-                <button class="action-bar-count" id="selection-count" title="Click to examine selected files">0 selected</button>
             </div>
             <div class="action-bar-right">
                 <input type="text" id="quick-tag-input" class="inline-tag-input" placeholder="Tag...">

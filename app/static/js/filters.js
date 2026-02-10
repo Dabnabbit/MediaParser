@@ -308,6 +308,12 @@ class FilterHandler {
         if (!dropdown) return;
         const levelUpper = level.toUpperCase();
 
+        const selectItem = `
+            <div class="seg-dropdown-divider"></div>
+            <button class="seg-dropdown-item" data-action="select-confidence" data-confidence="${level}">
+                Select all ${levelUpper}
+            </button>`;
+
         if (mode === 'duplicates' || mode === 'similar') {
             const label = mode === 'duplicates' ? 'duplicate' : 'similar';
             dropdown.innerHTML = `
@@ -315,6 +321,7 @@ class FilterHandler {
                 <button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="${level}">
                     Auto-resolve ${levelUpper} ${label}s
                 </button>
+                ${selectItem}
             `;
         } else if (mode === 'unreviewed') {
             dropdown.innerHTML = `
@@ -325,6 +332,7 @@ class FilterHandler {
                 <button class="seg-dropdown-item" data-action="mark-reviewed" data-confidence="${level}">
                     Mark all ${levelUpper} reviewed
                 </button>
+                ${selectItem}
             `;
         } else if (mode === 'reviewed') {
             dropdown.innerHTML = `
@@ -332,6 +340,7 @@ class FilterHandler {
                 <button class="seg-dropdown-item" data-action="clear-review" data-confidence="${level}">
                     Clear review from ${levelUpper}
                 </button>
+                ${selectItem}
             `;
         }
 
@@ -401,6 +410,11 @@ class FilterHandler {
                     window.selectionHandler.restoreAllDiscarded();
                 }
                 break;
+            case 'select-confidence':
+                if (window.selectionHandler) {
+                    window.selectionHandler.selectByConfidence(data.confidence);
+                }
+                break;
         }
     }
 
@@ -409,7 +423,7 @@ class FilterHandler {
     // ==========================================
 
     _updateChipTooltips() {
-        const tooltips = {
+        const infoTooltips = {
             duplicates: {
                 high: 'Near-identical match (distance 0\u20131)',
                 medium: 'Close match (distance 2\u20133)',
@@ -442,11 +456,33 @@ class FilterHandler {
             }
         };
 
-        const modeTooltips = tooltips[this.currentMode] || tooltips.unreviewed;
+        const levelNames = { high: 'High', medium: 'Medium', low: 'Low' };
+        const modeInfo = infoTooltips[this.currentMode] || infoTooltips.unreviewed;
 
         this.confidenceChips.forEach(chip => {
             const level = chip.dataset.filter;
-            chip.title = modeTooltips[level] || '';
+            const name = levelNames[level];
+            const isVisible = this.visibleConfidence.has(level);
+            const isEmpty = (this.counts[level] || 0) === 0;
+
+            // Clear chip-level tooltip (zones handle their own)
+            chip.title = '';
+
+            const eyeZone = chip.querySelector('.chip-zone-eye');
+            const infoZone = chip.querySelector('.chip-zone-info');
+            const menuZone = chip.querySelector('.chip-zone-menu');
+
+            if (eyeZone) {
+                eyeZone.title = isEmpty ? '' : isVisible
+                    ? `Hide ${name.toLowerCase()} confidence`
+                    : `Show ${name.toLowerCase()} confidence`;
+            }
+            if (infoZone) {
+                infoZone.title = modeInfo[level] || '';
+            }
+            if (menuZone) {
+                menuZone.title = isEmpty ? '' : 'Bulk actions';
+            }
         });
     }
 
