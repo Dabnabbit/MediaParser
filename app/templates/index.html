@@ -44,9 +44,9 @@
                 </div>
             </div>
             <div class="job-summary" id="job-summary" style="display: none;">
-                <span class="summary-pill" id="summary-time-pill"><strong id="summary-time">0:00</strong></span>
-                <span class="summary-pill"><strong id="summary-total">0</strong> files</span>
-                <span class="summary-pill summary-pill-ok"><strong id="summary-success">0</strong> ok</span>
+                <span class="summary-pill" id="summary-time-pill"><span class="pill-value" id="summary-time">0:00</span></span>
+                <span class="summary-pill"><span class="pill-value" id="summary-total">0</span> <span class="pill-label">files</span></span>
+                <span class="summary-pill summary-pill-ok"><span class="pill-value" id="summary-success">0</span> <span class="pill-label">ok</span></span>
                 <button class="filter-chip summary-chip summary-chip-failed" id="indicator-failed" data-mode="failed" style="display: none;" title="View failed files">
                     <span class="chip-zone chip-zone-icon">
                         <svg class="chip-icon-svg" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
@@ -57,6 +57,9 @@
                     <span class="chip-zone chip-zone-info">
                         <span class="chip-count" data-count="failed">0</span>
                         <span class="chip-label">failed</span>
+                    </span>
+                    <span class="chip-zone chip-zone-menu">
+                        <span class="chip-chevron">&#9662;</span>
                     </span>
                 </button>
                 <button class="filter-chip summary-chip summary-chip-discarded" id="indicator-discarded" data-mode="discarded" style="display: none;" title="View discarded files">

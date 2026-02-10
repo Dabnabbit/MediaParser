@@ -368,7 +368,17 @@ class FilterHandler {
             `;
             this._wireDropdownItems(dropdown, (data) => this._handleDropdownAction(mode, data));
         }
-        // failed mode: no bulk actions currently available
+        if (mode === 'failed') {
+            const count = this.counts.failed || 0;
+            if (count === 0) return;
+            const dropdown = this._createDropdown(indicator, 'chip-dropdown-open');
+            if (!dropdown) return;
+            dropdown.innerHTML = `
+                <div class="seg-dropdown-header">Failed Files</div>
+                <button class="seg-dropdown-item" data-action="discard-all">Discard all ${count} failed</button>
+            `;
+            this._wireDropdownItems(dropdown, (data) => this._handleDropdownAction(mode, data));
+        }
     }
 
     // ==========================================
@@ -405,6 +415,11 @@ class FilterHandler {
             case 'restore-all':
                 if (window.selectionHandler) {
                     window.selectionHandler.restoreAllDiscarded();
+                }
+                break;
+            case 'discard-all':
+                if (mode === 'failed' && window.selectionHandler) {
+                    window.selectionHandler.discardAllFailed();
                 }
                 break;
             case 'select-confidence':
