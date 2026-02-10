@@ -50,6 +50,11 @@
     --max-width: 1200px;
     --border-radius: 0.5rem;
     --border-radius-sm: 0.25rem;
+
+    /* Pill / chip shared tokens */
+    --pill-radius: 16px;
+    --pill-font-size: 0.8rem;
+    --pill-border: 1px solid var(--color-border);
 }
 
 /* Dark theme */
@@ -1049,12 +1054,6 @@ body {
     flex-wrap: wrap;
     justify-content: center;
     gap: var(--spacing-xs) var(--spacing-sm);
-    font-size: 0.82rem;
-}
-
-.metric {
-    display: flex;
-    gap: var(--spacing-xs);
 }
 
 .metric-label {
@@ -1065,11 +1064,20 @@ body {
     font-weight: 600;
 }
 
+.metric-pill-current {
+    max-width: 220px;
+    overflow: hidden;
+}
+
 .metric-value-truncate {
-    max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.metric-pill-error {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.25);
 }
 
 .metric-error {
@@ -1090,11 +1098,11 @@ body {
     display: inline-flex;
     align-items: baseline;
     gap: 3px;
-    padding: 2px 8px;
-    border-radius: 12px;
+    padding: 3px 10px;
+    border-radius: var(--pill-radius);
     background: var(--color-bg-alt);
-    border: 1px solid transparent;
-    font-size: 0.8rem;
+    border: var(--pill-border);
+    font-size: var(--pill-font-size);
     white-space: nowrap;
 }
 
@@ -1333,12 +1341,12 @@ body {
     align-items: stretch;
     gap: 0;
     padding: 0;
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
+    border: var(--pill-border);
+    border-radius: var(--pill-radius);
     background: var(--color-bg-alt);
     color: var(--color-text);
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: var(--pill-font-size);
     transition: all 0.15s ease;
     overflow: hidden;
 }
@@ -1840,11 +1848,11 @@ body {
     align-items: center;
     gap: 4px;
     padding: 4px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
+    border: var(--pill-border);
+    border-radius: var(--pill-radius);
     background: var(--color-bg);
     color: var(--color-text);
-    font-size: 0.8rem;
+    font-size: var(--pill-font-size);
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s ease;

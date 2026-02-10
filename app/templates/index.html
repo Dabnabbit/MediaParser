@@ -22,24 +22,24 @@
         </div>
         <div class="job-header-center" id="stats-area" style="display: none;">
             <div class="metrics-row" id="metrics-row" style="display: none;">
-                <div class="metric">
-                    <span class="metric-label">Time:</span>
+                <div class="metric summary-pill" title="Elapsed processing time">
+                    <span class="metric-label">Time</span>
                     <span class="metric-value" id="elapsed-time">0:00</span>
                 </div>
-                <div class="metric">
-                    <span class="metric-label">ETA:</span>
+                <div class="metric summary-pill" title="Estimated time remaining">
+                    <span class="metric-label">ETA</span>
                     <span class="metric-value" id="eta">-</span>
                 </div>
-                <div class="metric">
-                    <span class="metric-label">Files:</span>
+                <div class="metric summary-pill" title="Files processed out of total">
+                    <span class="metric-label">Files</span>
                     <span class="metric-value" id="files-processed">0 / 0</span>
                 </div>
-                <div class="metric">
-                    <span class="metric-label">Current:</span>
+                <div class="metric summary-pill metric-pill-current" title="File currently being processed">
+                    <span class="metric-label">Current</span>
                     <span class="metric-value metric-value-truncate" id="current-filename">-</span>
                 </div>
-                <div class="metric error-metric" id="error-metric" style="display: none;">
-                    <span class="metric-label">Errors:</span>
+                <div class="metric summary-pill metric-pill-error" id="error-metric" style="display: none;" title="Files that encountered errors">
+                    <span class="metric-label">Errors</span>
                     <span class="metric-value metric-error" id="error-count">0</span>
                 </div>
             </div>

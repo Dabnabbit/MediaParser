@@ -505,6 +505,7 @@ class ProgressHandler {
         if (this.currentFilename) {
             if (data.current_filename) {
                 this.currentFilename.textContent = data.current_filename;
+                this.currentFilename.parentElement.title = data.current_filename;
             } else if (status === 'COMPLETED') {
                 this.currentFilename.textContent = 'Done';
             } else {
