@@ -42,7 +42,7 @@ class FilterHandler {
         this.importJobId = null;
 
         // Strict workflow progression (loaded from localStorage, toggled via debug panel)
-        this.strictMode = localStorage.getItem('strictWorkflow') === 'true';
+        this.strictMode = localStorage.getItem('strictWorkflow') !== 'false';
 
         // Cache DOM elements
         this.modeChips = document.querySelectorAll('.mode-segment:not(.export-segment)');
@@ -809,6 +809,7 @@ class FilterHandler {
         // Snapshot lock icon positions BEFORE any DOM changes (flex reflow shifts segments)
         const prevLockPositions = this._snapshotLockPositions();
 
+        const prevDiscards = this.counts.discards || 0;
         this.counts = { ...this.counts, ...counts };
 
         // Update count displays (both segment counts and any remaining data-count elements)
@@ -882,8 +883,33 @@ class FilterHandler {
         // Show/hide summary indicators for side-channel modes
         const showFailed = (this.counts.failed || 0) > 0;
         const showDiscarded = (this.counts.discards || 0) > 0;
+        const wasDiscardedHidden = this.indicatorDiscarded && this.indicatorDiscarded.style.display === 'none';
         if (this.indicatorFailed) this.indicatorFailed.style.display = showFailed ? 'inline-flex' : 'none';
         if (this.indicatorDiscarded) this.indicatorDiscarded.style.display = showDiscarded ? 'inline-flex' : 'none';
+
+        // Particle effects for discards
+        const newDiscards = this.counts.discards || 0;
+        if (newDiscards > prevDiscards && this.indicatorDiscarded && window.particles) {
+            requestAnimationFrame(() => {
+                if (wasDiscardedHidden) {
+                    // First appearance: shimmer + sound
+                    window.particles.notifySound();
+                    this.indicatorDiscarded.classList.add('shimmer-once');
+                    this.indicatorDiscarded.addEventListener('animationend', () => {
+                        this.indicatorDiscarded.classList.remove('shimmer-once');
+                    }, { once: true });
+                } else {
+                    // Count increased: trail from active mode segment to chip
+                    const seg = document.querySelector(`.mode-segment[data-mode="${this.currentMode}"]`);
+                    if (seg) {
+                        window.particles.trail(seg, this.indicatorDiscarded, {
+                            count: Math.min(newDiscards - prevDiscards, 8),
+                            color: '#f59e0b',
+                        });
+                    }
+                }
+            });
+        }
 
         // Show/hide export segment reactively based on review completion
         const allReviewed = (this.counts.duplicates || 0) === 0

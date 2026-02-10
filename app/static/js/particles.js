@@ -8,9 +8,13 @@
  *   window.particles.burst(el)       // random pick
  *   window.particles.shatter({cx,cy}) // metallic shard burst (lock unlock)
  *
+ * Directional:
+ *   window.particles.trail(src, tgt) // glowing dots fly from source → target
+ *
  * Sound-only (no visuals):
  *   window.particles.successSound()  // ascending two-tone chime
  *   window.particles.failSound()     // "nah-uh" buzzer
+ *   window.particles.notifySound()   // soft attention ding
  *
  * Each call creates a short-lived fullscreen canvas overlay,
  * runs physics via requestAnimationFrame, then cleans itself up.
@@ -430,6 +434,93 @@ class ParticleEffects {
         if (!this.muted) this._failSound();
     }
 
+    /** Soft notification ding — draws attention without alarm */
+    notifySound() {
+        if (!this.muted) this._notifySound();
+    }
+
+    /** Particles that fly from a source element toward a target element */
+    trail(sourceEl, targetEl, opts = {}) {
+        const src = this._center(sourceEl);
+        const tgt = this._center(targetEl);
+        const count = opts.count || 6;
+        const color = opts.color || '#f59e0b';
+
+        const canvas = this._createCanvas();
+        const ctx = canvas.getContext('2d');
+
+        const particles = [];
+        for (let i = 0; i < count; i++) {
+            const delay = i * 0.04;
+            const spread = 15;
+            particles.push({
+                x: src.cx + (Math.random() - 0.5) * spread,
+                y: src.cy + (Math.random() - 0.5) * spread,
+                targetX: tgt.cx,
+                targetY: tgt.cy,
+                progress: 0,
+                speed: 1.8 + Math.random() * 0.8,
+                size: 2 + Math.random() * 2,
+                color,
+                opacity: 0,
+                delay,
+                age: -delay,
+                // Curve offset for arc path
+                curveX: (Math.random() - 0.5) * 80,
+                curveY: -30 - Math.random() * 40,
+            });
+        }
+
+        let last = performance.now();
+        const tick = (now) => {
+            const dt = Math.min((now - last) / 1000, 0.05);
+            last = now;
+            let alive = false;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (const p of particles) {
+                p.age += dt;
+                if (p.age < 0) { alive = true; continue; }
+
+                p.progress = Math.min(p.progress + dt * p.speed, 1);
+                // Ease-in-out
+                const t = p.progress < 0.5
+                    ? 2 * p.progress * p.progress
+                    : 1 - Math.pow(-2 * p.progress + 2, 2) / 2;
+
+                // Quadratic bezier: source → control point → target
+                const cpx = (p.x + p.targetX) / 2 + p.curveX;
+                const cpy = (p.y + p.targetY) / 2 + p.curveY;
+                const px = (1-t)*(1-t)*p.x + 2*(1-t)*t*cpx + t*t*p.targetX;
+                const py = (1-t)*(1-t)*p.y + 2*(1-t)*t*cpy + t*t*p.targetY;
+
+                // Fade in quickly, fade out near end
+                p.opacity = t < 0.1 ? t / 0.1 : t > 0.85 ? (1 - t) / 0.15 : 1;
+
+                if (p.progress >= 1) continue;
+                alive = true;
+
+                ctx.save();
+                ctx.globalAlpha = p.opacity * 0.9;
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(px, py, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            if (alive) {
+                requestAnimationFrame(tick);
+            } else {
+                canvas.remove();
+            }
+        };
+        requestAnimationFrame(tick);
+    }
+
     // ── Internals ──────────────────────────────────────────
 
     /** Get center point — accepts a DOM element or raw {cx, cy} coordinates */
@@ -773,6 +864,32 @@ class ParticleEffects {
         osc.connect(pingGain).connect(ctx.destination);
         osc.start(pingStart);
         osc.stop(pingStart + pingDur);
+    }
+
+    /** Notify — soft single ding to draw attention */
+    _notifySound() {
+        const ctx = this._getAudioCtx();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        // Gentle sine ding — single tone, softer than success
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 660;
+
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 2000;
+
+        const gain = ctx.createGain();
+        const dur = 0.15;
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+        osc.connect(lp).connect(gain).connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + dur);
     }
 
     /** Success — quick ascending two-tone chime */

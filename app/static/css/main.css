@@ -1127,6 +1127,35 @@ body {
     background: rgba(59, 130, 246, 0.08);
 }
 
+/* Shimmer — single light sweep across an element to draw attention */
+@keyframes chipShimmer {
+    0%   { left: -60%; }
+    100% { left: 160%; }
+}
+
+.shimmer-once {
+    position: relative;
+    overflow: hidden;
+}
+.shimmer-once::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(
+        105deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0.6) 50%,
+        rgba(255, 255, 255, 0) 70%,
+        transparent 100%
+    );
+    animation: chipShimmer 0.6s ease-in-out forwards;
+    pointer-events: none;
+}
+
 /* (Thumbnail size toggle removed - replaced by tile-size-slider) */
 
 /* ========================================
