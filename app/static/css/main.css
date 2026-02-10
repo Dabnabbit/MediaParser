@@ -667,8 +667,8 @@ body {
 .mode-segments {
     position: absolute;
     top: 0;
-    bottom: 0;
     left: 0;
+    height: 100%;
     width: 100%;
     display: flex;
     opacity: 0;
@@ -717,6 +717,26 @@ body {
 .mode-segment[data-mode="export"]  { background: var(--color-mode-export); }
 
 /* Discarded/Failed are shown as summary indicators, not bar segments */
+
+/* Diagonal stripe "processing" effect on unreviewed while dupes/similar remain.
+   Matches the processing-fill barberpole pattern for visual continuity. */
+.mode-segment.seg-processing::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.12) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0.12) 75%,
+        transparent 75%
+    );
+    background-size: 40px 40px;
+    animation: barberpole 0.8s linear infinite;
+    pointer-events: none;
+}
 
 /* Soft gradient bleed between mode segments */
 .mode-segment:not(.collapsed) + .mode-segment:not(.collapsed)::before {
@@ -767,34 +787,6 @@ body {
     pointer-events: none;
 }
 
-/* Lock icons overlay (strict workflow dividers) */
-.seg-lock-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    z-index: 3;
-}
-
-.seg-lock-icon {
-    position: absolute;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 10px;
-    line-height: 1;
-    color: #fff;
-    background: rgba(0, 0, 0, 0.55);
-    border-radius: 50%;
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.3);
-}
-
 /* Label and icon inside segments */
 .seg-icon {
     font-size: 0.75rem;
@@ -825,7 +817,7 @@ body {
     position: absolute;
     top: 0;
     left: 0;
-    bottom: 0;
+    height: 100%;
     width: 0%;
     background: var(--color-mode-reviewed);
     z-index: 4;
@@ -844,19 +836,13 @@ body {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     opacity: 0;
     pointer-events: none;
-    transition: width 0.4s ease, opacity 0.3s ease;
-    border-radius: var(--border-radius-sm) 0 0 var(--border-radius-sm);
+    transition: width 0.4s ease, opacity 0.4s ease;
 }
 
 /* Show in review state */
 #workflow-track[data-state="review"] .reviewed-overlay {
     opacity: 1;
     pointer-events: auto;
-}
-
-/* When reviewed fills 100%, round both corners */
-.reviewed-overlay.full-width {
-    border-radius: var(--border-radius-sm);
 }
 
 /* Completion shimmer — sweeps across bar when all reviewed */
@@ -882,6 +868,26 @@ body {
     );
     animation: reviewShimmer 0.7s ease-in-out 0.45s both;
     pointer-events: none;
+}
+
+/* Diagonal stripe "processing" on reviewed overlay while reviewing in progress */
+.reviewed-overlay.seg-processing::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.12) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.12) 50%,
+        rgba(255, 255, 255, 0.12) 75%,
+        transparent 75%
+    );
+    background-size: 40px 40px;
+    animation: barberpole 0.8s linear infinite;
+    pointer-events: none;
+    border-radius: inherit;
 }
 
 /* Active/hover states matching mode segments */
@@ -2502,7 +2508,33 @@ body {
     filter: brightness(1.1);
 }
 
-/* Mode segment attention state */
+/* Active segment shine — periodic light sweep to draw focus */
+@keyframes segShine {
+    0%, 70%, 100% { left: -60%; }
+    90%           { left: 160%; }
+}
+
+.mode-segment.active::after,
+.reviewed-overlay.active::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(
+        105deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0) 30%,
+        rgba(255, 255, 255, 0.35) 50%,
+        rgba(255, 255, 255, 0) 70%,
+        transparent 100%
+    );
+    animation: segShine 4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* Unlocked segment with items — gentle pulse to nudge user */
 .mode-segment.has-items {
     animation: pulse 2s infinite;
 }

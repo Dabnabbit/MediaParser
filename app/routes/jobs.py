@@ -203,30 +203,34 @@ def get_job_files(job_id):
         }), 400
 
     if mode == 'duplicates':
-        # Files in duplicate groups that aren't discarded
+        # Files in duplicate groups that aren't discarded or failed
         query = query.filter(
             File.exact_group_id.isnot(None),
-            File.discarded == False
+            File.discarded == False,
+            File.processing_error.is_(None)
         )
     elif mode == 'similar':
-        # Files in similar groups that aren't discarded
+        # Files in similar groups that aren't discarded or failed
         query = query.filter(
             File.similar_group_id.isnot(None),
-            File.discarded == False
+            File.discarded == False,
+            File.processing_error.is_(None)
         )
     elif mode == 'unreviewed':
-        # Files not yet reviewed, not discarded, not in duplicate or similar groups
+        # Files not yet reviewed, not discarded, not failed, not in groups
         query = query.filter(
             File.reviewed_at.is_(None),
             File.discarded == False,
+            File.processing_error.is_(None),
             File.exact_group_id.is_(None),
             File.similar_group_id.is_(None)
         )
     elif mode == 'reviewed':
-        # Reviewed files (not discarded)
+        # Reviewed files (not discarded or failed)
         query = query.filter(
             File.reviewed_at.isnot(None),
-            File.discarded == False
+            File.discarded == False,
+            File.processing_error.is_(None)
         )
     elif mode == 'discarded':
         # Discarded files
@@ -238,6 +242,9 @@ def get_job_files(job_id):
     # Apply tag filter
     if tag_filter:
         query = query.join(File.tags).filter(Tag.name == tag_filter)
+
+    # Snapshot query before confidence filter — used for per-level counts
+    base_mode_query_all = query
 
     # Apply confidence filter within the mode
     # In group modes, filter on the group confidence (string column) instead of
@@ -361,10 +368,10 @@ def get_job_files(job_id):
         }
     else:
         mode_counts = {
-            'high': query.filter(File.confidence == ConfidenceLevel.HIGH).count(),
-            'medium': query.filter(File.confidence == ConfidenceLevel.MEDIUM).count(),
-            'low': query.filter(File.confidence == ConfidenceLevel.LOW).count(),
-            'none': query.filter(File.confidence == ConfidenceLevel.NONE).count(),
+            'high': base_mode_query_all.filter(File.confidence == ConfidenceLevel.HIGH).count(),
+            'medium': base_mode_query_all.filter(File.confidence == ConfidenceLevel.MEDIUM).count(),
+            'low': base_mode_query_all.filter(File.confidence == ConfidenceLevel.LOW).count(),
+            'none': base_mode_query_all.filter(File.confidence == ConfidenceLevel.NONE).count(),
         }
 
     # Calculate mode counts (for mode selector display)
@@ -880,10 +887,11 @@ def get_job_summary(job_id):
     # Base query for all job files
     base_query = File.query.join(File.jobs).filter(Job.id == job_id)
 
-    # Mode counts (for mode selector)
+    # Mode counts (for mode selector) — failed files excluded from all workflow modes
     duplicates_count = base_query.filter(
         File.exact_group_id.isnot(None),
-        File.discarded == False
+        File.discarded == False,
+        File.processing_error.is_(None)
     ).count()
 
     # Exact duplicate groups count
@@ -892,13 +900,15 @@ def get_job_summary(job_id):
     ).filter(
         job_files.c.job_id == job_id,
         File.exact_group_id.isnot(None),
-        File.discarded == False
+        File.discarded == False,
+        File.processing_error.is_(None)
     ).distinct().count()
 
     # Similar files count (for mode selector) and groups count
     similar_count = base_query.filter(
         File.similar_group_id.isnot(None),
-        File.discarded == False
+        File.discarded == False,
+        File.processing_error.is_(None)
     ).count()
 
     similar_groups = db.session.query(File.similar_group_id).join(
@@ -906,27 +916,30 @@ def get_job_summary(job_id):
     ).filter(
         job_files.c.job_id == job_id,
         File.similar_group_id.isnot(None),
-        File.discarded == False
+        File.discarded == False,
+        File.processing_error.is_(None)
     ).distinct().count()
 
     unreviewed_count = base_query.filter(
         File.reviewed_at.is_(None),
         File.discarded == False,
+        File.processing_error.is_(None),
         File.exact_group_id.is_(None),
         File.similar_group_id.is_(None)
     ).count()
 
     reviewed_count = base_query.filter(
         File.reviewed_at.isnot(None),
-        File.discarded == False
+        File.discarded == False,
+        File.processing_error.is_(None)
     ).count()
 
     discards_count = base_query.filter(File.discarded == True).count()
 
     failed_count = base_query.filter(File.processing_error.isnot(None)).count()
 
-    # Confidence counts (across non-discarded files)
-    non_discarded = base_query.filter(File.discarded == False)
+    # Confidence counts (across non-discarded, non-failed files)
+    non_discarded = base_query.filter(File.discarded == False, File.processing_error.is_(None))
     high_count = non_discarded.filter(File.confidence == ConfidenceLevel.HIGH).count()
     medium_count = non_discarded.filter(File.confidence == ConfidenceLevel.MEDIUM).count()
     low_count = non_discarded.filter(File.confidence == ConfidenceLevel.LOW).count()

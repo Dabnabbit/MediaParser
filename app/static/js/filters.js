@@ -52,12 +52,6 @@ class FilterHandler {
         this.indicatorFailed = document.getElementById('indicator-failed');
         this.reviewedOverlay = document.getElementById('reviewed-overlay');
         this.modeSegmentsContainer = document.getElementById('mode-segments');
-        this.lockOverlay = document.getElementById('seg-lock-overlay');
-
-        // Reposition lock icons when any segment's width changes (flex reflow)
-        const lockObserver = new ResizeObserver(() => this._repositionLockIcons());
-        this.modeChips.forEach(seg => lockObserver.observe(seg));
-
         this.initEventListeners();
         this.initSegmentDropdowns();
         this.initChipDropdowns();
@@ -245,38 +239,28 @@ class FilterHandler {
         const dropdown = this._createDropdown(chevron || segment, 'seg-dropdown-open', segment);
         if (!dropdown) return;
 
+        const hi = this.counts.high || 0;
+        const med = this.counts.medium || 0;
+        const lo = this.counts.low || 0;
+
         if (mode === 'duplicates' || mode === 'similar') {
             const label = mode === 'duplicates' ? 'Duplicate' : 'Similar';
-            dropdown.innerHTML = `
-                <div class="seg-dropdown-header">Auto-resolve ${label} Groups</div>
-                <button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="high">
-                    <span class="chip-badge confidence-high">H</span> Auto-resolve HIGH groups
-                </button>
-                <button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="medium">
-                    <span class="chip-badge confidence-medium">M</span> Auto-resolve MEDIUM groups
-                </button>
-                <button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="low">
-                    <span class="chip-badge confidence-low">L</span> Auto-resolve LOW groups
-                </button>
-                <div class="seg-dropdown-divider"></div>
-                <button class="seg-dropdown-item" data-action="auto-resolve-all">Auto-resolve ALL groups</button>
-                <button class="seg-dropdown-item" data-action="keep-all">Keep all (not ${mode === 'duplicates' ? 'duplicates' : 'similar'})</button>
-            `;
+            let items = `<div class="seg-dropdown-header">Auto-resolve ${label} Groups</div>`;
+            if (hi)  items += `<button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="high"><span class="chip-badge confidence-high">H</span> Auto-resolve HIGH groups</button>`;
+            if (med) items += `<button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="medium"><span class="chip-badge confidence-medium">M</span> Auto-resolve MEDIUM groups</button>`;
+            if (lo)  items += `<button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="low"><span class="chip-badge confidence-low">L</span> Auto-resolve LOW groups</button>`;
+            items += `<div class="seg-dropdown-divider"></div>`;
+            items += `<button class="seg-dropdown-item" data-action="auto-resolve-all">Auto-resolve ALL groups</button>`;
+            items += `<button class="seg-dropdown-item" data-action="keep-all">Keep all (not ${mode === 'duplicates' ? 'duplicates' : 'similar'})</button>`;
+            dropdown.innerHTML = items;
         } else if (mode === 'unreviewed') {
-            dropdown.innerHTML = `
-                <div class="seg-dropdown-header">Bulk Review</div>
-                <button class="seg-dropdown-item" data-action="accept-review" data-confidence="high">
-                    <span class="chip-badge confidence-high">H</span> Accept all HIGH
-                </button>
-                <button class="seg-dropdown-item" data-action="accept-review" data-confidence="medium">
-                    <span class="chip-badge confidence-medium">M</span> Accept all MEDIUM
-                </button>
-                <button class="seg-dropdown-item" data-action="accept-review" data-confidence="low">
-                    <span class="chip-badge confidence-low">L</span> Accept all LOW
-                </button>
-                <div class="seg-dropdown-divider"></div>
-                <button class="seg-dropdown-item" data-action="mark-all-reviewed">Mark all reviewed</button>
-            `;
+            let items = `<div class="seg-dropdown-header">Bulk Review</div>`;
+            if (hi)  items += `<button class="seg-dropdown-item" data-action="accept-review" data-confidence="high"><span class="chip-badge confidence-high">H</span> Accept all HIGH</button>`;
+            if (med) items += `<button class="seg-dropdown-item" data-action="accept-review" data-confidence="medium"><span class="chip-badge confidence-medium">M</span> Accept all MEDIUM</button>`;
+            if (lo)  items += `<button class="seg-dropdown-item" data-action="accept-review" data-confidence="low"><span class="chip-badge confidence-low">L</span> Accept all LOW</button>`;
+            items += `<div class="seg-dropdown-divider"></div>`;
+            items += `<button class="seg-dropdown-item" data-action="mark-all-reviewed">Mark all reviewed</button>`;
+            dropdown.innerHTML = items;
         } else if (mode === 'reviewed') {
             dropdown.innerHTML = `
                 <div class="seg-dropdown-header">Reviewed Files</div>
@@ -404,10 +388,10 @@ class FilterHandler {
                 this.keepAllInMode(mode);
                 break;
             case 'mark-all-reviewed':
-                this._bulkReviewAll('mark_reviewed');
+                this._bulkReviewAll('mark_reviewed', mode);
                 break;
             case 'clear-all-reviews':
-                this._bulkReviewAll('clear_review');
+                this._bulkReviewAll('clear_review', mode);
                 break;
             case 'restore-all':
                 if (window.selectionHandler) {
@@ -649,10 +633,10 @@ class FilterHandler {
     }
 
     /**
-     * Bulk review all files in current mode (for unreviewed segment dropdown)
+     * Bulk review all files in a mode (for segment dropdown)
      */
-    _bulkReviewAll(action) {
-        const mode = this.currentMode;
+    _bulkReviewAll(action, mode) {
+        mode = mode || this.currentMode;
         const count = this.counts[mode] || 0;
         if (window.selectionHandler) {
             window.selectionHandler.bulkReview(action, 'filtered', { count });
@@ -691,80 +675,6 @@ class FilterHandler {
         }
         // reviewed, discarded, failed, export — never locked
         return false;
-    }
-
-    /**
-     * Snapshot current lock icon positions before DOM changes shift segments.
-     * Returns Map<mode, {cx, cy}> — empty map if no lock overlay or no icons.
-     */
-    _snapshotLockPositions() {
-        const positions = new Map();
-        if (!this.lockOverlay) return positions;
-        for (const icon of this.lockOverlay.children) {
-            const seg = icon._segment;
-            if (seg) {
-                const rect = seg.getBoundingClientRect();
-                positions.set(seg.dataset.mode, {
-                    cx: rect.left + rect.width / 2,
-                    cy: rect.top + rect.height / 2,
-                });
-            }
-        }
-        return positions;
-    }
-
-    /**
-     * Rebuild lock icons for current locked state.
-     * Each icon stores a reference to its segment for repositioning.
-     * @param {Map} [prevLocked] — pre-snapshot of old lock positions (from before DOM changes)
-     */
-    _updateLockIcons(prevLocked) {
-        if (!this.lockOverlay) return;
-
-        // Fall back to snapshotting now if no pre-computed positions passed
-        if (!prevLocked) prevLocked = this._snapshotLockPositions();
-
-        this.lockOverlay.innerHTML = '';
-
-        if (!this.strictMode) return;
-
-        // Rebuild lock icons for current state
-        const nowLocked = new Set();
-        this.modeChips.forEach(seg => {
-            if (!seg.classList.contains('locked') || seg.classList.contains('collapsed')) return;
-
-            nowLocked.add(seg.dataset.mode);
-            const icon = document.createElement('span');
-            icon.className = 'seg-lock-icon';
-            icon.textContent = '\u{1F512}';
-            icon._segment = seg;
-            this.lockOverlay.appendChild(icon);
-        });
-
-        // Shatter effect for each lock that just disappeared (= segment unlocked)
-        if (window.particles) {
-            for (const [mode, pos] of prevLocked) {
-                if (!nowLocked.has(mode)) {
-                    window.particles.shatter(pos);
-                }
-            }
-        }
-
-        // Position after flex layout settles
-        requestAnimationFrame(() => this._repositionLockIcons());
-    }
-
-    /**
-     * Reposition existing lock icons to match current segment geometry.
-     * Called by ResizeObserver when flex layout changes.
-     */
-    _repositionLockIcons() {
-        if (!this.lockOverlay) return;
-        for (const icon of this.lockOverlay.children) {
-            if (icon._segment) {
-                icon.style.left = icon._segment.offsetLeft + 'px';
-            }
-        }
     }
 
     toggleConfidence(level) {
@@ -825,9 +735,6 @@ class FilterHandler {
     }
 
     updateCounts(counts) {
-        // Snapshot lock icon positions BEFORE any DOM changes (flex reflow shifts segments)
-        const prevLockPositions = this._snapshotLockPositions();
-
         const prevDiscards = this.counts.discards || 0;
         this.counts = { ...this.counts, ...counts };
 
@@ -871,19 +778,25 @@ class FilterHandler {
                 seg.classList.remove('seg-small');
             }
 
-            // Attention pulse for duplicates/similar only when NOT the active mode
-            const needsAttention = (mode === 'duplicates' || mode === 'similar')
-                                && count > 0
-                                && mode !== this.currentMode;
-            seg.classList.toggle('has-items', needsAttention);
-
             // Strict workflow: lock segments that can't be accessed yet
             const locked = this.strictMode && this._isModeLocked(mode) && count > 0;
             seg.classList.toggle('locked', locked);
+
+            // Attention pulse: unlocked segments with items that aren't the current mode
+            const needsAttention = (mode === 'duplicates' || mode === 'similar')
+                                && count > 0
+                                && !locked
+                                && mode !== this.currentMode;
+            seg.classList.toggle('has-items', needsAttention);
         });
 
-        // Position lock icons between segments when strict mode is active
-        this._updateLockIcons(prevLockPositions);
+        // Diagonal stripe on unreviewed while dupes/similar still have items
+        const unreviewedSeg = document.querySelector('.mode-segment[data-mode="unreviewed"]');
+        if (unreviewedSeg) {
+            const pending = (this.counts.duplicates || 0) + (this.counts.similar || 0);
+            unreviewedSeg.classList.toggle('seg-processing', pending > 0);
+        }
+
 
         // Update reviewed overlay width and reposition mode segments
         const reviewedPct = total > 0 ? ((this.counts.reviewed || 0) / total) * 100 : 0;
@@ -892,6 +805,8 @@ class FilterHandler {
             this.reviewedOverlay.classList.toggle('seg-empty', reviewedPct === 0);
             this.reviewedOverlay.classList.toggle('seg-small', reviewedPct > 0 && reviewedPct < 8);
             this.reviewedOverlay.classList.toggle('full-width', reviewedPct >= 99.5);
+            // Stripe while reviewing is in progress (has reviewed items but not all done)
+            this.reviewedOverlay.classList.toggle('seg-processing', reviewedPct > 0 && reviewedPct < 100);
         }
         // Push mode segments to the right of the reviewed overlay
         if (this.modeSegmentsContainer) {
@@ -1101,8 +1016,6 @@ class FilterHandler {
             seg.classList.add('collapsed');
             seg.classList.remove('seg-small', 'has-items', 'locked');
         });
-        // Clear lock icons
-        if (this.lockOverlay) this.lockOverlay.innerHTML = '';
         // Reset export segment
         if (this.exportSegment) {
             this.exportSegment.classList.add('collapsed');
@@ -1112,7 +1025,7 @@ class FilterHandler {
         // Reset reviewed overlay
         if (this.reviewedOverlay) {
             this.reviewedOverlay.style.width = '0%';
-            this.reviewedOverlay.classList.remove('active', 'seg-small', 'full-width', 'all-reviewed');
+            this.reviewedOverlay.classList.remove('active', 'seg-small', 'full-width', 'all-reviewed', 'seg-processing');
             this.reviewedOverlay.classList.add('seg-empty');
         }
         // Reset mode segments positioning
@@ -1132,23 +1045,45 @@ class FilterHandler {
      * Enforces sequential workflow: Duplicates → Similar → Unreviewed
      */
     autoSelectMode() {
+        const prev = this.currentMode;
+        let selected;
+
         // Enforce sequential resolution: Duplicates → Similar → Unreviewed
         if (this.counts.duplicates > 0) {
             this.setMode('duplicates');
-            return 'duplicates';
-        }
-        if (this.counts.similar > 0) {
+            selected = 'duplicates';
+        } else if (this.counts.similar > 0) {
             this.setMode('similar');
-            return 'similar';
-        }
-        if (this.counts.unreviewed > 0) {
+            selected = 'similar';
+        } else if (this.counts.unreviewed > 0) {
             this.setMode('unreviewed');
-            return 'unreviewed';
+            selected = 'unreviewed';
+        } else {
+            // All review done — default to reviewed mode
+            this.setMode('reviewed');
+            selected = 'reviewed';
         }
-        // All review done — default to reviewed mode
-        // (export button visibility is handled reactively by updateCounts)
-        this.setMode('reviewed');
-        return 'reviewed';
+
+        // One-shot shimmer + sound on the newly active segment
+        if (selected !== prev) {
+            const seg = selected === 'reviewed'
+                ? this.reviewedOverlay
+                : document.querySelector(`.mode-segment[data-mode="${selected}"]`);
+            if (seg) {
+                setTimeout(() => {
+                    seg.classList.add('shimmer-once');
+                    seg.addEventListener('animationend', () => {
+                        seg.classList.remove('shimmer-once');
+                    }, { once: true });
+                    if (window.particles) {
+                        const rect = seg.getBoundingClientRect();
+                        window.particles.shatter({ cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 });
+                    }
+                }, 300);
+            }
+        }
+
+        return selected;
     }
 
 

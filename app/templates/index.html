@@ -121,10 +121,10 @@
                 <div class="progress-fill processing-fill" id="processing-fill"></div>
                 <!-- Layer 3: Mode segments (review phase) -->
                 <div class="mode-segments" id="mode-segments">
-                    <button class="mode-segment" data-mode="duplicates" title="Duplicate groups">
-                        <span class="seg-icon">&#x29C9;</span>
-                        <span class="seg-label">Dupes</span>
-                        <span class="seg-count" data-count="duplicates">0</span>
+                    <button class="mode-segment" data-mode="unreviewed" title="Files needing review">
+                        <span class="seg-icon">&#x25CB;</span>
+                        <span class="seg-label">Unreviewed</span>
+                        <span class="seg-count" data-count="unreviewed">0</span>
                         <span class="seg-chevron">&#9662;</span>
                     </button>
                     <button class="mode-segment" data-mode="similar" title="Perceptually similar">
@@ -133,17 +133,16 @@
                         <span class="seg-count" data-count="similar">0</span>
                         <span class="seg-chevron">&#9662;</span>
                     </button>
-                    <button class="mode-segment" data-mode="unreviewed" title="Files needing review">
-                        <span class="seg-icon">&#x25CB;</span>
-                        <span class="seg-label">Unreviewed</span>
-                        <span class="seg-count" data-count="unreviewed">0</span>
+                    <button class="mode-segment" data-mode="duplicates" title="Duplicate groups">
+                        <span class="seg-icon">&#x29C9;</span>
+                        <span class="seg-label">Dupes</span>
+                        <span class="seg-count" data-count="duplicates">0</span>
                         <span class="seg-chevron">&#9662;</span>
                     </button>
                     <button class="mode-segment export-segment collapsed" data-mode="export" title="Export &amp; Finalize">
                         <span class="seg-icon">&#x2913;</span>
                         <span class="seg-label">Export</span>
                     </button>
-                    <div class="seg-lock-overlay" id="seg-lock-overlay"></div>
                 </div>
                 <!-- Layer 4: Reviewed overlay (grows from left over segments) -->
                 <button class="reviewed-overlay seg-empty" id="reviewed-overlay" data-mode="reviewed" title="Reviewed files">
