@@ -1933,6 +1933,13 @@ body {
     display: inline;
 }
 
+/* Selection count — stable width for 0-3 digits + suffix */
+#ab-selection-count {
+    min-width: 5.5em;
+    text-align: center;
+    display: inline-block;
+}
+
 /* Selection button chevron open state */
 .action-selection:has(.split-dropdown.open) .chip-chevron {
     opacity: 1;
