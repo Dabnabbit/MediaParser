@@ -901,8 +901,7 @@ body {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
-    margin-top: var(--spacing-xs);
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     color: var(--color-text-muted);
 }
 
@@ -924,7 +923,7 @@ body {
 }
 
 .workflow-phases .phase-sep {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     opacity: 0.5;
 }
 
@@ -1049,7 +1048,6 @@ body {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
-    margin-bottom: var(--spacing-sm);
 }
 
 /* (export-inline-btn removed — export is now a workflow bar segment) */
@@ -1089,20 +1087,12 @@ body {
     color: var(--color-failed);
 }
 
-/* Job Summary (replaces progress when complete) */
+/* Job Summary (inline in header when complete) */
 .job-summary {
-    padding: var(--spacing-sm) var(--spacing-md);
-    background-color: var(--color-bg-alt);
-    border-radius: var(--border-radius-sm);
-    margin-bottom: var(--spacing-sm);
-}
-
-.summary-row {
-    display: flex;
-    flex-wrap: wrap;
+    display: inline-flex;
     align-items: baseline;
     gap: var(--spacing-sm);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
 }
 
 .summary-item {
@@ -1294,9 +1284,12 @@ body {
     }
 
     .job-header {
-        flex-direction: column;
-        align-items: flex-start;
+        flex-wrap: wrap;
         gap: var(--spacing-sm);
+    }
+
+    .job-header-right {
+        flex-wrap: wrap;
     }
 
     .metrics-row {
@@ -1304,12 +1297,8 @@ body {
         gap: var(--spacing-sm);
     }
 
-    .summary-row {
-        flex-direction: column;
-    }
-
-    .summary-divider {
-        display: none;
+    .job-summary {
+        flex-wrap: wrap;
     }
 
     .thumbnail-grid {

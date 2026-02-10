@@ -18,7 +18,6 @@ class ProgressHandler {
 
         // Job section elements
         this.jobSection = document.querySelector('[data-section="job"]');
-        this.jobTitle = document.getElementById('job-title');
         this.statusBadge = document.getElementById('job-status-badge');
         this.statusText = document.getElementById('job-status-text');
         this.uploadArea = document.getElementById('upload-area');
@@ -164,17 +163,6 @@ class ProgressHandler {
         // Status badge: hidden in idle state
         if (this.statusBadge) {
             this.statusBadge.style.display = state === 'idle' ? 'none' : 'inline-flex';
-        }
-
-        // Job title
-        if (this.jobTitle) {
-            const titles = {
-                'idle': 'Import Media',
-                'uploading': 'Uploading',
-                'processing': 'Processing',
-                'complete': 'Results'
-            };
-            this.jobTitle.textContent = titles[state] || 'Import Media';
         }
 
         // Controls visibility
@@ -689,7 +677,7 @@ class ProgressHandler {
 
         // Show summary
         if (this.jobSummary) {
-            this.jobSummary.style.display = 'block';
+            this.jobSummary.style.display = 'inline-flex';
 
             // Populate summary
             const summary = data.summary || {};
@@ -763,7 +751,6 @@ class ProgressHandler {
         if (resultsContainer) resultsContainer.style.display = 'none';
         if (this.jobControls) this.jobControls.style.display = 'none';
         if (this.statusBadge) this.statusBadge.style.display = 'none';
-        if (this.jobTitle) this.jobTitle.textContent = 'Export Complete';
 
         // Set finalized state so card is visible but upload area is not
         if (this.jobSection) {
