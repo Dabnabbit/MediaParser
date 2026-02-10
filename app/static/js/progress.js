@@ -818,6 +818,15 @@ class ProgressHandler {
                 }
 
                 const count = window.filterHandler?.counts?.reviewed || 0;
+
+                // Recall previous selections (sessionStorage = tab lifetime)
+                const prev = JSON.parse(sessionStorage.getItem('exportCleanupPrefs') || 'null');
+                const chk = {
+                    clean_working_files: prev ? prev.clean_working_files : true,
+                    clear_database: prev ? prev.clear_database : true,
+                    delete_sources: prev ? prev.delete_sources : false
+                };
+
                 const { confirmed, data } = await showModal({
                     title: 'Export & Finalize',
                     body: `<p>Export ${count} file${count !== 1 ? 's' : ''} and finalize?</p>
@@ -825,24 +834,24 @@ class ProgressHandler {
                            <input name="output_directory" class="modal-input" value="${outputDir.replace(/"/g, '&quot;')}">
                            <div class="modal-checklist">
                                <label class="modal-check-item">
-                                   <input type="checkbox" name="clean_working_files" checked>
+                                   <input type="checkbox" name="clean_working_files" ${chk.clean_working_files ? 'checked' : ''}>
                                    <div>
                                        <strong>Clean up working files</strong>
                                        <span class="modal-check-desc">Delete generated thumbnails and uploaded file copies</span>
                                    </div>
                                </label>
                                <label class="modal-check-item">
-                                   <input type="checkbox" name="delete_sources">
-                                   <div>
-                                       <strong>Delete source files</strong>
-                                       <span class="modal-check-desc">Remove original files from import directory (irreversible)</span>
-                                   </div>
-                               </label>
-                               <label class="modal-check-item">
-                                   <input type="checkbox" name="clear_database" checked>
+                                   <input type="checkbox" name="clear_database" ${chk.clear_database ? 'checked' : ''}>
                                    <div>
                                        <strong>Clear processing records</strong>
                                        <span class="modal-check-desc">Remove file metadata, review decisions, tags, and job history</span>
+                                   </div>
+                               </label>
+                               <label class="modal-check-item">
+                                   <input type="checkbox" name="delete_sources" ${chk.delete_sources ? 'checked' : ''}>
+                                   <div>
+                                       <strong>Delete source files</strong>
+                                       <span class="modal-check-desc">Remove original files from import directory (irreversible)</span>
                                    </div>
                                </label>
                            </div>
@@ -870,12 +879,16 @@ class ProgressHandler {
                 });
                 if (!confirmed) return;
 
-                // Store cleanup options for use after export completes
-                localStorage.setItem('exportCleanupOptions', JSON.stringify({
+                const cleanupOpts = {
                     clean_working_files: data.clean_working_files,
                     delete_sources: data.delete_sources,
                     clear_database: data.clear_database
-                }));
+                };
+
+                // Remember selections for next export in this session
+                sessionStorage.setItem('exportCleanupPrefs', JSON.stringify(cleanupOpts));
+                // Store for async polling gap (survives page refresh during export)
+                localStorage.setItem('exportCleanupOptions', JSON.stringify(cleanupOpts));
             }
 
             // Trigger export
