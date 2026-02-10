@@ -105,7 +105,11 @@ window.showModal = function(options) {
         function collectData() {
             const data = {};
             bodyEl.querySelectorAll('input[name], select[name], textarea[name]').forEach(el => {
-                data[el.name] = el.value;
+                if (el.type === 'checkbox') {
+                    data[el.name] = el.checked;
+                } else {
+                    data[el.name] = el.value;
+                }
             });
             return data;
         }

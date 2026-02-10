@@ -191,6 +191,7 @@ class ProgressHandler {
         this.exportJobId = null;
         localStorage.removeItem('currentJobId');
         localStorage.removeItem('exportJobId');
+        localStorage.removeItem('exportCleanupOptions');
 
         // Hide mode segments and reset workflow track
         this.hideSegments();
@@ -690,12 +691,17 @@ class ProgressHandler {
 
         console.log(`Export complete: ${exported} exported, ${errorCount} errors`);
 
-        // Auto-finalize: clean up all working data
+        // Read cleanup options stored before export started
+        const cleanupOptions = JSON.parse(localStorage.getItem('exportCleanupOptions') || '{}');
+        localStorage.removeItem('exportCleanupOptions');
+
+        // Auto-finalize: clean up based on user's checklist selections
         let finalizeResult = null;
         try {
             const response = await fetch(`/api/jobs/${exportJobId}/finalize`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cleanupOptions)
             });
 
             if (response.ok) {
@@ -815,14 +821,32 @@ class ProgressHandler {
                 const { confirmed, data } = await showModal({
                     title: 'Export & Finalize',
                     body: `<p>Export ${count} file${count !== 1 ? 's' : ''} and finalize?</p>
-                           <ul class="modal-list">
-                               <li>Export files to output directory</li>
-                               <li>Clean up source files and thumbnails</li>
-                               <li>Remove all working data</li>
-                           </ul>
-                           <p class="modal-warning">This cannot be undone.</p>
                            <label class="modal-field-label">Output directory</label>
-                           <input name="output_directory" class="modal-input" value="${outputDir.replace(/"/g, '&quot;')}">`,
+                           <input name="output_directory" class="modal-input" value="${outputDir.replace(/"/g, '&quot;')}">
+                           <div class="modal-checklist">
+                               <label class="modal-check-item">
+                                   <input type="checkbox" name="clean_working_files" checked>
+                                   <div>
+                                       <strong>Clean up working files</strong>
+                                       <span class="modal-check-desc">Delete generated thumbnails and uploaded file copies</span>
+                                   </div>
+                               </label>
+                               <label class="modal-check-item">
+                                   <input type="checkbox" name="delete_sources">
+                                   <div>
+                                       <strong>Delete source files</strong>
+                                       <span class="modal-check-desc">Remove original files from import directory (irreversible)</span>
+                                   </div>
+                               </label>
+                               <label class="modal-check-item">
+                                   <input type="checkbox" name="clear_database" checked>
+                                   <div>
+                                       <strong>Clear processing records</strong>
+                                       <span class="modal-check-desc">Remove file metadata, review decisions, tags, and job history</span>
+                                   </div>
+                               </label>
+                           </div>
+                           <p class="modal-warning">Checked items cannot be undone.</p>`,
                     confirmText: 'Export',
                     dangerous: true,
                     onBeforeConfirm: async (formData) => {
@@ -845,6 +869,13 @@ class ProgressHandler {
                     }
                 });
                 if (!confirmed) return;
+
+                // Store cleanup options for use after export completes
+                localStorage.setItem('exportCleanupOptions', JSON.stringify({
+                    clean_working_files: data.clean_working_files,
+                    delete_sources: data.delete_sources,
+                    clear_database: data.clear_database
+                }));
             }
 
             // Trigger export

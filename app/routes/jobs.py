@@ -1128,6 +1128,12 @@ def finalize_job(job_id):
             'required_status': 'completed'
         }), 400
 
+    # Read cleanup options from request body (defaults match previous behavior)
+    options = request.get_json(silent=True) or {}
+    clean_working_files = options.get('clean_working_files', True)
+    delete_sources = options.get('delete_sources', False)
+    clear_database = options.get('clear_database', True)
+
     # Resolve output directory before cleanup (Setting table is not deleted)
     output_dir_setting = Setting.query.filter_by(key='output_directory').first()
     output_directory = output_dir_setting.value if output_dir_setting else str(current_app.config['OUTPUT_FOLDER'])
@@ -1158,12 +1164,26 @@ def finalize_job(job_id):
         'sources_kept': 0,
         'sources_failed': 0,
         'thumbnails_deleted': 0,
-        'db_records_deleted': 0
+        'db_records_deleted': 0,
+        'options_applied': {
+            'clean_working_files': clean_working_files,
+            'delete_sources': delete_sources,
+            'clear_database': clear_database
+        }
     }
 
-    # 1. Delete source files (browser uploads only, and only if export succeeded)
+    # 1. Delete source files based on options
     for file_obj in export_job.files:
+        should_delete = False
         if is_browser_upload and file_obj.output_path and file_obj.storage_path:
+            # Browser uploads: clean_working_files deletes uploaded copies
+            # delete_sources is redundant (same physical files)
+            should_delete = clean_working_files or delete_sources
+        elif not is_browser_upload and file_obj.storage_path:
+            # Server-path imports: only delete originals if explicitly requested
+            should_delete = delete_sources
+
+        if should_delete:
             try:
                 if os.path.exists(file_obj.storage_path):
                     os.unlink(file_obj.storage_path)
@@ -1176,18 +1196,19 @@ def finalize_job(job_id):
         else:
             stats['sources_kept'] += 1
 
-    # 2. Delete thumbnails
-    for file_id in file_ids:
-        thumb_path = os.path.join('storage', 'thumbnails', f'{file_id}_thumb.jpg')
-        try:
-            if os.path.exists(thumb_path):
-                os.unlink(thumb_path)
-                stats['thumbnails_deleted'] += 1
-        except Exception as e:
-            logger.warning(f"Failed to delete thumbnail {thumb_path}: {e}")
+    # 2. Delete thumbnails (only if clean_working_files)
+    if clean_working_files:
+        for file_id in file_ids:
+            thumb_path = os.path.join('storage', 'thumbnails', f'{file_id}_thumb.jpg')
+            try:
+                if os.path.exists(thumb_path):
+                    os.unlink(thumb_path)
+                    stats['thumbnails_deleted'] += 1
+            except Exception as e:
+                logger.warning(f"Failed to delete thumbnail {thumb_path}: {e}")
 
-    # 3. Delete empty upload directory (browser uploads)
-    if is_browser_upload and import_job_id:
+    # 3. Delete empty upload directory (only if clean_working_files + browser uploads)
+    if clean_working_files and is_browser_upload and import_job_id:
         upload_dir = os.path.join('storage', 'uploads', f'job_{import_job_id}')
         try:
             if os.path.isdir(upload_dir) and not os.listdir(upload_dir):
@@ -1196,57 +1217,58 @@ def finalize_job(job_id):
         except Exception as e:
             logger.warning(f"Failed to remove upload directory {upload_dir}: {e}")
 
-    # 4. Delete DB records in FK order
-    try:
-        # UserDecision → references File
-        deleted = UserDecision.query.filter(UserDecision.file_id.in_(file_ids)).delete(synchronize_session=False)
-        stats['db_records_deleted'] += deleted
+    # 4. Delete DB records in FK order (only if clear_database)
+    if clear_database:
+        try:
+            # UserDecision → references File
+            deleted = UserDecision.query.filter(UserDecision.file_id.in_(file_ids)).delete(synchronize_session=False)
+            stats['db_records_deleted'] += deleted
 
-        # file_tags → references File and Tag
-        deleted = db.session.execute(
-            file_tags.delete().where(file_tags.c.file_id.in_(file_ids))
-        ).rowcount
-        stats['db_records_deleted'] += deleted
+            # file_tags → references File and Tag
+            deleted = db.session.execute(
+                file_tags.delete().where(file_tags.c.file_id.in_(file_ids))
+            ).rowcount
+            stats['db_records_deleted'] += deleted
 
-        # Duplicate → references File (both columns)
-        deleted = Duplicate.query.filter(
-            db.or_(Duplicate.file_id.in_(file_ids), Duplicate.duplicate_of_id.in_(file_ids))
-        ).delete(synchronize_session=False)
-        stats['db_records_deleted'] += deleted
+            # Duplicate → references File (both columns)
+            deleted = Duplicate.query.filter(
+                db.or_(Duplicate.file_id.in_(file_ids), Duplicate.duplicate_of_id.in_(file_ids))
+            ).delete(synchronize_session=False)
+            stats['db_records_deleted'] += deleted
 
-        # job_files → references Job and File
-        job_ids_to_delete = [job_id]
-        if import_job_id:
-            job_ids_to_delete.append(import_job_id)
-        deleted = db.session.execute(
-            job_files.delete().where(job_files.c.job_id.in_(job_ids_to_delete))
-        ).rowcount
-        stats['db_records_deleted'] += deleted
+            # job_files → references Job and File
+            job_ids_to_delete = [job_id]
+            if import_job_id:
+                job_ids_to_delete.append(import_job_id)
+            deleted = db.session.execute(
+                job_files.delete().where(job_files.c.job_id.in_(job_ids_to_delete))
+            ).rowcount
+            stats['db_records_deleted'] += deleted
 
-        # Orphaned tags (usage_count == 0)
-        deleted = Tag.query.filter(Tag.usage_count == 0).delete(synchronize_session=False)
-        stats['db_records_deleted'] += deleted
+            # Orphaned tags (usage_count == 0)
+            deleted = Tag.query.filter(Tag.usage_count == 0).delete(synchronize_session=False)
+            stats['db_records_deleted'] += deleted
 
-        # File records
-        deleted = File.query.filter(File.id.in_(file_ids)).delete(synchronize_session=False)
-        stats['db_records_deleted'] += deleted
+            # File records
+            deleted = File.query.filter(File.id.in_(file_ids)).delete(synchronize_session=False)
+            stats['db_records_deleted'] += deleted
 
-        # Job records (export + import)
-        deleted = Job.query.filter(Job.id.in_(job_ids_to_delete)).delete(synchronize_session=False)
-        stats['db_records_deleted'] += deleted
+            # Job records (export + import)
+            deleted = Job.query.filter(Job.id.in_(job_ids_to_delete)).delete(synchronize_session=False)
+            stats['db_records_deleted'] += deleted
 
-        # Setting for import root
-        if import_job_id:
-            Setting.query.filter(Setting.key == f'job_{import_job_id}_import_root').delete(synchronize_session=False)
+            # Setting for import root
+            if import_job_id:
+                Setting.query.filter(Setting.key == f'job_{import_job_id}_import_root').delete(synchronize_session=False)
 
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Finalize DB cleanup failed: {e}")
-        return jsonify({
-            'error': f'Database cleanup failed: {str(e)}',
-            'files_cleaned': stats
-        }), 500
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Finalize DB cleanup failed: {e}")
+            return jsonify({
+                'error': f'Database cleanup failed: {str(e)}',
+                'files_cleaned': stats
+            }), 500
 
     logger.info(f"Finalized export job {job_id}: {stats}")
 
