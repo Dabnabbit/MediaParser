@@ -357,11 +357,13 @@ class ResultsHandler {
                     </label>
                 </div>
             </div>
-            ${isVideo ? '<div class="video-play-overlay"><span class="play-icon">&#9654;</span></div>' : ''}
-            <img data-src="${imgSrc}"
-                 src="/static/img/placeholder.svg"
-                 alt="${file.original_filename}"
-                 title="${file.original_filename}&#10;${dateStr}&#10;${file.file_size_bytes ? this.formatFileSize(file.file_size_bytes) : ''}">
+            <div class="media-content">
+                <img data-src="${imgSrc}"
+                     src="/static/img/placeholder.svg"
+                     alt="${file.original_filename}"
+                     title="${file.original_filename}&#10;${dateStr}&#10;${file.file_size_bytes ? this.formatFileSize(file.file_size_bytes) : ''}">
+                ${isVideo ? '<div class="video-play-overlay"><span class="play-icon">&#9654;</span></div>' : ''}
+            </div>
             <div class="thumbnail-filename">${file.original_filename}</div>
         `;
 

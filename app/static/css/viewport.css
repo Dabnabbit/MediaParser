@@ -98,10 +98,13 @@ body.viewport-active {
     will-change: transform, opacity;
 }
 
-/* Viewport tile images use contain for proper display at large sizes */
+/* Viewport tile images/videos use contain for proper display at large sizes */
 .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"] img,
 .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] img,
-.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] img {
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] img,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"] video,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] video,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"] video {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -142,14 +145,16 @@ body.viewport-active {
     z-index: 10;
 }
 
-/* Current tile image styling */
+/* Current tile image/video styling */
 .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] img,
-.thumbnail-grid.viewport-mode .thumbnail.vp-current img {
+.thumbnail-grid.viewport-mode .thumbnail.vp-current img,
+.thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="current"] video,
+.thumbnail-grid.viewport-mode .thumbnail.vp-current video {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-/* Video element in viewport — fill tile, match image styling */
-.thumbnail .tile-video {
+/* Video element in viewport — fill .media-content, match image styling */
+.media-content .tile-video {
     width: 100%;
     height: 100%;
     object-fit: contain;
@@ -157,23 +162,16 @@ body.viewport-active {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-/* While video is playing, keep badges visible above video (z-index: 7 > 6)
-   but pass clicks through to native controls beneath.
-   !important needed to override viewport-mode badge specificity (0,4,0). */
-.thumbnail.video-playing .thumbnail-badges {
+/* When a video is active, suppress badge pointer-events and hide filename
+   so native video controls are fully interactive. Uses :has() instead of
+   a JS-toggled class — the presence of .tile-video is the source of truth. */
+.thumbnail:has(.tile-video) .thumbnail-badges {
     pointer-events: none !important;
-    z-index: 7;
 }
 
-.thumbnail.video-playing .thumbnail-filename {
+.thumbnail:has(.tile-video) .thumbnail-filename {
     opacity: 0 !important;
     pointer-events: none !important;
-}
-
-/* Video element must sit above badges (z-index: 5) to receive clicks */
-.thumbnail.video-playing .tile-video {
-    position: relative;
-    z-index: 6;
 }
 
 /* ============================================

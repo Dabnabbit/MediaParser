@@ -29,8 +29,11 @@
     function activateVideo(tile, file) {
         if (!tile?.element) return;
 
-        const img = tile.element.querySelector('.tile-image');
-        if (!img || tile._videoActive) return;
+        const mediaContent = tile.element.querySelector('.media-content');
+        if (!mediaContent || tile._videoActive) return;
+
+        const img = mediaContent.querySelector('.tile-image');
+        if (!img) return;
 
         const src = getVideoSrc(file);
         if (!src) return;
@@ -48,16 +51,13 @@
         // Stop clicks on video from bubbling to grid/viewport click handlers
         video.addEventListener('click', (e) => e.stopPropagation());
 
-        // Hide img, insert video
+        // Hide img, insert video into .media-content
         img.style.display = 'none';
-        img.insertAdjacentElement('afterend', video);
+        mediaContent.appendChild(video);
 
         // Hide play overlay while video is active
-        const overlay = tile.element.querySelector('.video-play-overlay');
+        const overlay = mediaContent.querySelector('.video-play-overlay');
         if (overlay) overlay.style.display = 'none';
-
-        // Add class to suppress overlays that block native video controls
-        tile.element.classList.add('video-playing');
 
         tile._videoActive = true;
         tile._videoElement = video;
@@ -77,13 +77,13 @@
             video.remove();
         }
 
-        const img = tile.element.querySelector('.tile-image');
+        const mediaContent = tile.element.querySelector('.media-content');
+        const img = mediaContent?.querySelector('.tile-image');
         if (img) img.style.display = '';
 
-        // Restore play overlay and overlays
-        const overlay = tile.element.querySelector('.video-play-overlay');
+        // Restore play overlay
+        const overlay = mediaContent?.querySelector('.video-play-overlay');
         if (overlay) overlay.style.display = '';
-        tile.element.classList.remove('video-playing');
 
         tile._videoActive = false;
         tile._videoElement = null;

@@ -215,11 +215,13 @@ class Tile {
                     </label>
                 </div>
             </div>
-            ${isVideo ? '<div class="video-play-overlay"><span class="play-icon">&#9654;</span></div>' : ''}
-            <img class="tile-image"
-                 src="${imgSrc}"
-                 alt="${this.escapeHtml(file.original_filename)}"
-                 draggable="false">
+            <div class="media-content">
+                <img class="tile-image"
+                     src="${imgSrc}"
+                     alt="${this.escapeHtml(file.original_filename)}"
+                     draggable="false">
+                ${isVideo ? '<div class="video-play-overlay"><span class="play-icon">&#9654;</span></div>' : ''}
+            </div>
             <div class="thumbnail-filename">${this.escapeHtml(file.original_filename)}</div>
         `;
     }
@@ -518,14 +520,14 @@ class Tile {
             </div>
         `;
 
-        // Update video play overlay
+        // Update video play overlay (inside .media-content)
+        const mediaContent = this.element.querySelector('.media-content');
         let overlay = this.element.querySelector('.video-play-overlay');
-        if (isVideo && !overlay) {
+        if (isVideo && !overlay && mediaContent) {
             overlay = document.createElement('div');
             overlay.className = 'video-play-overlay';
             overlay.innerHTML = '<span class="play-icon">&#9654;</span>';
-            const img = this.element.querySelector('.tile-image');
-            if (img) this.element.insertBefore(overlay, img);
+            mediaContent.appendChild(overlay);
         } else if (!isVideo && overlay) {
             overlay.remove();
         }

@@ -1197,7 +1197,7 @@ body {
 
 .thumbnail {
     position: relative;
-    z-index: 0;  /* Creates stacking context — badges (z:5) stay contained within tile */
+    z-index: 0;  /* Creates stacking context — badges (z:4) stay contained within tile */
     border: 2px solid transparent;
     border-radius: var(--border-radius-sm);
     overflow: hidden;
@@ -1221,7 +1221,14 @@ body {
     border-color: var(--color-primary);
 }
 
-.thumbnail img {
+.media-content {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.media-content img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -1230,7 +1237,7 @@ body {
 }
 
 /* MIPMAP resolution transition - brief fade during source change */
-.thumbnail img.tile-image-fade {
+.media-content img.tile-image-fade {
     opacity: 0.7;
 }
 
@@ -1473,7 +1480,7 @@ body {
     display: flex;
     flex-direction: column;
     pointer-events: none;
-    z-index: 5;
+    z-index: 4;
 }
 
 .badge-top {
@@ -1571,14 +1578,13 @@ body {
 .thumb-badge.confidence-medium { background: var(--color-medium); color: #000; }
 .thumb-badge.confidence-low { background: var(--color-low); }
 
-/* Video play button overlay — centered on tile */
+/* Video play button overlay — centered inside .media-content */
 .video-play-overlay {
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 3;
     pointer-events: none;
 }
 
@@ -1667,7 +1673,7 @@ body {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
     opacity: 0;
     transition: opacity 0.15s ease;
-    z-index: 2;
+    z-index: 3;
     /* Truncate long filenames */
     white-space: nowrap;
     overflow: hidden;
@@ -1963,7 +1969,7 @@ body {
     inset: 0;
     background: rgba(59, 130, 246, 0.1);
     pointer-events: none;
-    z-index: 1;
+    z-index: 2;
 }
 
 /* ============================================

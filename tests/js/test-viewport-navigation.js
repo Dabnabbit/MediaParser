@@ -16,7 +16,7 @@ describe('ViewportController — next() / previous()', () => {
             const el = document.createElement('div');
             el.className = 'thumbnail';
             el.dataset.vpPos = 'grid';
-            el.innerHTML = '<img class="tile-image" src="" alt="">';
+            el.innerHTML = '<div class="media-content"><img class="tile-image" src="" alt=""></div>';
             tiles.set(id, new Tile({ element: el, file: { id } }));
         });
 
@@ -108,7 +108,7 @@ describe('ViewportController — goToFile() / goToIndex()', () => {
         fileIds.forEach(id => {
             const el = document.createElement('div');
             el.className = 'thumbnail';
-            el.innerHTML = '<img class="tile-image" src="" alt="">';
+            el.innerHTML = '<div class="media-content"><img class="tile-image" src="" alt=""></div>';
             tiles.set(id, new Tile({ element: el, file: { id } }));
         });
 

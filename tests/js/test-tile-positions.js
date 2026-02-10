@@ -47,7 +47,7 @@ describe('Tile — Position State', () => {
 
         const el = document.createElement('div');
         el.className = 'thumbnail';
-        el.innerHTML = '<img class="tile-image" src="" alt="test">';
+        el.innerHTML = '<div class="media-content"><img class="tile-image" src="" alt="test"></div>';
         document.body.appendChild(el);
 
         const tile = new Tile({
@@ -193,7 +193,7 @@ describe('Tile — Selection', () => {
             <div class="thumbnail-badges"><div class="badge-top">
                 <label class="thumb-checkbox"><input type="checkbox" data-file-id="1"><span class="checkmark"></span></label>
             </div></div>
-            <img class="tile-image" src="" alt="test">
+            <div class="media-content"><img class="tile-image" src="" alt="test"></div>
         `;
         document.body.appendChild(el);
 
@@ -223,7 +223,7 @@ describe('Tile — Static Methods', () => {
         }
 
         const el = document.createElement('div');
-        el.innerHTML = '<img class="tile-image" src="" alt="test">';
+        el.innerHTML = '<div class="media-content"><img class="tile-image" src="" alt="test"></div>';
         document.body.appendChild(el);
 
         const tile = new Tile({ element: el, file: { id: 99 } });

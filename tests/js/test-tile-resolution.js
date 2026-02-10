@@ -55,7 +55,7 @@ describe('Tile — Resolution State', () => {
     it('setResolution changes currentResolution', () => {
         if (typeof Tile === 'undefined') { assert.ok(true, 'skipped'); return; }
         const el = document.createElement('div');
-        el.innerHTML = '<img class="tile-image" src="/static/img/placeholder.svg" alt="">';
+        el.innerHTML = '<div class="media-content"><img class="tile-image" src="/static/img/placeholder.svg" alt=""></div>';
         const tile = new Tile({
             element: el,
             file: { id: 1, original_path: 'photos/test.jpg', thumbnail_path: 'storage/thumbnails/1.jpg' },
@@ -76,7 +76,7 @@ describe('Tile — Resolution State', () => {
     it('setResolution fires callback on change', () => {
         if (typeof Tile === 'undefined') { assert.ok(true, 'skipped'); return; }
         const el = document.createElement('div');
-        el.innerHTML = '<img class="tile-image" src="/static/img/placeholder.svg" alt="">';
+        el.innerHTML = '<div class="media-content"><img class="tile-image" src="/static/img/placeholder.svg" alt=""></div>';
         const tile = new Tile({
             element: el,
             file: { id: 1, original_path: 'photos/test.jpg', thumbnail_path: 'storage/thumbnails/1.jpg' },
@@ -94,7 +94,7 @@ describe('Tile — updateResolution Logic', () => {
     function makeTileWithEl() {
         if (typeof Tile === 'undefined') return null;
         const el = document.createElement('div');
-        el.innerHTML = '<img class="tile-image" src="/static/img/placeholder.svg" alt="">';
+        el.innerHTML = '<div class="media-content"><img class="tile-image" src="/static/img/placeholder.svg" alt=""></div>';
         return new Tile({
             element: el,
             file: { id: 1, original_path: 'photos/test.jpg', thumbnail_path: 'storage/thumbnails/1.jpg' },
@@ -141,7 +141,7 @@ describe('Tile — updateResolution Logic', () => {
     it('does not upgrade without full res source', () => {
         if (typeof Tile === 'undefined') { assert.ok(true, 'skipped'); return; }
         const el = document.createElement('div');
-        el.innerHTML = '<img class="tile-image" src="/static/img/placeholder.svg" alt="">';
+        el.innerHTML = '<div class="media-content"><img class="tile-image" src="/static/img/placeholder.svg" alt=""></div>';
         const tile = new Tile({ element: el, file: { id: 1 } }); // no original_path
         tile.updateResolution(300);
         assert.equal(tile.currentResolution, 'thumbnail');
