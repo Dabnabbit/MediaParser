@@ -153,58 +153,6 @@
     };
 
     // ==========================================
-    // Discard All Failed
-    // ==========================================
-
-    proto.discardAllFailed = async function() {
-        const jobId = window.resultsHandler?.jobId;
-        if (!jobId) return;
-
-        try {
-            const params = new URLSearchParams({
-                mode: 'failed',
-                confidence: 'high,medium,low,none',
-                limit: 10000
-            });
-
-            const response = await fetch(`/api/jobs/${jobId}/files?${params}`);
-            if (!response.ok) throw new Error('Failed to fetch failed files');
-
-            const data = await response.json();
-            const fileIds = (data.files || []).map(f => f.id);
-
-            if (fileIds.length === 0) {
-                this.showToast('No failed files to discard');
-                return;
-            }
-
-            if (!confirm(`Discard all ${fileIds.length} failed files?`)) return;
-
-            const discardResp = await fetch('/api/files/bulk/discard', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ file_ids: fileIds })
-            });
-
-            if (!discardResp.ok) {
-                const error = await discardResp.json();
-                throw new Error(error.error || 'Failed to discard files');
-            }
-
-            const result = await discardResp.json();
-            this.showToast(`Discarded ${result.files_discarded} failed files`);
-
-            window.resultsHandler?.loadFiles();
-            window.resultsHandler?.loadSummary();
-            this.clearSelection();
-
-        } catch (error) {
-            console.error('Discard all failed:', error);
-            alert(`Failed to discard: ${error.message}`);
-        }
-    };
-
-    // ==========================================
     // Duplicate Management
     // ==========================================
 

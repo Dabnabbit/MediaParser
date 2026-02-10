@@ -144,19 +144,25 @@ def process_single_file(
 
         file_size = os.path.getsize(path)
 
-        # Check for type mismatch — fail the file if contents don't match extension
+        # Check for type mismatch — only fail if detected type is not media at all
         extension, mime_type, is_mismatch = detect_file_type_mismatch(path)
         if is_mismatch:
-            msg = (
-                f"File type mismatch: {path.name} "
-                f"has extension .{extension} but detected as {mime_type}"
+            is_media = mime_type.startswith('image/') or mime_type.startswith('video/')
+            if not is_media:
+                msg = (
+                    f"Not a media file: {path.name} "
+                    f"detected as {mime_type}"
+                )
+                logger.warning(msg)
+                return {
+                    'status': 'error',
+                    'file_path': str(path.absolute()),
+                    'error': msg
+                }
+            logger.debug(
+                f"Extension mismatch (ok): {path.name} "
+                f"has .{extension} but detected as {mime_type}"
             )
-            logger.warning(msg)
-            return {
-                'status': 'error',
-                'file_path': str(path.absolute()),
-                'error': msg
-            }
 
         # Step 2: Calculate hashes
         logger.debug(f"Calculating hashes for {path.name}")

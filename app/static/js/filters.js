@@ -368,17 +368,7 @@ class FilterHandler {
             `;
             this._wireDropdownItems(dropdown, (data) => this._handleDropdownAction(mode, data));
         }
-        if (mode === 'failed') {
-            const count = this.counts.failed || 0;
-            if (count === 0) return;
-            const dropdown = this._createDropdown(indicator, 'chip-dropdown-open');
-            if (!dropdown) return;
-            dropdown.innerHTML = `
-                <div class="seg-dropdown-header">Failed Files</div>
-                <button class="seg-dropdown-item" data-action="discard-all">Discard all ${count} failed</button>
-            `;
-            this._wireDropdownItems(dropdown, (data) => this._handleDropdownAction(mode, data));
-        }
+        // failed mode: view-only, no actions
     }
 
     // ==========================================
@@ -415,11 +405,6 @@ class FilterHandler {
             case 'restore-all':
                 if (window.selectionHandler) {
                     window.selectionHandler.restoreAllDiscarded();
-                }
-                break;
-            case 'discard-all':
-                if (mode === 'failed' && window.selectionHandler) {
-                    window.selectionHandler.discardAllFailed();
                 }
                 break;
             case 'select-confidence':
@@ -803,13 +788,22 @@ class FilterHandler {
             this.indicatorFailed.classList.toggle('active', this.currentMode === 'failed');
         }
 
+        // Hide tag controls in failed mode (failed files are excluded from export)
+        const tagInput = document.getElementById('quick-tag-input');
+        const tagBtn = document.getElementById('add-quick-tag');
+        if (tagInput) tagInput.style.display = this.currentMode === 'failed' ? 'none' : '';
+        if (tagBtn) tagBtn.style.display = this.currentMode === 'failed' ? 'none' : '';
+
         // Update confidence chips — mutually exclusive states
+        // Inert in failed/discarded modes (confidence not applicable)
+        const confidenceInert = this.currentMode === 'failed' || this.currentMode === 'discarded';
         this.confidenceChips.forEach(chip => {
             const level = chip.dataset.filter;
             const count = this.counts[level] || 0;
             const isVisible = this.visibleConfidence.has(level);
-            const state = count === 0 ? 'chip-empty'
-                        : isVisible   ? 'chip-enabled'
+            const state = confidenceInert  ? 'chip-empty'
+                        : count === 0      ? 'chip-empty'
+                        : isVisible        ? 'chip-enabled'
                         :               'chip-disabled';
             chip.classList.remove('chip-enabled', 'chip-disabled', 'chip-empty',
                                   'active', 'hidden-filter', 'empty-filter');
@@ -996,13 +990,16 @@ class FilterHandler {
         params.set('mode', this.currentMode);
 
         // Confidence levels that are visible
-        const visibleLevels = Array.from(this.visibleConfidence);
-        // Include 'none' with 'low' since they're both uncertain timestamps
-        // But not in group modes — group confidence never has a 'none' value
-        if (visibleLevels.includes('low') && this.currentMode !== 'duplicates' && this.currentMode !== 'similar') {
-            visibleLevels.push('none');
+        // Failed/discarded modes: skip confidence filter (files may have no confidence)
+        if (this.currentMode !== 'failed' && this.currentMode !== 'discarded') {
+            const visibleLevels = Array.from(this.visibleConfidence);
+            // Include 'none' with 'low' since they're both uncertain timestamps
+            // But not in group modes — group confidence never has a 'none' value
+            if (visibleLevels.includes('low') && this.currentMode !== 'duplicates' && this.currentMode !== 'similar') {
+                visibleLevels.push('none');
+            }
+            params.set('confidence', visibleLevels.join(','));
         }
-        params.set('confidence', visibleLevels.join(','));
 
         // Sort
         params.set('sort', this.sortField);

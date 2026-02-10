@@ -169,9 +169,9 @@ class Tile {
         const confidenceLabel = effectiveConfidence?.charAt(0).toUpperCase() || '?';
         const isVideo = file.mime_type?.startsWith('video/');
         const isReviewed = !!file.reviewed_at;
-        const isFailed = !!file.processing_error;
         const isDiscarded = !!file.discarded;
         const mode = Tile.getCurrentMode();
+        const isFailed = !!file.processing_error || mode === 'failed';
 
         // Duplicate badge — hidden in similar mode (not actionable yet/already resolved)
         // Badge background comes from CSS var(--duplicate-color) set on parent tile
@@ -201,7 +201,7 @@ class Tile {
             <div class="thumbnail-badges">
                 <div class="badge-top">
                     <div class="badge-info">
-                        <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
+                        ${isFailed ? '' : `<span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>`}
                         ${recommendedBadge}
                         ${duplicateBadge}
                         ${similarBadge}
@@ -479,9 +479,9 @@ class Tile {
         const confidenceLabel = effectiveConfidence?.charAt(0).toUpperCase() || '?';
         const isVideo = file.mime_type?.startsWith('video/');
         const isReviewed = !!file.reviewed_at;
-        const isFailed = !!file.processing_error;
         const isDiscarded = !!file.discarded;
         const mode = Tile.getCurrentMode();
+        const isFailed = !!file.processing_error || mode === 'failed';
 
         const showDuplicate = !!file.is_duplicate && mode !== 'similar';
         let duplicateBadge = '';
@@ -505,7 +505,7 @@ class Tile {
         badgesContainer.innerHTML = `
             <div class="badge-top">
                 <div class="badge-info">
-                    <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
+                    ${isFailed ? '' : `<span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>`}
                     ${recommendedBadge}
                     ${duplicateBadge}
                     ${similarBadge}

@@ -449,6 +449,7 @@ def _serialize_file_extended(f, is_recommended=False):
         'is_recommended': is_recommended,
         'exact_group_confidence': f.exact_group_confidence,
         'similar_group_confidence': f.similar_group_confidence,
+        'processing_error': f.processing_error,
         'image_width': f.image_width,
         'image_height': f.image_height
     }

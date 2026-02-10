@@ -322,7 +322,8 @@ class ResultsHandler {
         const confidenceLabel = file.confidence?.charAt(0).toUpperCase() || '?';
         const isVideo = file.mime_type?.startsWith('video/');
         const isReviewed = !!file.reviewed_at;
-        const isFailed = !!file.processing_error;
+        const currentMode = window.filterHandler?.getCurrentMode();
+        const isFailed = !!file.processing_error || currentMode === 'failed';
         const isDiscarded = !!file.discarded;
 
         const timestamp = file.final_timestamp || file.detected_timestamp;
@@ -344,7 +345,7 @@ class ResultsHandler {
             <div class="thumbnail-badges">
                 <div class="badge-top">
                     <div class="badge-info">
-                        <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
+                        ${isFailed ? '' : `<span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>`}
                         ${duplicateBadge}
                         ${similarBadge}
                         ${isReviewed ? '<span class="thumb-badge reviewed">&#10003;</span>' : ''}

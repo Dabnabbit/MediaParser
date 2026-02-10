@@ -859,6 +859,22 @@ body.viewport-details-open > .viewport-hints {
     color: #000;
 }
 
+.vp-badge.failed {
+    background: var(--color-failed, #ef4444);
+    color: white;
+}
+
+.vp-error-reason {
+    flex-basis: 100%;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+    color: var(--color-failed, #ef4444);
+    background: rgba(239, 68, 68, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid var(--color-failed, #ef4444);
+    word-break: break-word;
+}
+
 /* Timestamp display */
 .vp-timestamp-display {
     display: flex;

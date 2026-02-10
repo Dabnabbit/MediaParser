@@ -283,6 +283,12 @@ class ViewportDetailsPanel {
         // Similar info (if in similar mode)
         this.renderSimilarInfo(file);
 
+        // Hide tags section for failed files
+        const tagsSection = this.panel.querySelector('#vp-tags-section');
+        if (tagsSection) {
+            tagsSection.style.display = (this.currentMode === 'failed') ? 'none' : '';
+        }
+
         // Action buttons (context-aware)
         this.renderActionButtons(file);
     }
@@ -292,18 +298,29 @@ class ViewportDetailsPanel {
      */
     renderStatusBadges(file) {
         const badges = [];
-
-        // Confidence — match confidence in group modes, timestamp confidence otherwise
         const mode = this.currentMode;
-        let confidence;
-        if (mode === 'duplicates') {
-            confidence = file.exact_group_confidence || file.confidence || 'none';
-        } else if (mode === 'similar') {
-            confidence = file.similar_group_confidence || file.confidence || 'none';
-        } else {
-            confidence = file.confidence || 'none';
+        const isFailed = !!file.processing_error || mode === 'failed';
+
+        // Confidence — skip for failed files (not meaningful)
+        if (!isFailed) {
+            let confidence;
+            if (mode === 'duplicates') {
+                confidence = file.exact_group_confidence || file.confidence || 'none';
+            } else if (mode === 'similar') {
+                confidence = file.similar_group_confidence || file.confidence || 'none';
+            } else {
+                confidence = file.confidence || 'none';
+            }
+            badges.push(`<span class="vp-badge confidence-${confidence}">${confidence.toUpperCase()}</span>`);
         }
-        badges.push(`<span class="vp-badge confidence-${confidence}">${confidence.toUpperCase()}</span>`);
+
+        // Failed — show error reason
+        if (isFailed) {
+            badges.push('<span class="vp-badge failed">Failed</span>');
+            if (file.processing_error) {
+                badges.push(`<div class="vp-error-reason">${file.processing_error}</div>`);
+            }
+        }
 
         // Reviewed
         if (file.reviewed_at) {
@@ -469,6 +486,8 @@ class ViewportDetailsPanel {
                     Restore
                 </button>
             `;
+        } else if (mode === 'failed') {
+            // Failed mode - view only, no actions
         } else {
             // Standard review mode actions
             if (!isDiscarded && !isReviewed) {

@@ -1454,10 +1454,7 @@ body {
     display: none;
 }
 
-/* Disabled: show slash, bump opacity so it reads clearly within dimmed chip */
-.chip-disabled .chip-eye {
-    opacity: 0.9;
-}
+/* Disabled: show slash, fades with the rest of the chip */
 .chip-disabled .chip-eye .eye-slash {
     display: inline;
 }

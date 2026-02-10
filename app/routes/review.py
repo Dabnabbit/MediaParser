@@ -120,6 +120,7 @@ def get_file_detail(file_id):
         'similar_group_id': file.similar_group_id,
         'similar_group_confidence': file.similar_group_confidence,
         'similar_group_type': file.similar_group_type,
+        'processing_error': file.processing_error,
         'width': file.image_width,
         'height': file.image_height
     }), 200
