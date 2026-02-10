@@ -651,6 +651,16 @@ class ProgressHandler {
             if (this.summaryTime) this.summaryTime.textContent = this.formatTime(summary.duration_seconds || 0);
         }
 
+        // Fart + fail sound when >=10% of files failed processing
+        const summary = data.summary || {};
+        const failTotal = (summary.success_count || 0) + (summary.error_count || 0);
+        const failPct = failTotal > 0 ? (summary.error_count || 0) / failTotal : 0;
+        if (failPct >= 0.10 && window.particles) {
+            const target = this.jobProgress || document.body;
+            window.particles.fart(target);
+            window.particles.failSound();
+        }
+
         // Trigger results handler (loads counts into filterHandler, which sets segment flex-grow)
         if (window.resultsHandler) {
             await window.resultsHandler.showResults(jobId, data);

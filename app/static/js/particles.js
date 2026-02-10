@@ -373,8 +373,11 @@ class ParticleEffects {
 
     /** Random pick between confetti and fireworks */
     burst(el, opts = {}) {
-        // TODO: restore randomizer after gas puff tuning
-        this.fart(el, opts);
+        if (Math.random() < 0.5) {
+            this.confetti(el, opts);
+        } else {
+            this.fireworks(el, opts);
+        }
     }
 
     /** Metallic shatter burst — lock icon unlock effect */

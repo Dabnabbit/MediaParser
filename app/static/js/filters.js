@@ -875,7 +875,15 @@ class FilterHandler {
                 if (!this.exportSegment.classList.contains('ready')) {
                     this.exportSegment.classList.add('ready');
                     // Delay burst until segment has transitioned into view
-                    setTimeout(() => window.particles.burst(this.exportSegment), 350);
+                    setTimeout(() => {
+                        if (Math.random() < 0.05) {
+                            // ~5% chance: fart + success sound for fun
+                            window.particles.fart(this.exportSegment);
+                            window.particles.successSound();
+                        } else {
+                            window.particles.burst(this.exportSegment);
+                        }
+                    }, 350);
                 }
                 // Wire click handler once
                 if (!this.exportSegment.dataset.wired) {
