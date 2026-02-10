@@ -255,7 +255,11 @@ class FilterHandler {
                 <button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="medium">
                     <span class="chip-badge confidence-medium">M</span> Auto-resolve MEDIUM groups
                 </button>
+                <button class="seg-dropdown-item" data-action="auto-resolve" data-confidence="low">
+                    <span class="chip-badge confidence-low">L</span> Auto-resolve LOW groups
+                </button>
                 <div class="seg-dropdown-divider"></div>
+                <button class="seg-dropdown-item" data-action="auto-resolve-all">Auto-resolve ALL groups</button>
                 <button class="seg-dropdown-item" data-action="keep-all">Keep all (not ${mode === 'duplicates' ? 'duplicates' : 'similar'})</button>
             `;
         } else if (mode === 'unreviewed') {
@@ -393,6 +397,9 @@ class FilterHandler {
             case 'clear-review':
                 this._bulkReviewByConfidence('clear_review', data.confidence);
                 break;
+            case 'auto-resolve-all':
+                this.autoResolveByConfidence(mode, null);
+                break;
             case 'keep-all':
                 this.keepAllInMode(mode);
                 break;
@@ -518,19 +525,21 @@ class FilterHandler {
                 groups.get(gid).push(f);
             }
 
-            // Filter to groups where any member has the target confidence
-            // (files in the same group can have different confidence from pairwise distances)
+            // Filter to groups by confidence (null = all groups)
             const confKey = mode === 'similar' ? 'similar_group_confidence' : 'exact_group_confidence';
             const targetGroups = [];
             for (const [gid, members] of groups) {
-                const hasMatch = members.some(f => f[confKey]?.toLowerCase() === confidence);
-                if (hasMatch) {
-                    targetGroups.push(members);
+                if (confidence) {
+                    const hasMatch = members.some(f => f[confKey]?.toLowerCase() === confidence);
+                    if (!hasMatch) continue;
                 }
+                targetGroups.push(members);
             }
 
             if (targetGroups.length === 0) {
-                window.selectionHandler?.showToast(`No ${confidence.toUpperCase()} confidence groups found`);
+                window.selectionHandler?.showToast(confidence
+                    ? `No ${confidence.toUpperCase()} confidence groups found`
+                    : 'No groups found');
                 return;
             }
 
@@ -552,7 +561,8 @@ class FilterHandler {
                 return;
             }
 
-            const msg = `Auto-resolve ${targetGroups.length} ${confidence.toUpperCase()} groups? Keep ${keepCount}, discard ${toDiscard.length}.`;
+            const confLabel = confidence ? `${confidence.toUpperCase()} ` : '';
+            const msg = `Auto-resolve ${targetGroups.length} ${confLabel}groups? Keep ${keepCount}, discard ${toDiscard.length}.`;
             if (!confirm(msg)) return;
 
             const discardResp = await fetch('/api/files/bulk/discard', {

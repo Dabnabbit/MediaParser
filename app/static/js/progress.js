@@ -641,11 +641,12 @@ class ProgressHandler {
 
             // Populate summary
             const summary = data.summary || {};
-            const counts = summary.confidence_counts || {};
-            const total = (counts.high || 0) + (counts.medium || 0) + (counts.low || 0) + (counts.none || 0);
+            const successCount = summary.success_count || 0;
+            const errorCount = summary.error_count || 0;
+            const total = successCount + errorCount;
 
             if (this.summaryTotal) this.summaryTotal.textContent = total;
-            if (this.summarySuccess) this.summarySuccess.textContent = summary.success_count || 0;
+            if (this.summarySuccess) this.summarySuccess.textContent = successCount;
             if (this.summaryErrors) this.summaryErrors.textContent = summary.error_count || 0;
             if (this.summaryTime) this.summaryTime.textContent = this.formatTime(summary.duration_seconds || 0);
         }
