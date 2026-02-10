@@ -124,6 +124,9 @@ class ViewportController {
         this.tileManager.setupViewport(this.getCurrentFileId(), this.navigationFiles);
         this.updateUI();
 
+        // Restore last-used view mode (container classes + toggle buttons + nav arrows)
+        this.setViewMode(this.viewMode);
+
         // Force reflow, then release the current tile to animate from grid to center
         void container.offsetHeight;
         requestAnimationFrame(() => {

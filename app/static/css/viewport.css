@@ -283,6 +283,7 @@ body.viewport-active {
     transition: opacity 0.2s ease;
     pointer-events: none;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    z-index: 2;
 }
 
 .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="next"]::after,
@@ -298,6 +299,7 @@ body.viewport-active {
     transition: opacity 0.2s ease;
     pointer-events: none;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    z-index: 2;
 }
 
 .thumbnail-grid.viewport-mode .thumbnail[data-vp-pos="prev"]:hover::after,
