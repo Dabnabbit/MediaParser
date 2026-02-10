@@ -25,10 +25,10 @@ class ProgressHandler {
         this.uploadFill = document.getElementById('upload-fill');
         this.processingFill = document.getElementById('processing-fill');
         this.reviewedOverlay = document.getElementById('reviewed-overlay');
-        this.progressText = document.getElementById('job-progress-text');
         this.workflowTrack = document.getElementById('workflow-track');
         this.modeSegments = document.getElementById('mode-segments');
         this.workflowPhases = document.getElementById('workflow-phases');
+        this.statsArea = document.getElementById('stats-area');
         this.metricsRow = document.getElementById('metrics-row');
         this.filesProcessed = document.getElementById('files-processed');
         this.currentFilename = document.getElementById('current-filename');
@@ -212,9 +212,6 @@ class ProgressHandler {
             void this.reviewedOverlay.offsetHeight;
             this.reviewedOverlay.style.transition = '';
         }
-        if (this.progressText) {
-            this.progressText.textContent = '0%';
-        }
 
         // Reset phase breadcrumb
         if (this.workflowPhases) {
@@ -224,12 +221,9 @@ class ProgressHandler {
         }
 
         // Hide metrics and summary
-        if (this.metricsRow) {
-            this.metricsRow.style.display = 'none';
-        }
-        if (this.jobSummary) {
-            this.jobSummary.style.display = 'none';
-        }
+        if (this.statsArea) this.statsArea.style.display = 'none';
+        if (this.metricsRow) this.metricsRow.style.display = 'none';
+        if (this.jobSummary) this.jobSummary.style.display = 'none';
 
         // Hide finalize card if visible
         const finalizeCard = document.getElementById('finalize-complete');
@@ -318,19 +312,13 @@ class ProgressHandler {
                 fill.style.transition = '';
             }
         });
-        if (this.progressText) {
-            this.progressText.textContent = '0%';
-        }
         if (this.currentFilename) {
             this.currentFilename.textContent = 'Uploading...';
         }
         // Show metrics row during upload/processing
-        if (this.metricsRow) {
-            this.metricsRow.style.display = 'flex';
-        }
-        if (this.jobSummary) {
-            this.jobSummary.style.display = 'none';
-        }
+        if (this.statsArea) this.statsArea.style.display = 'block';
+        if (this.metricsRow) this.metricsRow.style.display = 'flex';
+        if (this.jobSummary) this.jobSummary.style.display = 'none';
         // Reset elapsed time and ETA
         if (this.elapsedTime) {
             this.elapsedTime.textContent = '0:00';
@@ -357,9 +345,6 @@ class ProgressHandler {
             this.uploadFill.style.width = percent + '%';
             void this.uploadFill.offsetHeight;
             this.uploadFill.style.transition = '';
-        }
-        if (this.progressText) {
-            this.progressText.textContent = `Uploading ${percent}%`;
         }
         if (this.currentFilename) {
             this.currentFilename.textContent = percent < 100 ? 'Uploading...' : 'Processing...';
@@ -391,9 +376,6 @@ class ProgressHandler {
             this.processingFill.style.width = '0%';
             void this.processingFill.offsetHeight;
             this.processingFill.style.transition = '';
-        }
-        if (this.progressText) {
-            this.progressText.textContent = '0%';
         }
         // Set RUNNING status on section while waiting for worker to pick up
         // (avoids grey PENDING flash between purple upload and blue processing)
@@ -506,10 +488,6 @@ class ProgressHandler {
         if (this.processingFill) {
             this.processingFill.style.width = progress + '%';
         }
-        if (this.progressText) {
-            this.progressText.textContent = progress + '%';
-        }
-
         // Files processed
         if (this.filesProcessed) {
             this.filesProcessed.textContent = `${data.progress_current} / ${data.progress_total}`;
@@ -646,11 +624,9 @@ class ProgressHandler {
         this.setState('complete');
 
         // Hide metrics row (current file, ETA no longer relevant)
-        if (this.metricsRow) {
-            this.metricsRow.style.display = 'none';
-        }
+        if (this.metricsRow) this.metricsRow.style.display = 'none';
 
-        // Show summary
+        // Show summary (stats-area stays visible)
         if (this.jobSummary) {
             this.jobSummary.style.display = 'flex';
 
@@ -720,6 +696,7 @@ class ProgressHandler {
 
         // Hide workflow bar, results, summary, metrics
         if (this.jobProgress) this.jobProgress.style.display = 'none';
+        if (this.statsArea) this.statsArea.style.display = 'none';
         if (this.metricsRow) this.metricsRow.style.display = 'none';
         if (this.jobSummary) this.jobSummary.style.display = 'none';
         const resultsContainer = document.getElementById('results-container');

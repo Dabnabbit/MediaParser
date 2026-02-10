@@ -636,12 +636,6 @@ body {
     animation: barberpole 0.8s linear infinite;
 }
 
-.progress-text {
-    font-weight: 600;
-    min-width: 3rem;
-    text-align: right;
-    font-size: 0.9rem;
-}
 
 /* ========================================
    Mode Segment Colors
@@ -968,10 +962,6 @@ body {
     opacity: 0.5;
 }
 
-/* Hide percentage text in review mode */
-#workflow-track[data-state="review"] ~ .progress-text {
-    display: none;
-}
 
 /* ========================================
    Job Section (Unified Processing + Results)
@@ -1045,6 +1035,13 @@ body {
 
 /* (export-inline-btn removed — export is now a workflow bar segment) */
 
+/* Stats area — fixed-height container for metrics/summary above the bar.
+   Prevents vertical shift of the progress bar when rows swap. */
+.stats-area {
+    min-height: 36px;
+    margin-bottom: var(--spacing-sm);
+}
+
 .metrics-row {
     display: flex;
     flex-wrap: wrap;
@@ -1053,7 +1050,6 @@ body {
     padding: var(--spacing-sm) var(--spacing-md);
     background-color: var(--color-bg-alt);
     border-radius: var(--border-radius-sm);
-    margin-bottom: var(--spacing-sm);
     font-size: 0.85rem;
 }
 
@@ -1088,7 +1084,6 @@ body {
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: var(--spacing-sm);
     font-size: 0.8rem;
 }
 
