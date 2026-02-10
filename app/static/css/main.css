@@ -55,6 +55,8 @@
     --pill-radius: 16px;
     --pill-font-size: 0.8rem;
     --pill-border: 1px solid var(--color-border);
+    --pill-value-weight: 600;
+    --pill-font-size-xs: 0.75rem;
 }
 
 /* Dark theme */
@@ -110,6 +112,10 @@
    ======================================== */
 * {
     box-sizing: border-box;
+}
+
+button, input, select, textarea {
+    font-family: inherit;
 }
 
 body {
@@ -1051,15 +1057,19 @@ body {
 
 .metrics-row {
     display: flex;
+    align-items: center;
     flex-wrap: wrap;
     justify-content: center;
     gap: var(--spacing-xs) var(--spacing-sm);
 }
 
+/* Shared pill label/value styles (metrics row + job summary) */
+.pill-label,
 .metric-label {
-    color: var(--color-text-muted);
+    opacity: 0.7;
 }
 
+.pill-value,
 .metric-value {
     font-weight: 600;
 }
@@ -1088,17 +1098,17 @@ body {
 .job-summary {
     display: flex;
     align-items: center;
+    justify-content: center;
     flex-wrap: wrap;
-    gap: 6px;
-    font-size: 0.8rem;
+    gap: var(--spacing-xs) var(--spacing-sm);
 }
 
 /* Summary pill — base (subtle, non-interactive) */
 .summary-pill {
     display: inline-flex;
     align-items: baseline;
-    gap: 3px;
-    padding: 3px 10px;
+    gap: 4px;
+    padding: 4px 10px;
     border-radius: var(--pill-radius);
     background: var(--color-bg-alt);
     border: var(--pill-border);
@@ -1106,7 +1116,7 @@ body {
     white-space: nowrap;
 }
 
-.summary-pill-ok strong {
+.summary-pill-ok .pill-value {
     color: var(--color-completed);
 }
 
@@ -1459,12 +1469,11 @@ body {
 }
 
 .chip-label {
-    font-weight: 500;
+    opacity: 0.7;
 }
 
 .chip-count {
-    font-size: 0.75rem;
-    opacity: 0.8;
+    font-weight: 600;
 }
 
 .filter-divider {
@@ -1871,7 +1880,7 @@ body {
 
 .btn-pill-xs {
     padding: 2px 8px;
-    font-size: 0.75rem;
+    font-size: var(--pill-font-size-xs);
 }
 
 .btn-pill-primary {
