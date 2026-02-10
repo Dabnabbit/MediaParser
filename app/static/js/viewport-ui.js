@@ -69,7 +69,7 @@
         this.navPrev.className = 'viewport-nav-arrow nav-prev' + (hideArrows ? ' arrows-hidden' : '');
         this.navPrev.innerHTML = '\u2039'; // ‹
         this.navPrev.title = 'Previous';
-        this.navPrev.addEventListener('click', () => this.prev());
+        this.navPrev.addEventListener('click', () => this.previous());
         document.body.appendChild(this.navPrev);
 
         this.navNext = document.createElement('button');
