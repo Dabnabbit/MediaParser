@@ -20,6 +20,63 @@
                 <span class="phase" data-phase="review">Review</span>
             </div>
         </div>
+        <div class="job-header-center" id="stats-area" style="display: none;">
+            <div class="metrics-row" id="metrics-row" style="display: none;">
+                <div class="metric">
+                    <span class="metric-label">Time:</span>
+                    <span class="metric-value" id="elapsed-time">0:00</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">ETA:</span>
+                    <span class="metric-value" id="eta">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Files:</span>
+                    <span class="metric-value" id="files-processed">0 / 0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Current:</span>
+                    <span class="metric-value metric-value-truncate" id="current-filename">-</span>
+                </div>
+                <div class="metric error-metric" id="error-metric" style="display: none;">
+                    <span class="metric-label">Errors:</span>
+                    <span class="metric-value metric-error" id="error-count">0</span>
+                </div>
+            </div>
+            <div class="job-summary" id="job-summary" style="display: none;">
+                <span class="summary-pill" id="summary-time-pill"><strong id="summary-time">0:00</strong></span>
+                <span class="summary-pill"><strong id="summary-total">0</strong> files</span>
+                <span class="summary-pill summary-pill-ok"><strong id="summary-success">0</strong> ok</span>
+                <button class="filter-chip summary-chip summary-chip-failed" id="indicator-failed" data-mode="failed" style="display: none;" title="View failed files">
+                    <span class="chip-zone chip-zone-icon">
+                        <svg class="chip-icon-svg" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                            <circle cx="8" cy="8" r="6"/>
+                            <path d="M6 6l4 4M10 6l-4 4"/>
+                        </svg>
+                    </span>
+                    <span class="chip-zone chip-zone-info">
+                        <span class="chip-count" data-count="failed">0</span>
+                        <span class="chip-label">failed</span>
+                    </span>
+                </button>
+                <button class="filter-chip summary-chip summary-chip-discarded" id="indicator-discarded" data-mode="discarded" style="display: none;" title="View discarded files">
+                    <span class="chip-zone chip-zone-icon">
+                        <svg class="chip-icon-svg" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 4h12"/>
+                            <path d="M5.5 4V2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5V4"/>
+                            <path d="M3 4l1 10h8l1-10"/>
+                        </svg>
+                    </span>
+                    <span class="chip-zone chip-zone-info">
+                        <span class="chip-count" data-count="discards">0</span>
+                        <span class="chip-label">discarded</span>
+                    </span>
+                    <span class="chip-zone chip-zone-menu">
+                        <span class="chip-chevron">&#9662;</span>
+                    </span>
+                </button>
+            </div>
+        </div>
         <div class="job-header-right">
             <div class="job-controls" id="job-controls" style="display: none;">
                 <button type="button" class="btn btn-secondary btn-sm" id="pause-btn" data-action="pause">Pause</button>
@@ -53,66 +110,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Stats area (above bar) - metrics during processing, summary after completion -->
-    <div class="stats-area" id="stats-area" style="display: none;">
-    <div class="metrics-row" id="metrics-row" style="display: none;">
-        <div class="metric">
-            <span class="metric-label">Time:</span>
-            <span class="metric-value" id="elapsed-time">0:00</span>
-        </div>
-        <div class="metric">
-            <span class="metric-label">ETA:</span>
-            <span class="metric-value" id="eta">-</span>
-        </div>
-        <div class="metric">
-            <span class="metric-label">Files:</span>
-            <span class="metric-value" id="files-processed">0 / 0</span>
-        </div>
-        <div class="metric">
-            <span class="metric-label">Current:</span>
-            <span class="metric-value metric-value-truncate" id="current-filename">-</span>
-        </div>
-        <div class="metric error-metric" id="error-metric" style="display: none;">
-            <span class="metric-label">Errors:</span>
-            <span class="metric-value metric-error" id="error-count">0</span>
-        </div>
-    </div>
-    <!-- Job Summary (centered above bar, shown on completion) -->
-    <div class="job-summary" id="job-summary" style="display: none;">
-        <span class="summary-pill" id="summary-time-pill"><strong id="summary-time">0:00</strong></span>
-        <span class="summary-pill"><strong id="summary-total">0</strong> files</span>
-        <span class="summary-pill summary-pill-ok"><strong id="summary-success">0</strong> ok</span>
-        <button class="filter-chip summary-chip summary-chip-failed" id="indicator-failed" data-mode="failed" style="display: none;" title="View failed files">
-            <span class="chip-zone chip-zone-icon">
-                <svg class="chip-icon-svg" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-                    <circle cx="8" cy="8" r="6"/>
-                    <path d="M6 6l4 4M10 6l-4 4"/>
-                </svg>
-            </span>
-            <span class="chip-zone chip-zone-info">
-                <span class="chip-count" data-count="failed">0</span>
-                <span class="chip-label">failed</span>
-            </span>
-        </button>
-        <button class="filter-chip summary-chip summary-chip-discarded" id="indicator-discarded" data-mode="discarded" style="display: none;" title="View discarded files">
-            <span class="chip-zone chip-zone-icon">
-                <svg class="chip-icon-svg" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 4h12"/>
-                    <path d="M5.5 4V2.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5V4"/>
-                    <path d="M3 4l1 10h8l1-10"/>
-                </svg>
-            </span>
-            <span class="chip-zone chip-zone-info">
-                <span class="chip-count" data-count="discards">0</span>
-                <span class="chip-label">discarded</span>
-            </span>
-            <span class="chip-zone chip-zone-menu">
-                <span class="chip-chevron">&#9662;</span>
-            </span>
-        </button>
-    </div>
-    </div><!-- /.stats-area -->
 
     <!-- Workflow Bar (progress → mode segments) -->
     <div class="job-progress" id="job-progress">

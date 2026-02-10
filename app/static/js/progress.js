@@ -316,7 +316,7 @@ class ProgressHandler {
             this.currentFilename.textContent = 'Uploading...';
         }
         // Show metrics row during upload/processing
-        if (this.statsArea) this.statsArea.style.display = 'block';
+        if (this.statsArea) this.statsArea.style.display = 'flex';
         if (this.metricsRow) this.metricsRow.style.display = 'flex';
         if (this.jobSummary) this.jobSummary.style.display = 'none';
         // Reset elapsed time and ETA
@@ -479,6 +479,14 @@ class ProgressHandler {
         // Update section status (drives breadcrumb phase indicators + border glow)
         if (this.jobSection) {
             this.jobSection.dataset.status = displayStatus;
+        }
+
+        // Ensure stats area + metrics row are visible during active jobs (on resume)
+        if (this.statsArea && this.statsArea.style.display === 'none') {
+            this.statsArea.style.display = 'flex';
+        }
+        if (status !== 'COMPLETED' && this.metricsRow && this.metricsRow.style.display === 'none') {
+            this.metricsRow.style.display = 'flex';
         }
 
         // Progress bar — target processing fill (upload fill stays at 100%)
