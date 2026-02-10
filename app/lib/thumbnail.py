@@ -1,14 +1,18 @@
 """Thumbnail generation utility for MediaParser.
 
 Generates thumbnails with EXIF orientation correction using Pillow.
+Supports video files via ffmpeg frame extraction.
 """
 from pathlib import Path
 from typing import Optional, Tuple
 import logging
+import subprocess
 
 from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
+
+VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv'}
 
 # Default thumbnail sizes
 SIZES = {
@@ -16,6 +20,44 @@ SIZES = {
     'medium': (150, 150),
     'large': (200, 200),
 }
+
+
+def extract_video_frame(video_path: Path, output_path: Path, seek_seconds: float = 1.0) -> bool:
+    """Extract a single frame from a video file using ffmpeg.
+
+    Args:
+        video_path: Path to the video file
+        output_path: Path to write the extracted frame (JPEG/PNG)
+        seek_seconds: Seconds to seek into the video (avoids black intro frames)
+
+    Returns:
+        True on success, False on error
+    """
+    cmd = [
+        'ffmpeg', '-y',
+        '-ss', str(seek_seconds),
+        '-i', str(video_path),
+        '-frames:v', '1',
+        '-f', 'image2',
+        str(output_path),
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, timeout=30)
+    if result.returncode == 0 and output_path.exists():
+        return True
+
+    # If seeking past end of file, retry at 0s
+    if seek_seconds > 0:
+        cmd[2] = '0'
+        result = subprocess.run(cmd, capture_output=True, timeout=30)
+        if result.returncode == 0 and output_path.exists():
+            return True
+
+    logger.error(
+        f"ffmpeg frame extraction failed for {video_path}: "
+        f"{result.stderr.decode(errors='replace')[-500:]}"
+    )
+    return False
 
 
 def generate_thumbnail(
@@ -55,7 +97,19 @@ def generate_thumbnail(
             thumb_filename = f"{source_path.stem}_thumb.jpg"
         thumb_path = thumb_dir / thumb_filename
 
-        with Image.open(source_path) as img:
+        is_video = source_path.suffix.lower() in VIDEO_EXTENSIONS
+
+        if is_video:
+            # Extract full-size frame and keep it as the preview image
+            preview_filename = f"{file_id}_preview.jpg" if file_id else f"{source_path.stem}_preview.jpg"
+            preview_path = thumb_dir / preview_filename
+            if not extract_video_frame(source_path, preview_path):
+                return None
+            img_source = preview_path
+        else:
+            img_source = source_path
+
+        with Image.open(img_source) as img:
             # CRITICAL: Apply EXIF orientation before any processing
             img = ImageOps.exif_transpose(img)
 

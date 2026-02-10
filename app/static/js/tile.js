@@ -202,7 +202,6 @@ class Tile {
                 <div class="badge-top">
                     <div class="badge-info">
                         <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
-                        ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
                         ${recommendedBadge}
                         ${duplicateBadge}
                         ${similarBadge}
@@ -216,6 +215,7 @@ class Tile {
                     </label>
                 </div>
             </div>
+            ${isVideo ? '<div class="video-play-overlay"><span class="play-icon">&#9654;</span></div>' : ''}
             <img class="tile-image"
                  src="${imgSrc}"
                  alt="${this.escapeHtml(file.original_filename)}"
@@ -504,7 +504,6 @@ class Tile {
             <div class="badge-top">
                 <div class="badge-info">
                     <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
-                    ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
                     ${recommendedBadge}
                     ${duplicateBadge}
                     ${similarBadge}
@@ -518,6 +517,18 @@ class Tile {
                 </label>
             </div>
         `;
+
+        // Update video play overlay
+        let overlay = this.element.querySelector('.video-play-overlay');
+        if (isVideo && !overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'video-play-overlay';
+            overlay.innerHTML = '<span class="play-icon">&#9654;</span>';
+            const img = this.element.querySelector('.tile-image');
+            if (img) this.element.insertBefore(overlay, img);
+        } else if (!isVideo && overlay) {
+            overlay.remove();
+        }
 
         // Update duplicate group styling (mode-aware)
         this.element.classList.toggle('duplicate-group', showDuplicate);
@@ -553,6 +564,10 @@ class Tile {
      */
     getFullResSrc() {
         if (!this.file) return '/static/img/placeholder.svg';
+        // Videos can't display in <img> — use the extracted preview frame
+        if (this.file.mime_type?.startsWith('video/') && this.file.thumbnail_path) {
+            return '/' + this.file.thumbnail_path.replace('_thumb.jpg', '_preview.jpg');
+        }
         if (this.file.original_path) return `/uploads/${this.file.original_path}`;
         return this.getThumbnailSrc();
     }
@@ -561,6 +576,9 @@ class Tile {
      * Check if full-res source is available
      */
     hasFullResSource() {
+        if (this.file?.mime_type?.startsWith('video/')) {
+            return !!this.file.thumbnail_path;
+        }
         return !!(this.file?.original_path);
     }
 

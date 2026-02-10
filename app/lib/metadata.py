@@ -191,8 +191,8 @@ def get_image_dimensions(file_path: Path | str, metadata: dict | None = None) ->
     if metadata is None:
         metadata = extract_metadata(file_path)
 
-    width = metadata.get('EXIF:ImageWidth') or metadata.get('File:ImageWidth')
-    height = metadata.get('EXIF:ImageHeight') or metadata.get('File:ImageHeight')
+    width = metadata.get('EXIF:ImageWidth') or metadata.get('File:ImageWidth') or metadata.get('QuickTime:ImageWidth')
+    height = metadata.get('EXIF:ImageHeight') or metadata.get('File:ImageHeight') or metadata.get('QuickTime:ImageHeight')
 
     return (
         int(width) if width else None,

@@ -148,6 +148,32 @@ body.viewport-active {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
+/* Video element in viewport — fill tile, match image styling */
+.thumbnail .tile-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* While video is playing, suppress overlays that block native controls.
+   !important needed to override viewport-mode badge specificity (0,4,0). */
+.thumbnail.video-playing .thumbnail-badges {
+    pointer-events: none !important;
+}
+
+.thumbnail.video-playing .thumbnail-filename {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Video element must sit above badges (z-index: 5) to receive clicks */
+.thumbnail.video-playing .tile-video {
+    position: relative;
+    z-index: 6;
+}
+
 /* ============================================
    VIEWPORT POSITION: NEXT
    ============================================ */

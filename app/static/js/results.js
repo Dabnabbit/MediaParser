@@ -345,7 +345,6 @@ class ResultsHandler {
                 <div class="badge-top">
                     <div class="badge-info">
                         <span class="thumb-badge ${confidenceClass}">${confidenceLabel}</span>
-                        ${isVideo ? '<span class="thumb-badge media-video">&#9658;</span>' : ''}
                         ${duplicateBadge}
                         ${similarBadge}
                         ${isReviewed ? '<span class="thumb-badge reviewed">&#10003;</span>' : ''}
@@ -358,6 +357,7 @@ class ResultsHandler {
                     </label>
                 </div>
             </div>
+            ${isVideo ? '<div class="video-play-overlay"><span class="play-icon">&#9654;</span></div>' : ''}
             <img data-src="${imgSrc}"
                  src="/static/img/placeholder.svg"
                  alt="${file.original_filename}"

@@ -1571,11 +1571,34 @@ body {
 .thumb-badge.confidence-medium { background: var(--color-medium); color: #000; }
 .thumb-badge.confidence-low { background: var(--color-low); }
 
-.thumb-badge.media-video {
-    background: rgba(0, 0, 0, 0.7);
+/* Video play button overlay — centered on tile */
+.video-play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.video-play-overlay .play-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    width: 20px;
-    padding: 0;
+    background: rgba(0, 0, 0, 0.55);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 18px;
+    padding-left: 3px; /* optical centering — play triangle leans right */
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.thumbnail:hover .video-play-overlay .play-icon {
+    background: rgba(0, 0, 0, 0.75);
+    transform: scale(1.1);
 }
 
 .thumb-badge.duplicate {

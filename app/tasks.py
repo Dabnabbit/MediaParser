@@ -312,7 +312,7 @@ def process_import_job(job_id: int) -> dict:
                         # Generate thumbnail for images
                         thumbnail_path = None
                         file_path = Path(file_obj.storage_path or file_obj.original_path)
-                        if file_path.suffix.lower() in {'.jpg', '.jpeg', '.png', '.gif', '.heic'}:
+                        if file_path.suffix.lower() in {'.jpg', '.jpeg', '.png', '.gif', '.heic', '.mp4', '.mov', '.avi', '.mkv'}:
                             thumb_path = generate_thumbnail(
                                 source_path=file_path,
                                 thumb_dir=thumbnails_dir,
