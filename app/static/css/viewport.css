@@ -157,10 +157,12 @@ body.viewport-active {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
-/* While video is playing, suppress overlays that block native controls.
+/* While video is playing, keep badges visible above video (z-index: 7 > 6)
+   but pass clicks through to native controls beneath.
    !important needed to override viewport-mode badge specificity (0,4,0). */
 .thumbnail.video-playing .thumbnail-badges {
     pointer-events: none !important;
+    z-index: 7;
 }
 
 .thumbnail.video-playing .thumbnail-filename {
