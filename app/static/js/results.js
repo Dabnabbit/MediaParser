@@ -85,6 +85,9 @@ class ResultsHandler {
         // Reload grid when viewport exits (reflects any changes made during examination)
         // Then auto-select mode if current mode is now empty (e.g., last unreviewed confirmed)
         window.addEventListener('viewportExit', async (event) => {
+            // Skip if advanceToNextGroup is handling navigation
+            if (window.viewportDetailsPanel?._advancingGroup) return;
+
             const lastFileId = event.detail?.lastFileId;
             await this.loadSummary();
             if (window.filterHandler) {
@@ -469,25 +472,6 @@ class ResultsHandler {
         };
     }
 
-    /**
-     * Format timestamp for display
-     */
-    formatTimestamp(timestamp) {
-        if (!timestamp) return 'Unknown';
-
-        try {
-            const date = new Date(timestamp);
-            return date.toLocaleString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: '2-digit',
-                hour: 'numeric',
-                minute: '2-digit'
-            });
-        } catch (error) {
-            return timestamp;
-        }
-    }
 }
 
 // Initialize when DOM is ready

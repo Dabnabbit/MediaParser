@@ -209,6 +209,3 @@ class ExaminationDataService {
 
 // Create singleton instance
 window.examinationDataService = new ExaminationDataService();
-
-// Backward compatibility alias
-window.examinationHandler = window.examinationDataService;

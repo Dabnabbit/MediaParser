@@ -89,15 +89,6 @@
    MODE VARIANTS
    ============================================ */
 
-/* Grid mode - square tiles with cover fit */
-.media-tile.tile-grid {
-    aspect-ratio: 1;
-}
-
-.media-tile.tile-grid .tile-image {
-    object-fit: cover;
-}
-
 /* Carousel mode - for examination prev/next */
 .media-tile.tile-carousel {
     --tile-size: auto;

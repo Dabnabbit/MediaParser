@@ -682,27 +682,6 @@ body.viewport-details-open > .viewport-hints {
     to { opacity: 0; }
 }
 
-/* Tile slide animations for navigation */
-.thumbnail-grid.viewport-mode .thumbnail.slide-left {
-    animation: slideLeft var(--vp-transition-duration) var(--vp-transition-easing);
-}
-
-.thumbnail-grid.viewport-mode .thumbnail.slide-right {
-    animation: slideRight var(--vp-transition-duration) var(--vp-transition-easing);
-}
-
-@keyframes slideLeft {
-    from {
-        transform: translate(calc(-50% + 100vw), -50%);
-    }
-}
-
-@keyframes slideRight {
-    from {
-        transform: translate(calc(-50% - 100vw), -50%);
-    }
-}
-
 /* ============================================
    VIEWPORT DETAILS PANEL
    ============================================ */

@@ -51,6 +51,13 @@
     --border-radius: 0.5rem;
     --border-radius-sm: 0.25rem;
 
+    /* Gray scale (used by slider component) */
+    --color-gray-300: #d1d5db;
+    --color-gray-400: #9ca3af;
+    --color-gray-500: #6b7280;
+    --color-gray-600: #4b5563;
+    --color-gray-800: #1f2937;
+
     /* Pill / chip shared tokens */
     --pill-radius: 16px;
     --pill-font-size: 0.8rem;
@@ -80,6 +87,13 @@
     --success-color: var(--color-high);
     --warning-color: var(--color-medium);
     --error-color: var(--color-low);
+
+    /* Gray scale (inverted for dark theme) */
+    --color-gray-300: #4b5563;
+    --color-gray-400: #6b7280;
+    --color-gray-500: #9ca3af;
+    --color-gray-600: #d1d5db;
+    --color-gray-800: #e5e7eb;
 }
 
 /* System preference detection (when theme is "system" or not set) */
@@ -104,6 +118,13 @@
         --success-color: var(--color-high);
         --warning-color: var(--color-medium);
         --error-color: var(--color-low);
+
+        /* Gray scale (inverted for dark theme) */
+        --color-gray-300: #4b5563;
+        --color-gray-400: #6b7280;
+        --color-gray-500: #9ca3af;
+        --color-gray-600: #d1d5db;
+        --color-gray-800: #e5e7eb;
     }
 }
 
@@ -1389,10 +1410,6 @@ body {
         padding: 0 var(--spacing-md);
     }
 
-    .top-row {
-        grid-template-columns: 1fr;
-    }
-
     .job-header {
         flex-wrap: wrap;
         gap: var(--spacing-sm);
@@ -2544,17 +2561,6 @@ body {
     to {
         transform: translateX(0);
         opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(100%);
-        opacity: 0;
     }
 }
 

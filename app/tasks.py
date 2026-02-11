@@ -9,7 +9,6 @@ from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 import os
-import json
 import logging
 
 from huey_config import huey
@@ -25,7 +24,6 @@ DEBUG_FILE = '/tmp/job_debug.log'
 
 def debug_log(msg):
     """Write debug message to dedicated file for easy tracking."""
-    from datetime import datetime
     with open(DEBUG_FILE, 'a') as f:
         f.write(f"{datetime.now().isoformat()} | {msg}\n")
 

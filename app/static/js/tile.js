@@ -661,6 +661,3 @@ class Tile {
 
 // Export for use in other modules
 window.Tile = Tile;
-
-// Backward compatibility: alias MediaTile to Tile
-window.MediaTile = Tile;

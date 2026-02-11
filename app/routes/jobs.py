@@ -1069,29 +1069,6 @@ def trigger_export(job_id):
     }), 200
 
 
-@jobs_bp.route('/api/tags', methods=['GET'])
-def get_tags():
-    """
-    Get all tags with usage counts.
-
-    Returns:
-        JSON with array of tags
-    """
-    from app.models import Tag
-
-    tags = Tag.query.order_by(Tag.usage_count.desc(), Tag.name.asc()).all()
-
-    return jsonify({
-        'tags': [
-            {
-                'name': tag.name,
-                'usage_count': tag.usage_count
-            }
-            for tag in tags
-        ]
-    }), 200
-
-
 @jobs_bp.route('/api/jobs/<int:job_id>/finalize', methods=['POST'])
 def finalize_job(job_id):
     """

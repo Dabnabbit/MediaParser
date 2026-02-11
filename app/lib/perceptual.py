@@ -5,6 +5,7 @@ Compares all files with perceptual hashes via O(n²) pairwise comparison.
 For household-scale collections (<10K files) this completes in seconds
 since each comparison is just integer XOR + bit_count.
 """
+from datetime import timezone
 from typing import List
 import uuid
 import logging
@@ -76,9 +77,9 @@ def detect_sequence_type(file_a, file_b) -> str:
     ts_a = file_a.detected_timestamp
     ts_b = file_b.detected_timestamp
     if ts_a.tzinfo is not None:
-        ts_a = ts_a.replace(tzinfo=None) - ts_a.utcoffset()
+        ts_a = ts_a.astimezone(timezone.utc).replace(tzinfo=None)
     if ts_b.tzinfo is not None:
-        ts_b = ts_b.replace(tzinfo=None) - ts_b.utcoffset()
+        ts_b = ts_b.astimezone(timezone.utc).replace(tzinfo=None)
 
     gap = abs((ts_a - ts_b).total_seconds())
 
