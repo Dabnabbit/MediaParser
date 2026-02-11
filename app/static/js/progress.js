@@ -839,7 +839,10 @@ class ProgressHandler {
                     title: 'Export & Finalize',
                     body: `<p>${summaryParts.join(' · ')}</p>
                            <label class="modal-field-label">Output directory</label>
-                           <input name="output_directory" class="modal-input" value="${outputDir.replace(/"/g, '&quot;')}">
+                           <div class="dir-browse-wrap">
+                               <input name="output_directory" class="modal-input" value="${outputDir.replace(/"/g, '&quot;')}">
+                               <button type="button" class="dir-browse-btn" title="Browse">Browse</button>
+                           </div>
                            <div class="modal-checklist">
                                <label class="modal-check-item">
                                    <input type="checkbox" name="clean_working_files" ${chk.clean_working_files ? 'checked' : ''}>
