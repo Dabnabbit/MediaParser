@@ -498,6 +498,7 @@ def process_export_job(job_id: int) -> dict:
             files_to_export = File.query.join(File.jobs).filter(
                 Job.id == job_id,
                 File.discarded == False,
+                File.processing_error.is_(None),  # Skip failed files
                 File.output_path.is_(None)  # Not yet exported
             ).order_by(
                 File.final_timestamp.asc().nullslast(),
@@ -508,7 +509,8 @@ def process_export_job(job_id: int) -> dict:
             # Track how many were already processed (for resume)
             all_files_count = File.query.join(File.jobs).filter(
                 Job.id == job_id,
-                File.discarded == False
+                File.discarded == False,
+                File.processing_error.is_(None)
             ).count()
             already_exported = all_files_count - len(files_to_export)
 

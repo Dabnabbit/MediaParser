@@ -1051,8 +1051,8 @@ def trigger_export(job_id):
     # Associate the same files as the import job
     export_job.files = source_job.files
 
-    # Count non-discarded files for reporting
-    file_count = sum(1 for f in export_job.files if not f.discarded)
+    # Count exportable files (non-discarded, no processing errors)
+    file_count = sum(1 for f in export_job.files if not f.discarded and not f.processing_error)
 
     db.session.commit()
 
