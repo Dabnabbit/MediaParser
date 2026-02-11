@@ -626,6 +626,27 @@ body {
     z-index: 2;
 }
 
+.export-fill {
+    background-color: var(--color-mode-export);
+    z-index: 5;
+    border-radius: inherit;
+}
+
+/* Animated stripes on export fill while exporting */
+.export-fill.exporting {
+    background-image: linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.2) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.2) 75%,
+        transparent 75%
+    );
+    background-size: 40px 40px;
+    animation: barberpole 0.8s linear infinite;
+}
+
 /* Animated stripes on processing fill while active */
 @keyframes barberpole {
     from { background-position: 0 0; }
@@ -680,6 +701,11 @@ body {
 /* When in review state, show segments and hide fills */
 #workflow-track[data-state="review"] .progress-fill {
     opacity: 0;
+}
+
+/* Export fill stays visible during review state (must follow .progress-fill hide rule) */
+#workflow-track[data-state="review"] .export-fill {
+    opacity: 1;
 }
 
 #workflow-track[data-state="review"] .mode-segments {
@@ -2570,7 +2596,7 @@ body {
 .finalize-complete {
     text-align: center;
     padding: var(--spacing-xl) var(--spacing-lg);
-    border-top: 4px solid var(--color-completed);
+    border-top: none;
     border-radius: var(--border-radius);
     background: var(--color-bg);
     animation: fadeScaleIn 0.4s ease-out;
@@ -2647,6 +2673,16 @@ body {
 
 .modal-visible .modal-panel {
     transform: scale(1);
+}
+
+.modal-backdrop.modal-anchored {
+    align-items: stretch;
+    justify-content: stretch;
+}
+
+.modal-anchored .modal-panel {
+    margin: 0;
+    transform-origin: bottom right;
 }
 
 .modal-header {

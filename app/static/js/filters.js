@@ -880,6 +880,10 @@ class FilterHandler {
                     this.modeSegmentsContainer.style.left = '90%';
                     this.modeSegmentsContainer.style.width = '10%';
                 }
+                // Advance breadcrumb: Review ✓, Export active
+                if (window.progressHandler) {
+                    window.progressHandler.setPhase('export');
+                }
                 // Un-collapse and show export segment
                 this.exportSegment.classList.remove('collapsed');
                 this.exportSegment.style.flexGrow = '1';
@@ -906,6 +910,10 @@ class FilterHandler {
                     });
                 }
             } else {
+                // Revert breadcrumb: Review active again
+                if (window.progressHandler) {
+                    window.progressHandler.setPhase('review');
+                }
                 // Collapse export segment, restore normal reviewed overlay width
                 this.exportSegment.classList.add('collapsed');
                 this.exportSegment.classList.remove('ready');

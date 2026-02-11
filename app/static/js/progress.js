@@ -25,6 +25,7 @@ class ProgressHandler {
         this.uploadFill = document.getElementById('upload-fill');
         this.processingFill = document.getElementById('processing-fill');
         this.reviewedOverlay = document.getElementById('reviewed-overlay');
+        this.exportFill = document.getElementById('export-fill');
         this.workflowTrack = document.getElementById('workflow-track');
         this.modeSegments = document.getElementById('mode-segments');
         this.workflowPhases = document.getElementById('workflow-phases');
@@ -68,8 +69,8 @@ class ProgressHandler {
     setPhase(phase) {
         if (!this.workflowPhases) return;
         const phases = this.workflowPhases.querySelectorAll('.phase');
-        const order = ['upload', 'process', 'review'];
-        const activeIdx = order.indexOf(phase);
+        const order = ['upload', 'process', 'review', 'export'];
+        const activeIdx = phase === 'done' ? order.length : order.indexOf(phase);
 
         phases.forEach(el => {
             const idx = order.indexOf(el.dataset.phase);
@@ -134,8 +135,8 @@ class ProgressHandler {
     setState(state) {
         if (this.jobSection) {
             this.jobSection.dataset.state = state;
-            // Reset status color when going to idle
-            if (state === 'idle') {
+            // Reset status color when going to idle or finalized
+            if (state === 'idle' || state === 'finalized') {
                 this.jobSection.dataset.status = '';
             }
         }
@@ -144,9 +145,11 @@ class ProgressHandler {
         if (state === 'uploading') {
             this.setPhase('upload');
         } else if (state === 'processing') {
-            this.setPhase('process');
+            this.setPhase(this.exportJobId ? 'export' : 'process');
+        } else if (state === 'finalized') {
+            this.setPhase('done');
         }
-        // 'complete' phase is set by morphToModes/showModesDirectly
+        // 'review' phase is set by morphToModes/showModesDirectly
 
         // Upload area: visible only in idle state
         if (this.uploadArea) {
@@ -155,12 +158,12 @@ class ProgressHandler {
 
         // Progress area: visible in uploading, processing, and complete states
         if (this.jobProgress) {
-            this.jobProgress.style.display = ['uploading', 'processing', 'complete', 'failed'].includes(state) ? 'block' : 'none';
+            this.jobProgress.style.display = ['uploading', 'processing', 'complete', 'failed', 'finalized'].includes(state) ? 'block' : 'none';
         }
 
         // Controls visibility
         if (this.jobControls) {
-            if (state === 'complete' || state === 'failed') {
+            if (state === 'complete' || state === 'failed' || state === 'finalized') {
                 this.jobControls.style.display = 'flex';
                 if (this.pauseBtn) this.pauseBtn.style.display = 'none';
                 if (this.cancelBtn) {
@@ -197,11 +200,12 @@ class ProgressHandler {
         this.hideSegments();
 
         // Reset layered fills
-        [this.uploadFill, this.processingFill].forEach(fill => {
+        [this.uploadFill, this.processingFill, this.exportFill].forEach(fill => {
             if (fill) {
                 fill.style.transition = 'none';
                 fill.style.width = '0%';
                 fill.style.opacity = '';
+                fill.classList.remove('exporting');
                 void fill.offsetHeight;
                 fill.style.transition = '';
             }
@@ -494,7 +498,9 @@ class ProgressHandler {
         const progress = data.progress_total > 0
             ? Math.round((data.progress_current / data.progress_total) * 100)
             : 0;
-        if (this.processingFill) {
+        if (this.exportJobId && this.exportFill) {
+            this.exportFill.style.width = progress + '%';
+        } else if (this.processingFill) {
             this.processingFill.style.width = progress + '%';
         }
         // Files processed
@@ -576,7 +582,10 @@ class ProgressHandler {
     async handleCancelOrNew() {
         const state = this.jobSection?.dataset.state;
 
-        if (state === 'complete' || state === 'failed') {
+        if (state === 'finalized') {
+            // Export complete — data already cleaned up, just reset UI
+            this.resetToIdle();
+        } else if (state === 'complete' || state === 'failed') {
             // Job is done - this is "New" functionality
             const { confirmed } = await showModal({
                 title: 'New Import',
@@ -714,6 +723,11 @@ class ProgressHandler {
             console.warn('Finalize request failed:', error);
         }
 
+        // Clean up export fill
+        if (this.exportFill) {
+            this.exportFill.classList.remove('exporting');
+        }
+
         // Clear all job state
         this.exportJobId = null;
         localStorage.removeItem('exportJobId');
@@ -728,25 +742,18 @@ class ProgressHandler {
         // Show completion card instead of resetting to idle
         this.hideSegments();
 
-        // Hide workflow bar, results, summary, metrics
-        if (this.jobProgress) this.jobProgress.style.display = 'none';
-        if (this.statsArea) this.statsArea.style.display = 'none';
-        if (this.metricsRow) this.metricsRow.style.display = 'none';
+        // Hide results grid. Keep statsArea, metricsRow, and jobProgress visible —
+        // metrics show export completion info, progress bar shows amber fill.
         if (this.jobSummary) this.jobSummary.style.display = 'none';
         const resultsContainer = document.getElementById('results-container');
         if (resultsContainer) resultsContainer.style.display = 'none';
-        if (this.jobControls) this.jobControls.style.display = 'none';
-        // Set finalized state so card is visible but upload area is not
-        if (this.jobSection) {
-            this.jobSection.dataset.state = 'finalized';
-            this.jobSection.dataset.status = '';
-        }
+        // Set finalized state — header "New" button stays visible via setState
+        this.setState('finalized');
 
         // Populate and show the finalize card
         const card = document.getElementById('finalize-complete');
         const statsEl = document.getElementById('finalize-stats');
         const pathEl = document.getElementById('finalize-output-path');
-        const newBtn = document.getElementById('finalize-new-btn');
 
         if (statsEl) {
             let statsText = `${exported} file${exported !== 1 ? 's' : ''} exported`;
@@ -762,14 +769,6 @@ class ProgressHandler {
 
         if (card) {
             card.style.display = 'block';
-        }
-
-        // Wire "New Import" button
-        if (newBtn) {
-            newBtn.onclick = () => {
-                if (card) card.style.display = 'none';
-                this.resetToIdle();
-            };
         }
     }
 
@@ -940,6 +939,15 @@ class ProgressHandler {
             const data = await response.json();
             this.exportJobId = data.job_id;
             localStorage.setItem('exportJobId', data.job_id);
+
+            // Activate export fill
+            if (this.exportFill) {
+                this.exportFill.style.transition = 'none';
+                this.exportFill.style.width = '0%';
+                void this.exportFill.offsetHeight;
+                this.exportFill.style.transition = '';
+                this.exportFill.classList.add('exporting');
+            }
 
             // Start polling the export job
             this.startPolling(data.job_id);

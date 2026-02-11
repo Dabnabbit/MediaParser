@@ -18,6 +18,8 @@
                 <span class="phase" data-phase="process">Process</span>
                 <span class="phase-sep">&mdash;</span>
                 <span class="phase" data-phase="review">Review</span>
+                <span class="phase-sep">&mdash;</span>
+                <span class="phase" data-phase="export">Export</span>
             </div>
         </div>
         <div class="job-header-center" id="stats-area" style="display: none;">
@@ -151,6 +153,8 @@
                     <span class="seg-count" data-count="reviewed">0</span>
                     <span class="seg-chevron">&#9662;</span>
                 </button>
+                <!-- Layer 5: Export fill (amber, grows over reviewed during export) -->
+                <div class="progress-fill export-fill" id="export-fill"></div>
             </div>
         </div>
     </div>
@@ -161,7 +165,6 @@
         <h3>Export Complete</h3>
         <p class="finalize-stats" id="finalize-stats"></p>
         <p class="finalize-path">Output directory:<br><code id="finalize-output-path"></code></p>
-        <button class="btn btn-primary" id="finalize-new-btn">New Import</button>
     </div>
 
     <!-- Results: Unified Grid with Filter Bar -->
