@@ -1084,6 +1084,7 @@ def finalize_job(job_id):
         JSON with finalize stats
     """
     import os
+    import shutil
     from app.models import UserDecision, Tag, Setting, file_tags
     from app.routes.upload import get_import_root
 
@@ -1182,26 +1183,43 @@ def finalize_job(job_id):
         else:
             stats['sources_kept'] += 1
 
-    # 2. Delete thumbnails (only if clean_working_files)
+    # 2. Delete thumbnails and previews (only if clean_working_files)
     if clean_working_files:
+        # Delete known files for this job (thumb + preview variants)
         for file_id in all_file_ids:
-            thumb_path = os.path.join('storage', 'thumbnails', f'{file_id}_thumb.jpg')
-            try:
-                if os.path.exists(thumb_path):
-                    os.unlink(thumb_path)
-                    stats['thumbnails_deleted'] += 1
-            except Exception as e:
-                logger.warning(f"Failed to delete thumbnail {thumb_path}: {e}")
+            for suffix in ('_thumb.jpg', '_preview.jpg'):
+                path = os.path.join('storage', 'thumbnails', f'{file_id}{suffix}')
+                try:
+                    if os.path.exists(path):
+                        os.unlink(path)
+                        stats['thumbnails_deleted'] += 1
+                except Exception as e:
+                    logger.warning(f"Failed to delete {path}: {e}")
 
-    # 3. Delete empty upload directory (only if clean_working_files + browser uploads)
-    if clean_working_files and is_browser_upload and import_job_id:
-        upload_dir = os.path.join('storage', 'uploads', f'job_{import_job_id}')
-        try:
-            if os.path.isdir(upload_dir) and not os.listdir(upload_dir):
-                os.rmdir(upload_dir)
-                logger.info(f"Removed empty upload directory: {upload_dir}")
-        except Exception as e:
-            logger.warning(f"Failed to remove upload directory {upload_dir}: {e}")
+        # Sweep any remaining orphans (from previous incomplete sessions)
+        thumb_dir = os.path.join('storage', 'thumbnails')
+        if os.path.isdir(thumb_dir):
+            for entry in os.listdir(thumb_dir):
+                entry_path = os.path.join(thumb_dir, entry)
+                try:
+                    if os.path.isfile(entry_path):
+                        os.unlink(entry_path)
+                        stats['thumbnails_deleted'] += 1
+                except Exception as e:
+                    logger.warning(f"Failed to delete orphan thumbnail {entry_path}: {e}")
+
+    # 3. Delete upload directories (only if clean_working_files)
+    if clean_working_files:
+        uploads_dir = os.path.join('storage', 'uploads')
+        if os.path.isdir(uploads_dir):
+            for entry in os.listdir(uploads_dir):
+                entry_path = os.path.join(uploads_dir, entry)
+                try:
+                    if os.path.isdir(entry_path):
+                        shutil.rmtree(entry_path)
+                        logger.info(f"Removed upload directory: {entry_path}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove upload directory {entry_path}: {e}")
 
     # 4. Delete DB records in FK order (only if clear_database)
     #    Use all_file_ids to include discarded/failed files from import job
