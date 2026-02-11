@@ -862,8 +862,13 @@ class FilterHandler {
                          && (this.counts.unreviewed || 0) === 0
                          && (this.counts.reviewed || 0) > 0;
 
+        // Don't show export pill if export is already running or finalized
+        const jobState = document.querySelector('[data-section="job"]')?.dataset.state;
+        const exportActive = jobState === 'processing' && window.progressHandler?.exportJobId;
+        const exportDone = jobState === 'finalized';
+
         if (this.exportPhaseBtn) {
-            if (allReviewed && this.importJobId) {
+            if (allReviewed && this.importJobId && !exportActive && !exportDone) {
                 // Shimmer on reviewed overlay
                 if (this.reviewedOverlay && !this._shimmerFired) {
                     this._shimmerFired = true;

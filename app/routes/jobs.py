@@ -1172,12 +1172,21 @@ def finalize_job(job_id):
         }
     }
 
+    # Collect ALL files (export + import) for full cleanup.
+    # Export job only has reviewed files; import job also has discarded/failed files.
+    all_files = {f.id: f for f in export_job.files}
+    if import_job_id:
+        import_job_for_cleanup = Job.query.get(import_job_id)
+        if import_job_for_cleanup:
+            for f in import_job_for_cleanup.files:
+                all_files.setdefault(f.id, f)
+    all_file_ids = set(all_files.keys())
+
     # 1. Delete source files based on options
-    for file_obj in export_job.files:
+    for file_obj in all_files.values():
         should_delete = False
-        if is_browser_upload and file_obj.output_path and file_obj.storage_path:
+        if is_browser_upload and file_obj.storage_path:
             # Browser uploads: clean_working_files deletes uploaded copies
-            # delete_sources is redundant (same physical files)
             should_delete = clean_working_files or delete_sources
         elif not is_browser_upload and file_obj.storage_path:
             # Server-path imports: only delete originals if explicitly requested
@@ -1198,7 +1207,7 @@ def finalize_job(job_id):
 
     # 2. Delete thumbnails (only if clean_working_files)
     if clean_working_files:
-        for file_id in file_ids:
+        for file_id in all_file_ids:
             thumb_path = os.path.join('storage', 'thumbnails', f'{file_id}_thumb.jpg')
             try:
                 if os.path.exists(thumb_path):
@@ -1218,21 +1227,23 @@ def finalize_job(job_id):
             logger.warning(f"Failed to remove upload directory {upload_dir}: {e}")
 
     # 4. Delete DB records in FK order (only if clear_database)
+    #    Use all_file_ids to include discarded/failed files from import job
     if clear_database:
+        all_db_file_ids = list(all_file_ids)
         try:
             # UserDecision → references File
-            deleted = UserDecision.query.filter(UserDecision.file_id.in_(file_ids)).delete(synchronize_session=False)
+            deleted = UserDecision.query.filter(UserDecision.file_id.in_(all_db_file_ids)).delete(synchronize_session=False)
             stats['db_records_deleted'] += deleted
 
             # file_tags → references File and Tag
             deleted = db.session.execute(
-                file_tags.delete().where(file_tags.c.file_id.in_(file_ids))
+                file_tags.delete().where(file_tags.c.file_id.in_(all_db_file_ids))
             ).rowcount
             stats['db_records_deleted'] += deleted
 
             # Duplicate → references File (both columns)
             deleted = Duplicate.query.filter(
-                db.or_(Duplicate.file_id.in_(file_ids), Duplicate.duplicate_of_id.in_(file_ids))
+                db.or_(Duplicate.file_id.in_(all_db_file_ids), Duplicate.duplicate_of_id.in_(all_db_file_ids))
             ).delete(synchronize_session=False)
             stats['db_records_deleted'] += deleted
 
@@ -1250,7 +1261,7 @@ def finalize_job(job_id):
             stats['db_records_deleted'] += deleted
 
             # File records
-            deleted = File.query.filter(File.id.in_(file_ids)).delete(synchronize_session=False)
+            deleted = File.query.filter(File.id.in_(all_db_file_ids)).delete(synchronize_session=False)
             stats['db_records_deleted'] += deleted
 
             # Job records (export + import)

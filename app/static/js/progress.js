@@ -378,6 +378,9 @@ class ProgressHandler {
         // Set processing state
         this.setState('processing');
 
+        // Hide job summary from previous phase (prevents doubled metrics during export)
+        if (this.jobSummary) this.jobSummary.style.display = 'none';
+
         // Upload fill stays at 100% — processing fill layers on top
         // Reset only processing fill to 0%
         if (this.processingFill) {
@@ -746,9 +749,11 @@ class ProgressHandler {
         // Show completion card instead of resetting to idle
         this.hideSegments();
 
-        // Hide results grid. Keep statsArea, metricsRow, and jobProgress visible —
-        // metrics show export completion info, progress bar shows amber fill.
+        // Hide results grid. Keep statsArea and metricsRow visible for summary context.
         if (this.jobSummary) this.jobSummary.style.display = 'none';
+        // Hide stale metrics (ETA and Current are meaningless after completion)
+        if (this.eta) this.eta.closest('.metric')?.style.setProperty('display', 'none');
+        if (this.currentFilename) this.currentFilename.closest('.metric')?.style.setProperty('display', 'none');
         const resultsContainer = document.getElementById('results-container');
         if (resultsContainer) resultsContainer.style.display = 'none';
         // Set finalized state — header "New" button stays visible via setState
@@ -756,16 +761,7 @@ class ProgressHandler {
 
         // Populate and show the finalize card
         const card = document.getElementById('finalize-complete');
-        const statsEl = document.getElementById('finalize-stats');
         const pathEl = document.getElementById('finalize-output-path');
-
-        if (statsEl) {
-            let statsText = `${exported} file${exported !== 1 ? 's' : ''} exported`;
-            if (errorCount > 0) {
-                statsText += `, ${errorCount} error${errorCount !== 1 ? 's' : ''}`;
-            }
-            statsEl.textContent = statsText;
-        }
 
         if (pathEl) {
             pathEl.textContent = finalizeResult.output_directory || 'storage/output';
