@@ -1,154 +1,131 @@
 # Coding Conventions
 
-**Analysis Date:** 2026-02-02
+**Analysis Date:** 2026-02-11
 
 ## Naming Patterns
 
 **Files:**
-- Snake_case for all Python files: `PhotoTimeFixer.py`, `minimal_test.py`
-- Descriptive, purpose-driven names matching functionality
+- Python: snake_case for all files (`processing.py`, `confidence.py`, `huey_config.py`)
+- JavaScript: kebab-case for multi-word files (`tile-manager.js`, `viewport-core.js`, `selection-actions.js`)
+- CSS: kebab-case (`main.css`, `viewport.css`)
+- Templates: snake_case (`index.html`, `base.html`)
 
 **Functions:**
-- PascalCase for main entry points: `Main()` (line 48 in `PhotoTimeFixer.py`)
-- snake_case for utility functions: `get_datetime_from_name()`, `convert_str_to_datetime()`
-- Descriptive names that clearly indicate purpose
+- Python: snake_case throughout (`process_single_file()`, `calculate_confidence()`, `get_datetime_from_name()`)
+- JavaScript: camelCase (`morphToModes()`, `loadFilesForMode()`, `generateThumbnail()`)
 
 **Variables:**
-- snake_case for all variables: `documents_dir`, `output_dir`, `document_path`, `meta_datetimes1`
-- Prefixes for related variables: `output_dir`, `output_path`, `output_datetime`, `output_document_name`
-- Descriptive compound names: `meta_filetype_tags`, `check_these_files`, `meta_error_files`
-- Loop variables use underscore prefix: `for directory_name in directory_list` (explicit, not abbreviated)
+- Python: snake_case (`file_hash_sha256`, `timestamp_candidates`, `pending_updates`)
+- JavaScript: camelCase (`currentMode`, `fileCount`, `selectedIds`)
+- Constants: UPPER_SNAKE_CASE in both languages (`BATCH_COMMIT_SIZE`, `EXACT_THRESHOLD`, `ALLOWED_EXTENSIONS`)
 
-**Types:**
-- Classes use PascalCase: `class bcolors` (line 34 in `PhotoTimeFixer.py`)
-- Type hints used in function signatures: `def get_datetime_from_name(document_name: str) -> Optional[datetime.datetime]` (line 223)
-- Return types consistently annotated with `Optional[]` for nullable returns
+**Classes/Models:**
+- Python: PascalCase (`File`, `Job`, `JobStatus`, `ConfidenceLevel`)
+- Enums: PascalCase with UPPER_CASE values (`JobStatus.RUNNING`, `ConfidenceLevel.HIGH`)
 
-**Constants:**
-- UPPER_CASE with underscores: `valid_extensions`, `valid_date_year_min`, `valid_date_year_max`, `valid_date_regex`, `valid_time_regex`
-- Module-level constants defined at top of file (lines 13-30 in `PhotoTimeFixer.py`)
+**Blueprints/Routes:**
+- Blueprint names: lowercase (`'upload'`, `'jobs'`, `'api'`, `'settings'`, `'review'`)
+- URL prefixes: some use `/api` prefix, some define it per-route
+- Route functions: snake_case matching the endpoint action (`upload_files`, `get_job_status`, `submit_review`)
 
 ## Code Style
 
 **Formatting:**
-- No explicit formatter detected (no .prettier, black, or autopep8 config)
-- Lines are up to ~120 characters long
-- String concatenation used for long print statements with color codes
-- F-strings for formatted output: `f'{bcolors.OKBLUE}{(time.time() - startTime):.2f}s:...{bcolors.ENDC}'`
-- Spacing: 4-space indentation (Python standard)
+- Python: 4-space indentation, ~120 char line limit
+- JavaScript: 4-space indentation (some files use 2-space)
+- CSS: 4-space indentation with CSS custom properties (variables)
+- No configured formatter (no black, prettier, or autopep8 config)
+
+**String Formatting:**
+- Python: f-strings throughout (`f"Job {job_id} completed"`)
+- JavaScript: Template literals (`` `File ${file.id} reviewed` ``)
 
 **Linting:**
-- No linting configuration files detected (.flake8, .pylintrc, pyproject.toml)
-- Code follows general Python conventions but not strictly enforced
-- Some style inconsistencies present (e.g., multiple imports on single line at line 1: `import os, re, datetime, time, shutil`)
+- No explicit linting configuration (.flake8, .pylintrc, pyproject.toml)
+- `# noqa` comments used sparingly for intentional patterns
 
 ## Import Organization
 
-**Order:**
-1. Standard library: `os, re, datetime, time, shutil`
-2. Type hints: `from typing import Optional`
-3. External packages: `import exiftool`, `from PIL import Image`
-4. Commented/alternative imports for experimental code
+**Python:**
+1. Standard library (`datetime`, `pathlib`, `json`, `os`, `logging`, `re`)
+2. Third-party (`flask`, `sqlalchemy`, `huey`, `PIL`, `imagehash`, `exiftool`)
+3. Local application (`from app import db`, `from app.models import ...`, `from app.lib.* import ...`)
 
-**Path Aliases:**
-- Not used; direct imports from packages
-
-**Import Style:**
-```python
-import os, re, datetime, time, shutil  # Multiple imports on one line
-from typing import Optional
-import exiftool  # PyExifTool
-from PIL import Image  #  pillow
-```
+**JavaScript:**
+- No import/export system (vanilla JS loaded via `<script>` tags)
+- Module pattern: Each file defines functions on global or namespaced objects
+- Vendor scripts loaded first (`chrono.min.js`)
 
 ## Error Handling
 
-**Patterns:**
-- Try/except for external library operations (line 195-205 in `PhotoTimeFixer.py`):
-```python
-try:
-    et.set_tags(output_document_path, tags=metadata_to_update, params=['-overwrite_original'])
-except Exception as e:
-    exception_type = type(e).__name__
-    if exception_type == "ExifToolExecuteError":
-        # Handle specific error type
-        meta_error_files.append(...)
-```
-- Generic `Exception` catching with type inspection for error categorization
-- No custom exception classes used
-- Error messages collected and displayed at end of processing (lines 213-220)
+**Python:**
+- Per-file error capture in processing pipeline (errors returned in result dicts, not raised)
+- Route-level try/except with JSON error responses and appropriate HTTP status codes
+- Database rollback on route errors (`db.session.rollback()`)
+- Task-level exception handling with Huey retries (2 retries, 30s delay)
+- Error threshold: Jobs halt if >10% error rate after minimum sample
 
-**Return values for errors:**
-- `None` or `False` used to indicate failed operations (lines 233, 238, 261, 276)
-- Functions return `Optional[datetime.datetime]` when parsing may fail
+**JavaScript:**
+- try/catch around fetch calls with user-facing error messages
+- Graceful degradation (features disabled if dependent data unavailable)
 
 ## Logging
 
-**Framework:**
-- No logging module used
-- Pure `print()` statements for all output (commented logging config at lines 9-10)
+**Framework:** Python `logging` module
+
+**Configuration:**
+- `run_worker.py`: `logging.basicConfig()` with timestamped format to stdout
+- `huey_config.py`: SQLAlchemy engine logger set to WARNING (reduce noise)
+- Debug file: `/tmp/job_debug.log` for pause/resume state tracking
 
 **Patterns:**
-- Colored output using `bcolors` class (lines 34-43) with ANSI codes
-- Status tracking with elapsed time: `f'{bcolors.OKBLUE}{(time.time() - startTime):.2f}s:...'`
-- Multiple print levels for different message types:
-  - INFO: `print(f'{bcolors.OKBLUE}...')` - standard messages
-  - WARNING: `print(f'{bcolors.WARNING}...')` - attention needed
-  - SUCCESS: `print(f'{bcolors.OKGREEN}...')` - operation completed
-  - ERROR: `print(f'{bcolors.FAIL}...')` - failed operations
+- Module-level loggers: `logger = logging.getLogger(__name__)`
+- Levels used: `logger.debug()` for processing details, `logger.info()` for completions, `logger.warning()` for non-critical issues, `logger.error()` for failures
+- All routes log significant actions (create, review, discard, export)
 
-**Output examples from `PhotoTimeFixer.py`:**
-```python
-print(f'{bcolors.OKBLUE}{(time.time() - startTime):.2f}s:\tScanning {bcolors.OKCYAN}{directory_name + '/' + document_name}{bcolors.ENDC}')
-print(f'{bcolors.WARNING}Low confidence found, check the following:{bcolors.ENDC}')
-print(f'{bcolors.FAIL}MetaData Errors found, check the following:{bcolors.ENDC}')
-```
+## Module Design
+
+**Python Backend:**
+- Application factory pattern with blueprint registration
+- Processing library modules return plain dicts (no ORM access in worker threads)
+- Task functions create own Flask app context for database access
+- Models in single file (`models.py`) — all 7 models + 2 association tables
+
+**JavaScript Frontend:**
+- 28 modules loaded via script tags (no bundler)
+- Modules communicate through global function calls and DOM events
+- CSS uses custom properties for theming (`--bg-primary`, `--accent`, etc.)
+
+## Function Design
+
+**Processing functions (`app/lib/`):**
+- Pure functions where possible (no database access)
+- Return typed dicts for thread-safe results
+- Type hints on all function signatures
+- Docstrings with Args/Returns sections
+
+**Route handlers:**
+- JSON request/response pattern
+- Input validation with descriptive error messages
+- Consistent response shapes per endpoint
+
+**Database queries:**
+- SQLAlchemy 2.x query style (`db.session.get()`, `Model.query.filter()`)
+- Pagination support (both offset/limit and page/per_page)
+- Explicit eager/lazy loading awareness
 
 ## Comments
 
 **When to Comment:**
-- Used for disabled/experimental code (lines 5-10, 45, 59, etc.)
-- Special algorithm markers: `#//-` prefix for significant function descriptions
-  - Line 222: `#//-Try to scan the document for dates...`
-  - Line 235: `#//-Parse and convert date-time strings...`
-- Debug comments marked with "hmm" prefix (lines 131, 240, 246, 254, 258, 268, 270, 271)
-- Inline comments for clarification of metadata tags (line 3: `# PyExifTool`, line 6: `#  pillow`)
+- Module-level docstrings describing purpose and public API
+- Function docstrings with Args/Returns/Example sections
+- Inline comments for non-obvious logic (threshold values, algorithm choices)
+- Section headers using `# ====` separators in longer files
 
-**JSDoc/TSDoc:**
-- Not used; Python docstrings not present in main code
-- Test file uses docstrings for function documentation (line 15, 270 in `minimal_test.py`)
-
-## Function Design
-
-**Size:**
-- Main function (`Main()`) is monolithic at ~230 lines (lines 48-220)
-- Utility functions are focused: `get_datetime_from_name()` ~11 lines, `convert_str_to_datetime()` ~40 lines
-- Nested loops and conditionals within main function without extraction
-
-**Parameters:**
-- Functions take single parameters: `document_name: str`, `input_string: str`
-- Main function uses module-level globals for configuration
-
-**Return Values:**
-- Utility functions return typed values: `Optional[datetime.datetime]`
-- None used for failed parsing/missing data
-- Functions return early on validation failures
-
-## Module Design
-
-**Exports:**
-- Single entry point via `if __name__ == '__main__'` pattern (lines 277-279)
-- Main module function called from entry point: `Main()`
-- Helper functions available for import if needed
-
-**Barrel Files:**
-- Not used; single-file application structure
-
-**Global State:**
-- Configuration as module-level constants (lines 13-30): `documents_dir`, `output_dir`, `output_dir_years`, `output_dir_clear`
-- Runtime state as module-level variable: `startTime` (line 46)
-- Lists for error tracking declared at function level (lines 62-63)
+**Not Commented:**
+- Self-evident code (standard CRUD, simple conditionals)
+- Each line in straightforward sequences
 
 ---
 
-*Convention analysis: 2026-02-02*
+*Convention analysis: 2026-02-11*

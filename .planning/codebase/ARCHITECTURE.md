@@ -1,165 +1,175 @@
 # Architecture
 
-**Analysis Date:** 2026-02-02
+**Analysis Date:** 2026-02-11
 
 ## Pattern Overview
 
-**Overall:** Monolithic batch processor with single-entry procedural flow
+**Overall:** Flask web application with background task queue and modular processing pipeline
 
 **Key Characteristics:**
-- Single-file application (`PhotoTimeFixer.py`) with no module separation
-- Linear procedural execution triggered from `__main__` block
-- Configuration values defined as global module-level constants
-- Direct file I/O and exiftool integration in main processing loop
-- Synchronous sequential processing of media files
+- Application factory pattern (`create_app()`) with blueprint-based routing
+- SQLAlchemy ORM with SQLite database (WAL mode for concurrency)
+- Huey task queue with SQLite backend for background processing
+- Modular processing library (`app/lib/`) with clear separation of concerns
+- Vanilla JS frontend with 28+ modules (no build step)
+- Copy-first architecture — never modifies source files
 
 ## Layers
 
-**Configuration & Setup Layer:**
-- Purpose: Define processing parameters, validation rules, and constants
-- Location: `PhotoTimeFixer.py` lines 1-46 (module-level constants and globals)
-- Contains: Regex patterns, file extension lists, metadata tag definitions, global state
-- Depends on: None (configuration is hardcoded)
-- Used by: Main processing loop, helper functions
+**Configuration Layer:**
+- Purpose: Application configuration, environment handling, path setup
+- Location: `config.py` (Config, DevelopmentConfig, ProductionConfig classes)
+- Contains: Database URI, storage paths, timezone, worker threads, batch sizes, error thresholds
+- Environment: Uses `os.environ` for SECRET_KEY, TIMEZONE; pathlib.Path for all paths
+- Used by: App factory, tasks, routes
 
-**Entry Point / Orchestration Layer:**
-- Purpose: Coordinate overall program flow, file discovery, and result reporting
-- Location: `PhotoTimeFixer.py` lines 48-220 (`Main()` function)
-- Contains: Directory traversal, exiftool context management, error collection, output routing
-- Depends on: Configuration layer, helper functions, exiftool library
-- Used by: `__main__` block (line 277-279)
+**Application Factory Layer:**
+- Purpose: Create and configure Flask app, register blueprints, initialize database
+- Location: `app/__init__.py` (`create_app()`)
+- Contains: SQLAlchemy init, WAL mode setup, directory creation, blueprint registration
+- Depends on: Configuration layer, models
+- Used by: `run.py` (dev server), `app/tasks.py` (worker context)
 
-**Metadata Extraction & Parsing Layer:**
-- Purpose: Extract and interpret temporal data from filenames and file metadata
-- Location: `PhotoTimeFixer.py` lines 223-276 (`get_datetime_from_name()`, `convert_str_to_datetime()`)
-- Contains: Regex-based date/time parsing, timezone handling, validation
-- Depends on: Configuration layer (regex patterns, year bounds)
-- Used by: Main processing loop
+**Routes Layer (5 Blueprints):**
+- Purpose: HTTP API endpoints for all user interactions
+- Location: `app/routes/` (upload.py, jobs.py, api.py, settings.py, review.py)
+- Contains: Upload handling, job status/control, progress polling, settings CRUD, review/tag/duplicate operations
+- Depends on: Models, tasks (for enqueuing), lib modules (for quality metrics)
+- Used by: Frontend JS modules
 
-**File Operations Layer:**
-- Purpose: Copy files to output directory, detect duplicates, handle conflicts
-- Location: `PhotoTimeFixer.py` lines 168-206 (within `Main()` function)
-- Contains: File copying with `shutil.copy2()`, collision detection via file existence checking
-- Depends on: File system, configuration layer
-- Used by: Main processing loop
+**Task Queue Layer:**
+- Purpose: Background job processing separate from web server
+- Location: `huey_config.py` (queue setup), `app/tasks.py` (task definitions)
+- Contains: `process_import_job()`, `process_export_job()`, `health_check()`
+- Depends on: App factory (creates own app context), lib modules, models
+- Used by: Routes (via `enqueue_import_job()`, `enqueue_export_job()`)
 
-**Metadata Writing Layer:**
-- Purpose: Update EXIF/file metadata with determined timestamps and tags
-- Location: `PhotoTimeFixer.py` lines 175-206 (metadata update section within `Main()`)
-- Contains: Metadata filtering, tag mapping, exiftool calls with error handling
-- Depends on: exiftool, configuration layer
-- Used by: Main processing loop
+**Processing Library Layer:**
+- Purpose: Core file processing logic, isolated from web/database concerns
+- Location: `app/lib/` (10 modules)
+- Contains: File processing pipeline, hashing, metadata extraction, timestamp parsing, confidence scoring, duplicate detection, perceptual hashing, export, tagging, thumbnail generation
+- Depends on: PyExifTool, Pillow, imagehash, python-magic
+- Used by: Task queue layer
+
+**Data Model Layer:**
+- Purpose: Database schema and ORM models
+- Location: `app/models.py`
+- Contains: File, Job, Duplicate, UserDecision, Setting, Tag models + enums (JobStatus, ConfidenceLevel)
+- Depends on: SQLAlchemy, Flask-SQLAlchemy
+- Used by: All layers above
+
+**Frontend Layer:**
+- Purpose: Web UI with thumbnail grid, carousel viewport, review workflows
+- Location: `app/static/js/` (28 modules), `app/static/css/` (5 stylesheets), `app/templates/` (2 templates)
+- Contains: Virtual scrolling, tile management, viewport carousel, FLIP animations, particle effects, Web Audio sounds, upload, progress, filters, selection, timestamps, tags, settings
+- Depends on: Routes layer (via fetch API), chrono.min.js (vendor)
+- Used by: End users via browser
 
 ## Data Flow
 
-**Primary Processing Flow:**
+**Import Flow:**
+1. User uploads files (browser drag-drop) or specifies server directory path
+2. Route creates Job + File records in database, saves files to `storage/uploads/job_N/`
+3. Route enqueues `process_import_job(job_id)` via Huey
+4. Worker picks up task, creates own Flask app context
+5. ThreadPoolExecutor processes files in parallel:
+   - SHA256 hash (exact duplicate detection)
+   - Perceptual hash via pHash (near-duplicate detection)
+   - ExifTool metadata extraction
+   - Filename timestamp parsing
+   - Confidence scoring (weighted source agreement)
+   - Thumbnail generation (Pillow + EXIF orientation correction)
+6. Batch commits to database every 10 files
+7. After all files: SHA256-based duplicate grouping, perceptual duplicate detection
+8. Job marked COMPLETED
 
-1. **Initialization** (lines 48-60)
-   - Clear output directory if configured
-   - Build list of subdirectories to process
-   - Create exiftool context manager
+**Review Flow:**
+1. Frontend polls `/api/progress/:id` during processing
+2. On completion, loads thumbnail grid via `/api/jobs/:id/files` with mode filtering
+3. Modes: duplicates, similar, unreviewed, reviewed, discarded, failed
+4. User reviews in carousel viewport (full image, timestamp options, tags)
+5. User actions: confirm timestamp, bulk review, discard/undiscard, resolve duplicates, add/remove tags
+6. Each action hits review API endpoints, updates database
 
-2. **File Discovery** (lines 64-70)
-   - Iterate through source directories
-   - Filter by valid extensions
-   - Extract tags from directory names and filename metadata syntax
-
-3. **Datetime Resolution** (lines 82-146)
-   - Extract datetime from filename via regex (`get_datetime_from_name()`)
-   - Query file metadata via exiftool
-   - Collect all found datetimes in two priority lists:
-     - `meta_datetimes1`: High-priority metadata (EXIF fields, primary sources)
-     - `meta_datetimes2`: Secondary sources (filename, extracted from other metadata)
-   - Select minimum timestamp as authoritative
-
-4. **Output Path Determination** (lines 147-166)
-   - Check extension mismatch between file extension and metadata
-   - Assign to output subdirectory based on:
-     - "CHECK" folder if low confidence (no secondary datetimes)
-     - Year-based folder if `output_dir_years` enabled
-     - "ERROR" folder if metadata write fails
-   - Generate filename from selected datetime
-   - Handle collisions by incrementing second value
-
-5. **File Copy & Metadata Update** (lines 174-206)
-   - Copy file to output location
-   - Build metadata update dictionary by:
-     - Finding all date-containing metadata fields
-     - Adding ensured tags if missing
-     - Adding comment tags from filename/directory
-   - Execute exiftool metadata write
-   - Catch and handle ExifToolExecuteError
-
-6. **Results Reporting** (lines 208-220)
-   - Print list of files requiring manual review
-   - Print list of metadata processing errors
-   - Output formatted diagnostic information
+**Export Flow:**
+1. User triggers export from completed import job
+2. Route validates duplicate groups resolved, creates export Job
+3. Worker processes export:
+   - Auto-generates tags from folder structure
+   - Copies non-discarded files to `output/YYYY/YYYYMMDD_HHMMSS.ext`
+   - Writes corrected EXIF metadata + tags to output copies
+   - Collision resolution with counter suffixes (`_001`, `_002`)
+4. Post-export finalization: cleanup working data, delete DB records, keep output
 
 **State Management:**
-- Global variables: `startTime` (performance tracking)
-- Local lists within `Main()`: `check_these_files`, `meta_error_files` (problem tracking)
-- No persistent state between runs (no caching or database)
-- File system used as implicit state store (output directories)
+- Database: All persistent state (files, jobs, decisions, tags, settings)
+- SQLite WAL mode: Concurrent reads from web + writes from workers
+- Job status polling: Frontend polls every 1-2 seconds during processing
+- Session resume: Active jobs detected on page load via `/api/current-job`
 
 ## Key Abstractions
 
-**DateTime Resolver:**
-- Purpose: Reconcile multiple datetime sources into single authoritative timestamp
-- Examples: Lines 82-146 in `Main()`
-- Pattern: Collect multiple candidates, rank by source priority, select minimum (earliest)
+**Processing Pipeline (`app/lib/processing.py`):**
+- Purpose: Complete file processing in thread pool workers
+- Pattern: Pure function returning dict — no database access, thread-safe
+- Steps: Validate → Hash → Extract metadata → Parse timestamp → Score confidence → Return results
 
-**Metadata Tag Categorizer:**
-- Purpose: Classify and filter metadata fields for different purposes
-- Examples: `meta_filetype_tags`, `meta_datetime_tags`, `meta_ignored_tags`, `meta_ensured_tags`, `meta_comment_tags` (lines 25-30)
-- Pattern: Tuple-based whitelist/blacklist constants used in loop conditions
+**Confidence Scoring (`app/lib/confidence.py`):**
+- Purpose: Weighted scoring of timestamp sources with inter-source agreement
+- Pattern: Collect candidates → Filter by min year → Sort → Score by weight + agreement count
+- Levels: HIGH (EXIF + agreement), MEDIUM (reliable source OR agreement), LOW (filename only), NONE
 
-**Output Directory Router:**
-- Purpose: Determine destination folder based on processing result
-- Examples: Lines 156-165
-- Pattern: If-elif chain checking confidence level, year availability, error status
+**Duplicate Detection (`app/lib/perceptual.py`):**
+- Purpose: O(n²) pairwise Hamming distance comparison on perceptual hashes
+- Pattern: Compare all pairs → Merge into groups → Finalize group confidence/type
+- Thresholds: ≤5 bits = exact, 6-16 bits = similar, >16 = unrelated
 
-**Filename Collision Resolver:**
-- Purpose: Generate unique output filename when target path exists
-- Examples: Lines 168-172
-- Pattern: Loop incrementing datetime by one second until unique filename found
+**Export Pipeline (`app/lib/export.py`):**
+- Purpose: Organize files into year-based output structure
+- Pattern: Generate path → Resolve collisions → Copy with verification → Write metadata
 
 ## Entry Points
 
-**Main Entry:**
-- Location: `PhotoTimeFixer.py` lines 277-279
-- Triggers: Direct script execution (`python PhotoTimeFixer.py`)
-- Responsibilities: Initialize timer, call `Main()` function
+**Web Server:**
+- Location: `run.py`
+- Triggers: `python run.py` or `gunicorn 'run:app'`
+- Binds: 0.0.0.0:5000 (WSL → Windows access)
 
-**Main Processing Function:**
-- Location: `PhotoTimeFixer.py` line 48 (`def Main():`)
-- Triggers: Called from `__main__` block
-- Responsibilities: Orchestrate entire processing pipeline, manage exiftool lifecycle, collect results
+**Background Worker:**
+- Location: `run_worker.py`
+- Triggers: `python run_worker.py`
+- Config: 2 threads, 50ms initial poll, 300ms max delay, health checks
+
+**Main Page:**
+- Location: `app/templates/index.html` (loads all JS modules)
+- Triggers: Browser navigation to `/`
 
 ## Error Handling
 
-**Strategy:** Try-catch around exiftool operations; fallback routing to ERROR folder; error collection and reporting
+**Strategy:** Layered — per-file errors don't crash jobs, error threshold halts gracefully
 
 **Patterns:**
-- Exception catching: Lines 195-205 (ExifToolExecuteError specific handling)
-- Fallback behavior: Move files to "ERROR" subdirectory on metadata write failure
-- Error accumulation: Two lists track problematic files (`check_these_files`, `meta_error_files`)
-- Error reporting: End-of-run diagnostic output (lines 208-220)
-- Silent failures: Invalid regex matches, missing metadata fields return `None` or skip processing
+- Processing errors: Caught per-file in thread pool, stored in `file.processing_error`
+- Error threshold: Job halts if >10% of files fail (configurable, min 10 file sample)
+- Job failures: Exception caught, job marked FAILED, re-raised for Huey retry (2 retries, 30s delay)
+- Pause/cancel: Worker checks job status after each file, commits pending work before stopping
+- API errors: Standard HTTP error responses with JSON error messages
 
 ## Cross-Cutting Concerns
 
-**Logging:** Console output with ANSI color codes via `bcolors` class (lines 34-43). Progress printed to stdout showing elapsed time, filename, file size, and status. No structured logging framework.
+**Logging:** Python `logging` module throughout. Structured format: `[timestamp] LEVEL:module: message`. SQLAlchemy engine logging reduced to WARNING. Debug file at `/tmp/job_debug.log` for pause/resume tracking.
 
 **Validation:**
-- File extension checking (line 68)
-- Year bounds validation in `convert_str_to_datetime()` (lines 260-261)
-- Regex-based date/time format validation (lines 21-23, 241-276)
-- Metadata field type checking (line 124)
+- File extensions: Allowlist (jpg, jpeg, png, gif, heic, mp4, mov, avi, mkv)
+- File types: python-magic for MIME type verification (media files only)
+- Paths: `secure_filename()` for uploads, absolute path validation for imports
+- Timestamps: Min year filter (2000), regex patterns, year range bounds (2000-2100)
+- Timezone: ZoneInfo validation on startup and settings save
 
-**Authentication:** None. Direct file system access and exiftool binary execution.
+**Authentication:** None (v1, trusted home network)
 
-**Timezone Handling:** Fixed timezone applied if not found in metadata (lines 244-253). Timezone offset parsed from metadata string if present. Timezone converted to Python `timezone` object.
+**Timezone Handling:** Configurable via settings (default: America/New_York). All internal storage in UTC. ZoneInfo for timezone conversion. QuickTime dates assumed UTC per spec, EXIF dates use configured default.
 
 ---
 
-*Architecture analysis: 2026-02-02*
+*Architecture analysis: 2026-02-11*

@@ -1,235 +1,206 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-02-02
+**Analysis Date:** 2026-02-11
 
 ## Tech Debt
 
-**Hardcoded Configuration Paths:**
-- Issue: File paths are hardcoded as Windows-specific absolute paths, making the script non-portable and requiring manual editing for each environment
-- Files: `PhotoTimeFixer.py` lines 13-16
-- Impact: Cannot run on Linux/macOS without path modifications; requires manual re-configuration for different users or machines
-- Fix approach: Move configuration to environment variables or a separate config file (e.g., `config.json` or `.env`)
+**O(n^2) Perceptual Duplicate Detection:**
+- Issue: Pairwise Hamming distance comparison of all file perceptual hashes grows quadratically
+- Files: `app/lib/perceptual.py` (`_compare_all_pairs()`)
+- Impact: Processing time becomes impractical for large imports (10k+ files)
+- Fix approach: Spatial indexing (VP-tree, BK-tree) or locality-sensitive hashing for sub-quadratic lookup
 
-**Inactive Imports and Dead Code:**
-- Issue: Multiple unused imports and commented-out debugging code remain in the codebase
-- Files: `PhotoTimeFixer.py` lines 5-10, 88-101
-- Impact: Increases cognitive load; suggests incomplete refactoring or abandoned debugging efforts
-- Fix approach: Remove unused imports (`piexif`, `Image`, `exifread`); remove or reorganize debug code blocks
+**No JavaScript Build Step:**
+- Issue: 28 JS modules loaded via individual `<script>` tags with no bundling, minification, or tree-shaking
+- Files: `app/templates/index.html` (28 script tags), `app/static/js/` (28 files)
+- Impact: Slower initial page load; no dead code elimination; global namespace pollution; no module imports
+- Fix approach: Adopt a bundler (esbuild, vite) or ES modules with import maps
 
-**Global Variables for State:**
-- Issue: Script-wide state (`startTime` at line 46) is used as a global; module configuration spread across top-level variables
-- Files: `PhotoTimeFixer.py` lines 13-46
-- Impact: Makes testing difficult; coupling between configuration and execution; state not isolated
-- Fix approach: Encapsulate into a configuration class or use function parameters
+**Inconsistent JavaScript Indentation:**
+- Issue: Some JS files use 4-space indent, others use 2-space; no formatter configured
+- Files: Various files in `app/static/js/`
+- Impact: Minor readability concern; no functional impact
+- Fix approach: Configure Prettier or similar formatter
 
-**Bare Color Code Class:**
-- Issue: ANSI color codes defined in a bare class `bcolors` (lines 34-43) used throughout
-- Files: `PhotoTimeFixer.py` lines 34-43, used extensively in print statements
-- Impact: Color codes tangled with logic; terminal output dependent on environment color support
-- Fix approach: Move to a dedicated `colors.py` or use a logging library with color support
+**No Linting or Formatting Configuration:**
+- Issue: No `.flake8`, `pyproject.toml` (for black), `.prettierrc`, or similar config files
+- Impact: Style drift over time; reliance on convention rather than enforcement
+- Fix approach: Add black + flake8 for Python, prettier for JS/CSS
+
+**Duplicate Test Fixture:**
+- Issue: `tests/test_integration.py` defines its own `app` and `client` fixtures identical to `tests/conftest.py`
+- Files: `tests/test_integration.py` lines 23-45, `tests/conftest.py` lines 17-39
+- Impact: Maintenance burden; risk of fixture drift
+- Fix approach: Remove duplicate fixtures from test_integration.py, rely on conftest.py
+
+**pgrep-Based Worker Health Check:**
+- Issue: Worker health detection uses `pgrep -f huey_consumer` subprocess call
+- Files: `app/routes/api.py` (`/api/worker-health` endpoint)
+- Impact: Fragile on systems where process names differ; not portable to Docker without adjustment
+- Fix approach: Use Huey's built-in health check task (already exists as fallback) or a heartbeat file
 
 ## Known Bugs
 
-**Unsafe Metadata Dictionary Access:**
-- Symptoms: Script crashes if metadata key is missing or file lacks EXIF data
-- Files: `PhotoTimeFixer.py` line 86
-- Trigger: Images without Composite:Megapixels metadata (non-EXIF formats, corrupted files)
-- Workaround: File must have valid Composite:Megapixels value or script fails on line 86 with KeyError
-- Fix approach: Add `.get()` with default value: `metadata.get('Composite:Megapixels', 'N/A')`
-
-**Inconsistent Type Checking:**
-- Symptoms: Uses `!= False` instead of `is not None` and type checking with `is` for built-in types
-- Files: `PhotoTimeFixer.py` lines 105, 124, 225, 237-238
-- Trigger: None
-- Workaround: None needed currently but fragile
-- Fix approach: Use proper None checks and isinstance() instead of type() is
-
-**Missing Metadata Keys Not Validated:**
-- Symptoms: Script assumes metadata keys exist (lines 111, 116) without checking
-- Files: `PhotoTimeFixer.py` lines 110-116
-- Trigger: File with missing File:FileType, File:FileTypeExtension, or File:MIMEType metadata
-- Workaround: `meta_filetypes[0]` on line 151 could fail with IndexError if no filetypes found
-- Fix approach: Check if `meta_filetypes` list is not empty before accessing [0]
-
-**Timezone Handling Bug:**
-- Symptoms: Hardcoded default timezone (-4 hours) doesn't match actual system timezone
-- Files: `PhotoTimeFixer.py` line 244
-- Trigger: Any file processed without timezone info in metadata uses hardcoded -4 offset
-- Workaround: Manually set [FORCE] flag to override metadata with filename date
-- Fix approach: Use system timezone via `datetime.datetime.now().astimezone().tzinfo` or accept as config parameter
-
-**Bare Exception Handler:**
-- Symptoms: Catches all exceptions then only checks for one type, silently ignoring others
-- Files: `PhotoTimeFixer.py` lines 197-205
-- Trigger: Any exception other than ExifToolExecuteError
-- Workaround: Files that cause other exception types fail silently (not tracked in meta_error_files)
-- Fix approach: Catch specific exceptions or re-raise unhandled ones
+No critical bugs identified in current audit. All v1 requirements verified working.
 
 ## Security Considerations
 
-**File Path Traversal:**
-- Risk: User-controlled directory names parsed from filesystem could contain path traversal sequences if filenames are crafted
-- Files: `PhotoTimeFixer.py` lines 66, 73-77 (parsing directory_name and document_name)
-- Current mitigation: Uses os.path.join() which should handle most cases, but user-provided tags from filenames are not validated
-- Recommendations: Validate directory and file names; sanitize tag strings parsed from filenames (lines 76-77)
+**No Authentication:**
+- Risk: Any network user can access all endpoints including destructive ones
+- Files: All route files — no auth middleware
+- Current mitigation: Designed for trusted home network (v1 scope decision)
+- Recommendations: Add authentication before exposing to untrusted networks; planned for v2 (AUTH-01/02/03)
 
-**Shell Injection via Metadata:**
-- Risk: ExifTool receives metadata values directly from file contents in metadata_to_update dictionary
-- Files: `PhotoTimeFixer.py` lines 178-189, 196
-- Current mitigation: ExifToolHelper presumably sanitizes, but no explicit validation
-- Recommendations: Validate all values before passing to `et.set_tags()`; review ExifToolHelper documentation for safety
+**Unprotected Debug Endpoints:**
+- Risk: `POST /api/debug/clear-database` and `POST /api/debug/clear-storage` can destroy all data
+- Files: `app/routes/settings.py`
+- Current mitigation: None — accessible to any user on the network
+- Recommendations: Gate behind admin auth or restrict to FLASK_ENV=development
 
-**Unvalidated File Operations:**
-- Risk: Script uses shutil.rmtree() on output_path_base without thorough validation of path source
-- Files: `PhotoTimeFixer.py` lines 50-51
-- Current mitigation: Path derived from documents_dir and output_dir variables only
-- Recommendations: Add safeguards to prevent accidental deletion of important directories; confirm output_dir cannot escape to parent
+**Server Path Import Accepts Arbitrary Directories:**
+- Risk: `POST /api/import-path` accepts any server filesystem path; could scan sensitive directories
+- Files: `app/routes/upload.py` (`import_from_path()`)
+- Current mitigation: Only reads media files (ALLOWED_EXTENSIONS filter); uses absolute path validation
+- Recommendations: Add path allowlist or restrict to configured import directories
 
-**File Permissions Not Checked:**
-- Risk: Script silently continues if files cannot be read, written, or moved; no explicit permission verification
-- Files: `PhotoTimeFixer.py` lines 174, 205
-- Current mitigation: shutil.copy2() and shutil.move() will raise exceptions if permissions denied
-- Recommendations: Add explicit permission checks before attempting operations; provide clear error messaging
+**ExifTool Metadata Injection:**
+- Risk: Maliciously crafted EXIF data could contain unexpected values passed to ExifTool write operations
+- Files: `app/lib/metadata.py` (`write_timestamps()`, `write_tags_to_file()`)
+- Current mitigation: PyExifTool handles argument escaping; only controlled values (timestamps, tag strings) are written
+- Recommendations: Validate tag strings before writing; sanitize any user-provided values
 
 ## Performance Bottlenecks
 
-**Sequential File Processing:**
-- Problem: All files processed sequentially; no parallelization despite ExifTool being callable per-file
-- Files: `PhotoTimeFixer.py` lines 64-207 (single-threaded loop)
-- Cause: Nested loops through directories and files without parallelization
-- Improvement path: Use concurrent.futures.ThreadPoolExecutor or ProcessPoolExecutor to process multiple files in parallel; benchmark impact on total runtime
+**Perceptual Duplicate Detection (O(n^2)):**
+- Problem: Every file's perceptual hash compared against every other file's hash
+- Files: `app/lib/perceptual.py` (`_compare_all_pairs()`)
+- Cause: Brute-force pairwise comparison needed for Hamming distance grouping
+- Impact: ~5,000 files = ~12.5M comparisons; ~50,000 files = ~1.25B comparisons
+- Improvement path: BK-tree or VP-tree for Hamming space; pre-filter by hash prefix; batch processing
 
-**Metadata Extraction Called Twice Per File:**
-- Problem: `et.get_metadata()` called once at line 84 (for file info) then again at line 176 (after copy)
-- Files: `PhotoTimeFixer.py` lines 84, 176
-- Cause: Need to re-read after copy to ensure metadata updates take effect
-- Improvement path: Cache first metadata; only re-fetch if needed to verify writes succeeded
+**Progress Polling:**
+- Problem: Frontend polls `/api/progress/:id` every 1-2 seconds via HTTP requests
+- Files: `app/static/js/progress.js`, `app/routes/api.py`
+- Cause: No WebSocket or SSE implementation
+- Impact: Unnecessary server load during long processing jobs; slight latency in UI updates
+- Improvement path: Server-Sent Events (SSE) for push-based progress; WebSocket for bidirectional control
 
-**Repeated Regex Compilation:**
-- Problem: Regex patterns compiled every time a file is processed; regex objects could be pre-compiled
-- Files: `PhotoTimeFixer.py` lines 224, 241, 247, 269 (calls to re.search() with string patterns)
-- Cause: Patterns defined as strings and compiled at runtime
-- Improvement path: Pre-compile regex patterns at module load: `valid_date_re = re.compile(valid_date_regex)` and reuse
+**Individual Script Loading:**
+- Problem: 28 JS files loaded via separate HTTP requests on page load
+- Files: `app/templates/index.html`
+- Cause: No build step or bundler configured
+- Impact: Multiple round trips on initial load; no HTTP/2 push; no code splitting
+- Improvement path: Bundle with esbuild/vite or use ES module imports with `<script type="module">`
 
-**String Processing Overhead:**
-- Problem: Multiple string replacements and transformations on datetime strings (lines 153, 171, 175, 257)
-- Files: `PhotoTimeFixer.py` lines 153, 171, 175, 257
-- Cause: String-based datetime formatting and parsing
-- Improvement path: Use strftime/strptime consistently; avoid multiple replace() calls in chains
+**ExifTool Process Overhead:**
+- Problem: ExifTool spawns a subprocess via context manager; overhead per invocation
+- Files: `app/lib/metadata.py` (context manager pattern per call in worker)
+- Cause: PyExifTool manages exiftool binary lifecycle
+- Impact: Subprocess creation overhead per file during metadata extraction and writing
+- Improvement path: Batch ExifTool operations; keep single persistent process across file batches
 
 ## Fragile Areas
 
-**DateTime Parsing Logic:**
-- Files: `PhotoTimeFixer.py` lines 236-276 (convert_str_to_datetime function)
-- Why fragile: Complex state machine with multiple string manipulations, padding, and regex checks; 40+ lines with unclear input/output contracts
-- Safe modification: Add comprehensive docstring with examples; add unit tests for edge cases (leap years, DST boundaries, invalid dates); consider using dateutil.parser.parse()
-- Test coverage: Appears untested; no test files present in repo
+**Timestamp Parsing Regex:**
+- Files: `app/lib/timestamp.py` (`get_datetime_from_name()`, `convert_str_to_datetime()`)
+- Why fragile: Multiple regex patterns for various filename date formats; edge cases in padding, separators, and partial timestamps
+- Safe modification: Add new patterns as additional cases; don't modify existing patterns without adding test coverage
+- Test coverage: Tested in `test_integration.py` (TestTimestampLibrary) — basic patterns covered but not all edge cases
 
-**Metadata Aggregation Logic:**
-- Files: `PhotoTimeFixer.py` lines 103-146 (meta_datetimes1 vs meta_datetimes2 distinction)
-- Why fragile: Two separate datetime lists with different precedence rules; [FORCE] flag handling mixes special-case logic into main flow
-- Safe modification: Extract [FORCE] handling to separate function; document why two lists exist; consider using enum for metadata priority levels
-- Test coverage: Logic has edge cases (what if [FORCE] and no datetime found?) that are not clearly tested
+**Confidence Scoring Weights:**
+- Files: `app/lib/confidence.py` (`SOURCE_WEIGHTS`, `calculate_confidence()`)
+- Why fragile: Weight values and agreement tolerance (30 seconds) affect all timestamp decisions; changes cascade to every file's confidence level
+- Safe modification: Adjust weights conservatively; test with representative data before deploying
+- Test coverage: Good coverage in `test_processing.py` (TestConfidenceScoring)
 
-**File Collision Resolution:**
-- Files: `PhotoTimeFixer.py` lines 168-172 (increment timestamp on collision)
-- Why fragile: Infinite loop risk if output_path can never be writable; no collision counter limit
-- Safe modification: Add max iterations counter; implement exponential backoff strategy; log all collisions
-- Test coverage: No test for collision behavior with multiple files; assumes only 1-second collisions
+**Perceptual Hash Thresholds:**
+- Files: `app/lib/perceptual.py` (`EXACT_THRESHOLD=5`, `SIMILAR_THRESHOLD=16`)
+- Why fragile: Threshold values determine exact vs similar vs unrelated classification; too low = false negatives, too high = false positives
+- Safe modification: Threshold tuning should be data-driven with sample images
+- Test coverage: Good coverage in `test_perceptual.py` with explicit threshold boundary tests
 
-**Exception Handling in Critical Section:**
-- Files: `PhotoTimeFixer.py` lines 195-205
-- Why fragile: Moves file on metadata error but doesn't rollback copy on move failure
-- Safe modification: Use try-except-finally to ensure cleanup; consider atomic file operations or temporary directories
-- Test coverage: No test for partial failures
+**Job State Machine:**
+- Files: `app/tasks.py` (status transitions), `app/models.py` (JobStatus enum)
+- Why fragile: 7 job states (PENDING, RUNNING, PAUSED, COMPLETED, FAILED, CANCELLED, EXPORTING) with transitions managed in multiple locations (tasks.py, routes/jobs.py)
+- Safe modification: Add new states carefully; ensure all status checks use enum values
+- Test coverage: Minimal — `test_integration.py` tests basic lifecycle only
 
 ## Scaling Limits
 
-**Directory Tree Memory:**
-- Current capacity: Full directory listing loaded into memory via os.listdir()
-- Limit: Will run out of memory with 1M+ files in a single directory
-- Scaling path: Use os.scandir() for iterator-based directory traversal instead of os.listdir()
+**SQLite Concurrent Writes:**
+- Current capacity: WAL mode with 5-second busy timeout supports web server reads + single worker writes
+- Limit: Multiple simultaneous workers would contend for write lock; batch imports limited to one at a time
+- Scaling path: PostgreSQL for multi-worker deployments; connection pooling
 
-**ExifTool Process Management:**
-- Current capacity: Single ExifToolHelper instance shared for entire run
-- Limit: Unknown per the PyExifTool documentation; check for resource leaks
-- Scaling path: Monitor process memory; test with 10k+ files to identify leaks; consider batch processing
+**Perceptual Hash Storage:**
+- Current capacity: All file hashes loaded into memory for O(n^2) comparison
+- Limit: ~100k files with 16-char hex hashes + file objects = significant memory pressure
+- Scaling path: Database-side comparison queries; chunked processing; spatial index
 
-**Metadata Dictionary Size:**
-- Current capacity: Full metadata dict fetched and stored for each file
-- Limit: Large metadata (especially for video files) could consume significant memory for 100k+ files
-- Scaling path: Parse only required keys instead of loading full metadata; use generators to stream results
+**Thumbnail Storage:**
+- Current capacity: Two thumbnails per file (`_thumb.jpg` + `_preview.jpg`) stored on filesystem
+- Limit: 100k files = 200k thumbnail files in single directory (filesystem inode pressure)
+- Scaling path: Subdirectory sharding (e.g., by file ID range); on-demand generation with caching
+
+**Single Huey Worker Process:**
+- Current capacity: 2 thread workers in single process; handles one job at a time with parallel file processing within job
+- Limit: Cannot process multiple independent jobs simultaneously
+- Scaling path: Multiple Huey consumer processes; or switch to Celery/RQ for distributed workers
 
 ## Dependencies at Risk
 
-**PyExifTool Version Unspecified:**
-- Risk: No requirements.txt or version pinning; unknown compatibility with future exiftool versions
-- Impact: Code may break with exiftool CLI updates or incompatible pyexiftool versions
-- Migration plan: Create `requirements.txt` with pinned versions; test with multiple exiftool versions
+**ExifTool Binary:**
+- Risk: System dependency not bundled with application; version-specific behavior differences
+- Impact: Missing exiftool = metadata extraction and writing completely broken
+- Migration plan: Docker image should include exiftool; version pin in Dockerfile
 
-**External ExifTool Binary:**
-- Risk: Depends on exiftool.exe (hardcoded Windows binary at `/exiftool_files/`)
-- Impact: Cross-platform portability blocked; binary licensing/distribution concerns
-- Migration plan: Install via system package manager (`brew`, `apt`, `choco`) or use Python exiftool library that bundles binary
+**ffmpeg Binary:**
+- Risk: System dependency for video thumbnail extraction; not required for image-only workflows
+- Impact: Missing ffmpeg = video thumbnails and video perceptual hashing silently fail (returns None)
+- Migration plan: Graceful degradation already implemented; Docker image should include ffmpeg
 
-**PIL (Pillow) Unused:**
-- Risk: Imported but never used (line 6); potential security risk if exiftool has vulnerability, PIL adds surface area
-- Impact: Unnecessary dependency; increases attack surface
-- Migration plan: Remove import; consider if PIL is needed for future image processing
+**PyExifTool Wrapper:**
+- Risk: Python wrapper around exiftool CLI; less actively maintained than exiftool itself
+- Impact: API changes in PyExifTool could break metadata operations
+- Migration plan: Pin version in requirements.txt; consider subprocess fallback
 
-## Missing Critical Features
-
-**Configuration Management:**
-- Problem: No way to configure without editing source code; no config file support
-- Blocks: Running in different environments; batch processing multiple source directories
-- Priority: High
-
-**Logging Framework:**
-- Problem: All output via print() and manual color codes; no log levels, no file logging
-- Blocks: Production deployment; debugging issues in batch runs; progress tracking
-- Priority: High
-
-**Progress Indicators:**
-- Problem: Prints each file but no progress bar or count; script runtime unpredictable
-- Blocks: User confidence in long-running batches; estimating completion time
-- Priority: Medium
-
-**Resume Capability:**
-- Problem: No way to resume interrupted batch; must restart from beginning
-- Blocks: Handling interruptions gracefully; long-running batch processing
-- Priority: Medium
-
-**Rollback/Undo:**
-- Problem: Files copied and modified; no backup or undo if wrong settings applied
-- Blocks: Safe testing and iteration on settings
-- Priority: Medium
+**imagehash Library:**
+- Risk: Used for pHash calculation; relatively stable but niche library
+- Impact: Library deprecation would require finding alternative perceptual hashing implementation
+- Migration plan: Algorithm is well-documented (pHash); could implement directly with Pillow + DCT if needed
 
 ## Test Coverage Gaps
 
-**DateTime Parsing Edge Cases:**
-- What's not tested: Leap years, invalid dates (Feb 30), DST transitions, timezone edge cases, empty strings, malformed dates
-- Files: `PhotoTimeFixer.py` lines 236-276
-- Risk: Silent failures or incorrect timestamps in production
+**Route/API Endpoint Tests:**
+- What's not tested: All 5 blueprint route handlers (upload, jobs, api, settings, review)
+- Files: `app/routes/*.py` (5 files, ~60 endpoints)
+- Risk: API contract changes undetected; error handling regressions
 - Priority: High
 
-**Metadata Extraction Failures:**
-- What's not tested: Missing keys in metadata dict, corrupted EXIF, non-standard file types
-- Files: `PhotoTimeFixer.py` lines 84-86, 110-116
-- Risk: Crashes on unexpected file formats
+**Metadata Operations:**
+- What's not tested: ExifTool reading/writing, dimension extraction, timestamp candidate collection
+- Files: `app/lib/metadata.py` (8 functions)
+- Risk: Metadata extraction regressions; incorrect timestamp writing on export
 - Priority: High
 
-**File System Edge Cases:**
-- What's not tested: Permission errors, disk full, very long filenames (>255 chars), special characters in paths
-- Files: `PhotoTimeFixer.py` lines 174, 205
-- Risk: Partial failures or data loss
+**Thumbnail Generation:**
+- What's not tested: Pillow image processing, EXIF orientation correction, video frame extraction
+- Files: `app/lib/thumbnail.py`
+- Risk: Thumbnail generation failures; incorrect orientation
 - Priority: Medium
 
-**Configuration Scenarios:**
-- What's not tested: No test suite exists; behavior with different valid_extensions, date ranges, timezone offsets not validated
-- Files: `PhotoTimeFixer.py` lines 18-30
-- Risk: Regressions when configuration changes
-- Priority: Medium
+**Background Task Integration:**
+- What's not tested: Full import job pipeline (file processing + batch commits + duplicate detection); export job pipeline (copy + metadata write + verification)
+- Files: `app/tasks.py` (process_import_job, process_export_job)
+- Risk: Job processing regressions; batch commit edge cases; pause/resume state issues
+- Priority: High
+
+**Frontend:**
+- What's not tested: All 28 JS modules, DOM interactions, FLIP animations, Web Audio sounds
+- Files: `app/static/js/` (28 files)
+- Risk: UI regressions undetected; browser compatibility issues
+- Priority: Low (v1 scope — manual testing sufficient)
 
 ---
 
-*Concerns audit: 2026-02-02*
+*Concerns audit: 2026-02-11*

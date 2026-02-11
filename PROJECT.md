@@ -14,54 +14,63 @@ Turn chaotic family media from dozens of sources into a clean, organized, timest
 
 <!-- Shipped and confirmed valuable. -->
 
-- [x] Timestamp detection from multiple sources (EXIF, filename patterns, file dates, other metadata) — existing
-- [x] Tag extraction from folder names and `{tag1,tag2}` filename syntax — existing
-- [x] Output files named `YYYYMMDD_HHMMSS.ext` — existing
-- [x] Output organized in folders by year — existing
-- [x] Extension correction when metadata disagrees with file extension — existing
-- [x] `[FORCE]` filename syntax to override timestamp detection — existing
-- [x] Basic confidence handling (low-confidence files flagged for review) — existing
+- [x] Timestamp detection from multiple sources (EXIF, filename patterns, file dates, other metadata)
+- [x] Tag extraction from folder names and `{tag1,tag2}` filename syntax
+- [x] Output files named `YYYYMMDD_HHMMSS.ext`
+- [x] Output organized in folders by year
+- [x] Extension correction when metadata disagrees with file extension
+- [x] `[FORCE]` filename syntax to override timestamp detection
+- [x] Confidence handling — multi-level scoring (HIGH/MEDIUM/LOW/NONE) with weighted source agreement
 
-### Active
+### Shipped (v1)
 
-<!-- Current scope. Building toward these. -->
+<!-- All 7 GSD phases complete. -->
 
 **Web Interface:**
-- [ ] Web GUI accessible via browser (Flask or Django)
-- [ ] Docker containerized deployment
-- [ ] Input via file upload, directory selection, or path specification
-- [ ] Configurable output directory path
-- [ ] Simple, intuitive interface for non-technical household members
+- [x] Web GUI accessible via browser (Flask)
+- [x] Input via file upload (drag-drop) or server directory path import
+- [x] Configurable output directory path (via settings UI)
+- [x] Simple, intuitive interface for non-technical household members
+- [x] Thumbnail grid with virtual scrolling for large file sets
+- [x] Carousel viewport for full-image review with FLIP animations
 
 **Timestamp Processing:**
-- [ ] Confidence scoring for timestamp detection (sources weighted and compared)
-- [ ] Review queue for low-confidence timestamps
-- [ ] User interface to resolve timestamp conflicts
-- [ ] User interface to provide timestamps for files with no determinable date
+- [x] Confidence scoring for timestamp detection (sources weighted and compared)
+- [x] Review queue for low-confidence timestamps
+- [x] User interface to resolve timestamp conflicts (timestamp options with source info)
+- [x] User interface to provide timestamps for files with no determinable date
+- [x] Auto-confirm high-confidence files in bulk
+- [x] Bulk review operations (accept, mark reviewed, clear review by selection/filter/confidence)
 
 **Duplicate Detection:**
-- [ ] Exact duplicate detection (same file, different name/location)
-- [ ] Same image, different quality (resized, compressed, screenshots)
-- [ ] Same image, different format (JPG vs PNG vs HEIC)
-- [ ] Near-identical shots (burst photos, slight crops, minor edits)
-- [ ] Review queue showing duplicate groups with quality info (resolution, file size)
-- [ ] User selection of which file(s) to keep from each group
+- [x] Exact duplicate detection via SHA256 hash
+- [x] Perceptual duplicate detection via dHash (near-identical images, burst photos, crops, resizes)
+- [x] Duplicate groups with quality metrics (resolution, file size)
+- [x] Review queue showing duplicate/similar groups side-by-side
+- [x] User selection of which file(s) to keep from each group
+- [x] Keep-all and resolve-group workflows for both exact and similar groups
+- [x] Metadata accumulation (tags/timestamps from discarded files transfer to kept files)
 
 **Tagging:**
-- [ ] Seed tags from folder structure and filenames (preserve existing logic)
-- [ ] Bulk tag management during review (select thumbnails, assign/remove tags)
-- [ ] Tag assignment interface in web GUI
+- [x] Auto-generated tags from folder structure during export
+- [x] Bulk tag management during review (add/remove tags to multiple files)
+- [x] Tag assignment interface in web GUI with autocomplete
+- [x] Tag-based filtering in review grid
 
-**Processing:**
-- [ ] Multi-threaded processing for performance (handle tens of thousands of files)
-- [ ] Progress indication during processing
-- [ ] Option to keep or delete source files after processing
+**Processing & Export:**
+- [x] Multi-threaded processing via ThreadPoolExecutor
+- [x] Progress indication with ETA, elapsed time, and per-file status
+- [x] Pause/resume/cancel job control
+- [x] Export pipeline: copy to output with corrected metadata, year-based organization
+- [x] Post-export finalization (cleanup working data, keep output)
+- [x] Option to keep or delete source files after export
 
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
-- Full video support — Some video works in existing script, but not all formats. Defer to v2 after photo workflow is solid.
+- Docker deployment — Planned for v2. Currently runs locally on WSL2 during development.
+- Full video support — Some video formats work (mp4, mov, avi, mkv) but not all. Defer full support to v2.
 - Multi-user support — Single user for v1. Multi-user with separate workspaces is v2.
 - Authentication/login — No auth for v1, home network trusted. Add in v2 with multi-user.
 - Direct NAS/QNAP output — Use local/configurable paths for v1. Direct NAS integration is v2.
@@ -70,31 +79,33 @@ Turn chaotic family media from dozens of sources into a clean, organized, timest
 
 ## Context
 
-**Existing codebase:**
-- `PhotoTimeFixer.py` — CLI script with working timestamp detection, tag extraction, and output organization
-- Uses PyExifTool for metadata reading/writing
-- Has rudimentary confidence handling (files go to CHECK folder)
-- Handles some video formats (mp4, mpeg, mov) but not fully
+**Current architecture:**
+- Flask web application with blueprint-based routing (upload, jobs, api, settings, review)
+- SQLAlchemy ORM with SQLite database (WAL mode for concurrency)
+- Huey task queue with SQLite backend for background processing
+- Modular processing library (`app/lib/`) — processing, hashing, metadata, timestamp, confidence, duplicates, perceptual, export, tagging, thumbnail
+- Vanilla JS frontend with 28 modules — virtual scroll, tile manager, carousel viewport, particle effects, Web Audio sound system
+
+**Original codebase:**
+- `old/PhotoTimeFixer.py` — Original CLI script. Timestamp detection and tag extraction logic refactored into `app/lib/timestamp.py` and `app/lib/metadata.py`.
 
 **Technical environment:**
-- Will run in Docker on home media server
-- Output destination is currently QNAP NAS with QuMagie, accessed via network share
+- WSL2 (Ubuntu) with Python 3.12, will be Dockerized for production
+- Output destination is QNAP NAS with QuMagie, accessed via configurable path
 - Users are household family members with varying technical comfort
 
 **Scale:**
-- Needs to handle thousands to tens of thousands of backlogged files
+- Handles thousands to tens of thousands of files
 - Ongoing use for periodic imports (phone backups, etc.)
-
-**Key algorithms needed:**
-- Perceptual hashing for near-duplicate detection (e.g., imagehash library)
-- Weighted confidence scoring for timestamp sources
 
 ## Constraints
 
-- **Framework**: Flask or Django (user preference, TBD during research)
-- **Deployment**: Must run in Docker container
-- **Performance**: Must handle tens of thousands of files without excessive processing time
-- **Compatibility**: Preserve existing timestamp detection logic that works well
+- **Framework**: Flask 3.x with Jinja2 templates and vanilla JS
+- **Database**: SQLite via SQLAlchemy 2.x (WAL mode)
+- **Task queue**: Huey with SQLite backend (thread-based workers)
+- **Deployment**: Currently WSL2, will run in Docker container (v2)
+- **Performance**: Multi-threaded processing, batch DB commits, virtual scrolling for large file sets
+- **Compatibility**: Timestamp detection logic preserved from original CLI
 
 ## Key Decisions
 
@@ -102,10 +113,16 @@ Turn chaotic family media from dozens of sources into a clean, organized, timest
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Web framework (Flask vs Django) | TBD during research phase | — Pending |
-| Perceptual hashing library | TBD during research | — Pending |
-| Database for state/hashes | TBD during research | — Pending |
-| Preserve existing timestamp logic | Works well, proven in use | — Pending |
+| Flask (not Django) | Lightweight, brownfield-friendly for wrapping existing CLI logic | Decided |
+| imagehash (dHash algorithm) | Industry standard for perceptual hashing, works with Pillow | Decided |
+| SQLite + SQLAlchemy | Household scale (tens of thousands of files), zero ops overhead | Decided |
+| Huey (not Celery/Redis) | SQLite backend avoids Redis dependency, simpler for single-server | Decided |
+| Preserve existing timestamp logic | Refactored from PhotoTimeFixer.py into app/lib/timestamp.py | Done |
+| Vanilla JS (no framework) | Simpler for household tool, no build step needed | Decided |
+| Copy-first architecture | Never modify originals — copy to output, write metadata to copies only | Done |
+| Earliest timestamp selection | When multiple timestamps found, select earliest as authoritative | Done |
+| FLIP animations for viewport | Smooth tile-to-viewport transitions using First-Last-Invert-Play technique | Done |
+| Web Audio synthesized sounds | No audio files — particle effects generate sounds via Web Audio API | Done |
 
 ---
-*Last updated: 2026-02-02 after initialization*
+*Last updated: 2026-02-11 — documentation audit*

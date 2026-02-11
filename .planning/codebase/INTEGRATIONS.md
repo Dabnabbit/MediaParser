@@ -1,133 +1,162 @@
 # External Integrations
 
-**Analysis Date:** 2026-02-02
+**Analysis Date:** 2026-02-11
 
 ## APIs & External Services
 
 **ExifTool Command-Line Utility:**
-- ExifTool command-line application for metadata extraction and modification
-  - SDK/Client: PyExifTool wrapper (`exiftool` Python package)
-  - Invocation: Context manager pattern in `PhotoTimeFixer.py` lines 60, 176
-  - Primary methods: `et.get_metadata()` and `et.set_tags()`
-  - Auth: None (local binary execution)
+- SDK/Client: PyExifTool wrapper (`exiftool` Python package)
+- Invocation: Context manager pattern (`with exiftool.ExifToolHelper() as et:`)
+- Primary methods: `et.get_metadata()` (read) and `et.set_tags()` (write)
+- Auth: None (local binary execution)
+- Config: `EXIFTOOL_PATH` environment variable (defaults to system `exiftool`)
+- Used in: `app/lib/metadata.py` (extract + write), `app/lib/hashing.py` (metadata for dimensions)
+
+**ffmpeg:**
+- Invocation: `subprocess.run()` with timeout (30s)
+- Purpose: Video frame extraction for thumbnails and perceptual hashing
+- Auth: None (local binary)
+- Used in: `app/lib/thumbnail.py` (`extract_video_frame()`)
 
 ## Data Storage
 
 **Databases:**
-- Not used - File-based processing only
+- SQLite via SQLAlchemy 2.x
+- Path: `instance/mediaparser.db`
+- WAL mode enabled for concurrent read/write (web server + worker)
+- Busy timeout: 5 seconds
+- Foreign keys enforced via PRAGMA
+
+**Database Tables:**
+- `files` — Media file records (metadata, hashes, timestamps, review state)
+- `jobs` — Processing jobs (import/export, status, progress)
+- `job_files` — Many-to-many association (jobs ↔ files)
+- `duplicates` — Duplicate relationships (file pairs with similarity scores)
+- `user_decisions` — Audit trail of user review decisions
+- `settings` — Key-value application settings
+- `tags` — Tag definitions with usage counts
+- `file_tags` — Many-to-many association (files ↔ tags)
+
+**Huey Queue Database:**
+- Separate SQLite: `instance/huey_queue.db`
+- Managed by Huey (SqliteHuey)
+- Stores pending tasks, results, and schedule data
 
 **File Storage:**
-- Local filesystem only
-- Input source: Hardcoded directory `D:/Work/Scripts/PhotoTimeFixer/Test/` (line 13)
-- Output directory: `Output/` subdirectory (line 14)
-- Subdirectories created:
-  - Year-based organization: `Output/[YYYY]/` when `output_dir_years=True` (line 15)
-  - `Output/CHECK/` - Files with low confidence metadata matches (line 159)
-  - `Output/ERROR/` - Files with ExifTool execution errors (line 202)
+- `storage/uploads/` — Uploaded files organized by job (`job_N/`)
+- `storage/thumbnails/` — Generated thumbnails (`{file_id}_thumb.jpg`, `{file_id}_preview.jpg`)
+- `storage/output/` — Default export output (year-based: `YYYY/YYYYMMDD_HHMMSS.ext`)
+- `storage/processing/` — Working directory (created but currently unused)
 
 **Caching:**
-- None detected
+- No explicit caching layer
+- SQLAlchemy session cache for ORM objects within request/task scope
+- `db.session.expire_all()` used in progress polling to bypass cache
 
 ## Metadata Formats
 
-**EXIF/XMP/IPTC Tags Handled:**
-- Read tags (meta_filetype_tags):
-  - `File:FileType`, `File:FileTypeExtension`, `File:MIMEType`
-- Read tags (meta_datetime_tags):
-  - `File:FileModifyDate`, `File:FileCreateDate`, `EXIF:DateTimeOriginal`, `EXIF:ModifyDate`
-- Ignored tags (meta_ignored_tags):
-  - `SourceFile`, `File:FileName`, `File:FileAccessDate`, `ICC_Profile:ProfileDateTime`, `IPTC:SpecialInstructions`, `Photoshop:*`
-- Tags to ensure exist (meta_ensured_tags):
-  - `DateTimeOriginal`, `FileCreateDate`
-- Comment tags (meta_comment_tags):
-  - `EXIF:XPKeywords`
-- Video tags (commented): `QuickTime:CreateDate`
+**EXIF/XMP/IPTC Tags Read:**
+- `EXIF:DateTimeOriginal` — Original capture time (highest priority)
+- `EXIF:CreateDate` — When digitized
+- `QuickTime:CreateDate` — Video creation date (assumed UTC per spec)
+- `EXIF:ModifyDate` — Last modification
+- `File:FileModifyDate` — Filesystem modification date
+- `File:FileCreateDate` — Filesystem creation date
+- `File:FileType`, `File:FileTypeExtension`, `File:MIMEType` — File type info
+- `EXIF:ImageWidth`, `EXIF:ImageHeight` — Image dimensions
+
+**EXIF/XMP/IPTC Tags Written (to output copies only):**
+- `EXIF:DateTimeOriginal` — Corrected timestamp
+- `EXIF:CreateDate` — Corrected timestamp
+- `QuickTime:CreateDate` — Video timestamp (video files only)
+- `QuickTime:ModifyDate` — Video timestamp (video files only)
+- `IPTC:Keywords` — Tags (for broad compatibility)
+- `XMP:Subject` — Tags (for broad compatibility)
+- All writes use `-overwrite_original` to prevent backup clutter
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- Not applicable - Command-line tool execution, no authentication required
-- Runs with file system permissions of executing user
+- None — v1 is single-user, trusted home network
+- Planned for v2 (AUTH-01, AUTH-02, AUTH-03 requirements)
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- Not detected (no external error tracking service)
+- No external error tracking service
+- Errors logged to stdout via Python `logging` module
+- Per-file processing errors stored in `File.processing_error` column
+- Job-level errors stored in `Job.error_message` column
+- Debug log at `/tmp/job_debug.log` for pause/resume tracking
 
 **Logs:**
-- Console output with colored terminal output using ANSI color codes (class `bcolors` in lines 34-43)
-- Logging levels implemented:
-  - Info: Scanning progress with timestamp: `f'{bcolors.OKBLUE}{(time.time() - startTime):.2f}s: ...`
-  - Warning: File extension mismatches, duplicate filenames
-  - Error: Metadata extraction errors, ExifTool execution failures
-- No file-based logging detected
-- Unused logging module (commented out at lines 9-10)
+- Format: `[YYYY-MM-DD HH:MM:SS] LEVEL:module: message`
+- Output: stdout (captured by terminal or log file)
+- SQLAlchemy engine logging at WARNING level (reduces noise)
+
+**Health Checks:**
+- Worker health: `GET /api/worker-health` (uses `pgrep` to detect worker process)
+- Task health: `health_check()` Huey task (verifies queue is operational)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Not applicable - Desktop/local utility
+- Development: WSL2 (Ubuntu) with Flask dev server + Huey consumer
+- Production (planned): Docker container with Gunicorn
 
 **CI Pipeline:**
-- None detected
+- None configured
+- Tests run manually via `pytest`
 
 ## Environment Configuration
 
 **Required env vars:**
-- None detected
+- None strictly required (all have defaults)
 
-**Secrets location:**
-- Not applicable
+**Optional env vars:**
+- `SECRET_KEY` — Flask secret key
+- `FLASK_ENV` — Environment (development/production)
+- `TIMEZONE` — Default timezone
+- `EXIFTOOL_PATH` — Path to exiftool binary
+
+**Secrets:**
+- No external secrets (no API keys, no auth tokens)
+- Flask SECRET_KEY uses dev default (must change for production)
 
 ## Webhooks & Callbacks
 
-**Incoming:**
-- None
-
-**Outgoing:**
-- None
+**Incoming:** None
+**Outgoing:** None
 
 ## File Processing Pipeline
 
-**Input:**
-- Scans directory: `D:/Work/Scripts/PhotoTimeFixer/Test/`
-- Recursively processes subdirectories (line 53-56)
-- Filters files by extension (line 68)
+**Input Methods:**
+1. Browser upload: `POST /api/upload` (multipart/form-data, multiple files)
+2. Server path import: `POST /api/import-path` (JSON body with directory path)
 
-**Processing:**
-1. Extract metadata using ExifTool (line 84)
-2. Extract datetime from filename using regex patterns (line 82)
-3. Merge datetime evidence from multiple sources
-4. Validate dates are within range 2000-2100
-5. Copy file to output directory (line 174)
-6. Update metadata tags (line 196)
+**Processing Steps:**
+1. File validation (exists, size, MIME type check via python-magic)
+2. SHA256 hash calculation (chunked reading, 64KB chunks)
+3. Perceptual hash calculation (imagehash.phash, via Pillow)
+4. ExifTool metadata extraction (single call per file)
+5. Image dimension extraction from metadata
+6. Timestamp candidate collection (EXIF tags + filename parsing)
+7. Confidence scoring (weighted source agreement)
+8. Thumbnail generation (Pillow with EXIF orientation correction)
+9. Duplicate grouping (SHA256 exact + perceptual near-match)
+
+**Export Steps:**
+1. Auto-tag generation from folder structure
+2. Copy to output directory (year-based organization)
+3. Collision resolution with counter suffix (`_001`, `_002`)
+4. Metadata write to output copy (corrected timestamps + tags)
+5. Copy verification (file exists + size match)
 
 **Output:**
-- Files organized by:
-  - Year subdirectories (if `output_dir_years=True`)
-  - Special subdirectories for errors and low-confidence matches
-- Output filename format: `YYYYMMDDHHmmss.ext` (line 153)
-- Original file attributes preserved via `shutil.copy2()` (line 174)
-
-## Error Handling
-
-**ExifTool Integration:**
-- Exception catching at line 197-205
-- Specific handling for `ExifToolExecuteError` exceptions
-- Failed files moved to `Output/ERROR/` directory with error reason logged
-
-## Media Metadata Validation
-
-**Date Extraction Patterns:**
-- Filename date regex: `(19|20)\d{2}[-_.]?(0[1-9]|1[0-2])[-_.]?([0-2][0-9]|3[0-1])` (line 21)
-- Time regex: `([01][0-9]|2[0-3])[0-5][0-9][0-5][0-9]` (line 22)
-- Timezone regex: `[-+]([01][0-9]|2[0-3]):?[0-5][0-9]` (line 23)
-
-**Metadata Tags:**
-- Extraction and conversion from multiple EXIF/XMP sources
-- Fallback hierarchy: EXIF standard tags → EXIF alternative tags → filename patterns
-- Default timezone offset hardcoded: -4 hours (EDT) at line 244
+- Files organized by year: `output/YYYY/YYYYMMDD_HHMMSS.ext`
+- Files without timestamps: `output/unknown/original_filename.ext`
+- Original files preserved (never modified)
 
 ---
 
-*Integration audit: 2026-02-02*
+*Integration audit: 2026-02-11*
