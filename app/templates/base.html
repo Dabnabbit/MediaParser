@@ -39,7 +39,6 @@
     <!-- Modal system (must load before other JS that calls showModal/showToast) -->
     <script src="{{ url_for('static', filename='js/modal.js') }}" defer></script>
     <!-- Core JavaScript modules -->
-    <script src="{{ url_for('static', filename='js/browse.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/settings.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/upload.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/progress.js') }}" defer></script>
@@ -95,9 +94,8 @@
                     </div>
                     <div class="form-group form-group-sm form-group-grow">
                         <label for="output-directory" class="form-label">Output Directory</label>
-                        <div class="dir-browse-wrap input-group input-group-sm">
+                        <div class="input-group input-group-sm">
                             <input type="text" id="output-directory" class="form-input" placeholder="/path/to/output">
-                            <button type="button" class="dir-browse-btn" title="Browse">Browse</button>
                             <button type="button" class="btn btn-secondary btn-sm" id="reset-output-dir-btn" title="Reset">&#x21BA;</button>
                         </div>
                     </div>

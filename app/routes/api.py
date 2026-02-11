@@ -1,7 +1,6 @@
 """API routes for progress tracking and general utilities."""
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, current_app
 from datetime import datetime, timezone
-import os
 
 from app import db
 from app.models import Job, JobStatus, File, ConfidenceLevel
@@ -152,41 +151,3 @@ def check_worker_health():
             'worker_alive': False,
             'error': str(e)
         }), 503
-
-
-@api_bp.route('/browse', methods=['GET'])
-def browse_directory():
-    """List subdirectories at a given path for the directory browser.
-
-    Args (query params):
-        path: Directory path to list (defaults to '/')
-
-    Returns:
-        JSON with current path, parent path, and list of subdirectories
-    """
-    path = request.args.get('path', '/')
-    path = os.path.realpath(os.path.expanduser(path))
-
-    if not os.path.isdir(path):
-        return jsonify({'error': f'Not a directory: {path}'}), 400
-
-    try:
-        entries = sorted(os.listdir(path))
-    except PermissionError:
-        return jsonify({'error': f'Permission denied: {path}'}), 403
-
-    dirs = []
-    for entry in entries:
-        if entry.startswith('.'):
-            continue
-        full = os.path.join(path, entry)
-        if os.path.isdir(full):
-            dirs.append(entry)
-
-    parent = os.path.dirname(path) if path != '/' else None
-
-    return jsonify({
-        'path': path,
-        'parent': parent,
-        'dirs': dirs
-    })

@@ -187,16 +187,12 @@ window.showModal = function(options) {
         document.addEventListener('keydown', keyHandler);
 
         // Focus the confirm button (or first input if present)
-        // Also attach directory browsers if any browse buttons are in the body
         requestAnimationFrame(() => {
-            const firstInput = bodyEl.querySelector('input:not([type="checkbox"]), select, textarea');
+            const firstInput = bodyEl.querySelector('input, select, textarea');
             if (firstInput) {
                 firstInput.focus();
             } else {
                 confirmBtn.focus();
-            }
-            if (typeof DirectoryBrowser !== 'undefined') {
-                DirectoryBrowser.attachAll(bodyEl);
             }
         });
     });
