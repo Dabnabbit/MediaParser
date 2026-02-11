@@ -803,6 +803,11 @@ class ProgressHandler {
     }
 
     async startExport(importJobId, force = false) {
+        // Guard: don't start if already exporting or finalized
+        if (this.exportJobId) return;
+        const state = this.jobSection?.dataset.state;
+        if (state === 'finalized' || state === 'processing') return;
+
         try {
             // Show confirmation dialog (skip for force-retry on duplicate override)
             if (!force) {

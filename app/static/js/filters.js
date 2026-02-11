@@ -895,8 +895,8 @@ class FilterHandler {
                 if (!this.exportPhaseBtn.dataset.wired) {
                     this.exportPhaseBtn.dataset.wired = 'true';
                     this.exportPhaseBtn.addEventListener('click', () => {
+                        if (!this.exportPhaseBtn.classList.contains('export-ready')) return;
                         if (window.progressHandler && this.importJobId) {
-                            // Revert to normal breadcrumb style before export starts
                             this.exportPhaseBtn.classList.remove('export-ready');
                             window.progressHandler.startExport(this.importJobId);
                         }
