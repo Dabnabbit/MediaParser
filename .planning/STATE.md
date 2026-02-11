@@ -36,10 +36,10 @@
 
 ## Performance Metrics
 
-**Velocity:** 37 plans in ~80 minutes (avg 2.2 min/plan) - Phase 1+2+3+4+5 complete, Phase 6 in progress, Phase 7 in progress
-**Plan Success Rate:** 100% (37/37 completed successfully)
+**Velocity:** 39 plans in ~80 minutes (avg 2.1 min/plan) - All 7 phases complete
+**Plan Success Rate:** 100% (39/39 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
-**Phases Complete:** 5/7 (Phase 1, 2, 3, 4, 5 complete; Phase 6 in progress, Phase 7 in progress)
+**Phases Complete:** 7/7 (all phases complete)
 **Out-of-band work:** Carousel viewport system refactor (not tracked by GSD plans)
 
 ## Accumulated Context
@@ -243,12 +243,12 @@
 - [x] 05-03: Duplicate Comparison JavaScript (COMPLETE - later refactored to viewport)
 - [x] 05-04: Duplicate Resolution Integration (COMPLETE)
 
-**Phase 6 - Duplicate Detection (Perceptual) (IN PROGRESS):**
+**Phase 6 - Duplicate Detection (Perceptual) (COMPLETE):**
 - [x] 06-01: Alembic Setup + Schema Migration (COMPLETE)
 - [x] 06-02: Perceptual Detection Algorithm (COMPLETE)
 - [x] 06-03: Two-Tier Duplicate Detection API (COMPLETE)
 - [x] 06-04: Similar Mode UI Integration (COMPLETE)
-- [ ] 06-05: Integration Testing
+- [x] 06-05: Integration Testing (COMPLETE)
 
 ### Known Blockers
 
@@ -278,14 +278,12 @@ None
 
 ### Research Flags
 
-**Phase 6 (Perceptual Duplicate Detection):** Design document created, some research still needed.
-- ✓ Two-tier architecture defined: DUPLICATES (exact) → SIMILAR (perceptual/sequences)
-- ✓ Confidence scoring approach defined (reuse existing system)
-- ✓ UI workflow designed (radio for duplicates, checkbox for similar)
-- Algorithm selection: pHash vs dHash vs aHash - currently using dHash only
-- Threshold tuning: defined ranges (0-4 exact, 5-20 similar) but may need adjustment
-- Performance optimization for large datasets (O(n²) clustering concern)
-- Burst/panorama detection heuristics need refinement
+**Phase 6 (Perceptual Duplicate Detection):** ✓ COMPLETE
+- ✓ Two-tier architecture: DUPLICATES (exact) → SIMILAR (perceptual/sequences)
+- ✓ Multi-algorithm consensus: pHash + dHash + aHash with distance thresholds (0-5 exact, 6-20 similar)
+- ✓ Timestamp-constrained clustering for O(n log n) performance (5-second window)
+- ✓ Hardware-accelerated Hamming distance via int.bit_count()
+- ✓ UI workflow: radio for duplicates, checkbox for similar, sequential enforcement
 
 **Design Document:** `.planning/designs/duplicate-detection-system.md`
 
@@ -470,11 +468,6 @@ None
 
 ## Session Continuity
 
-**Last session:** 2026-02-06
-**Stopped at:** Completed 07-03-PLAN.md (Tag auto-generation from filenames and folders)
-**Resume file:** None
-**Last commit:** `8292a62` — feat(07-03): store import root path during server-path import
-
 **Phase 4 Execution Status:** ✓ COMPLETE (all 9 plans)
 
 **Phase 5 Execution Status (Duplicate Detection - Exact):** ✓ COMPLETE (all 4 plans)
@@ -551,12 +544,10 @@ None
   - Files auto-remove from grid when they no longer match current mode
   - Discarded badge (trash icon) on thumbnails
 
-**For Next Session:**
-1. `/clear` and start fresh
-2. Consider Phase 6 (Perceptual Duplicate Detection) or Phase 7 (Output Generation)
-3. Restore `--vp-transition-duration` from `2s` to `0.35s` when done testing animations
-4. ~~Exit animation could be improved (tiles snap back to grid, no smooth return)~~ — Partially addressed: navigation enter/leave tiles now FLIP animate to/from grid positions; full exit (Escape) still snaps
-5. Exit timeout hardcoded to 300ms — should read CSS variable like enter does
+**Remaining Polish Items:**
+1. Restore `--vp-transition-duration` from `2s` to `0.35s` when done testing animations
+2. Full exit (Escape) still snaps — navigation enter/leave FLIP animates, but exit doesn't
+3. Exit timeout hardcoded to 300ms — should read CSS variable like enter does
 
 **Key viewport files (refactored 2026-02-05):**
 - ViewportController (split into 4 modules):
@@ -569,7 +560,6 @@ None
   - `app/static/js/selection-events.js` - click/keyboard handlers
   - `app/static/js/selection-actions.js` - bulk API actions
 - `app/static/js/viewport-details.js` - details panel, context-aware action buttons
-**Stopped at:** Phase 7 COMPLETE — all plans executed and tests passing
 - `app/static/js/tile-manager.js` - tile lifecycle, setupViewport() navigation
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
@@ -582,4 +572,4 @@ None
 ---
 
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-06*
+*Last updated: 2026-02-10*
