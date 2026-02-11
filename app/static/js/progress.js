@@ -225,6 +225,10 @@ class ProgressHandler {
             });
         }
 
+        // Reset export phase button
+        const exportPhaseBtn = document.querySelector('.phase-export');
+        if (exportPhaseBtn) exportPhaseBtn.classList.remove('export-ready');
+
         // Hide metrics and summary
         if (this.statsArea) this.statsArea.style.display = 'none';
         if (this.metricsRow) this.metricsRow.style.display = 'none';
@@ -674,7 +678,7 @@ class ProgressHandler {
         const failTotal = (summary.success_count || 0) + (summary.error_count || 0);
         const failPct = failTotal > 0 ? (summary.error_count || 0) / failTotal : 0;
         if (failPct >= 0.10 && window.particles) {
-            const target = this.jobProgress || document.body;
+            const target = this.workflowPhases?.querySelector('.phase[data-phase="process"]') || this.jobProgress || document.body;
             window.particles.fart(target);
             window.particles.failSound();
         }

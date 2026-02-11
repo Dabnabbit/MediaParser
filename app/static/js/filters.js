@@ -45,8 +45,8 @@ class FilterHandler {
         this.strictMode = localStorage.getItem('strictWorkflow') !== 'false';
 
         // Cache DOM elements
-        this.modeChips = document.querySelectorAll('.mode-segment:not(.export-segment)');
-        this.exportSegment = document.querySelector('.export-segment');
+        this.modeChips = document.querySelectorAll('.mode-segment');
+        this.exportPhaseBtn = document.querySelector('.phase-export');
         this.confidenceChips = document.querySelectorAll('.confidence-filters .filter-chip');
         this.indicatorDiscarded = document.getElementById('indicator-discarded');
         this.indicatorFailed = document.getElementById('indicator-failed');
@@ -856,69 +856,53 @@ class FilterHandler {
             });
         }
 
-        // Show/hide export segment reactively based on review completion
+        // Export breadcrumb: transform into amber pill when all reviewed
         const allReviewed = (this.counts.duplicates || 0) === 0
                          && (this.counts.similar || 0) === 0
                          && (this.counts.unreviewed || 0) === 0
                          && (this.counts.reviewed || 0) > 0;
 
-        if (this.exportSegment) {
+        if (this.exportPhaseBtn) {
             if (allReviewed && this.importJobId) {
-                // Cap reviewed overlay to ~90% to leave room for export segment
-                if (this.reviewedOverlay) {
-                    this.reviewedOverlay.style.width = '90%';
-                    // Trigger shimmer once when transitioning to all-reviewed
-                    if (!this._shimmerFired) {
-                        this._shimmerFired = true;
-                        // Add class on next frame so width is committed first
-                        requestAnimationFrame(() => {
-                            this.reviewedOverlay.classList.add('all-reviewed');
-                        });
-                    }
+                // Shimmer on reviewed overlay
+                if (this.reviewedOverlay && !this._shimmerFired) {
+                    this._shimmerFired = true;
+                    requestAnimationFrame(() => {
+                        this.reviewedOverlay.classList.add('all-reviewed');
+                    });
                 }
-                if (this.modeSegmentsContainer) {
-                    this.modeSegmentsContainer.style.left = '90%';
-                    this.modeSegmentsContainer.style.width = '10%';
-                }
-                // Advance breadcrumb: Review ✓, Export active
+                // Advance breadcrumb + transform into amber pill
                 if (window.progressHandler) {
                     window.progressHandler.setPhase('export');
                 }
-                // Un-collapse and show export segment
-                this.exportSegment.classList.remove('collapsed');
-                this.exportSegment.style.flexGrow = '1';
-                if (!this.exportSegment.classList.contains('ready')) {
-                    this.exportSegment.classList.add('ready');
-                    // Delay burst until segment has transitioned into view
+                if (!this.exportPhaseBtn.classList.contains('export-ready')) {
+                    this.exportPhaseBtn.classList.add('export-ready');
                     setTimeout(() => {
                         if (Math.random() < 0.05) {
-                            // ~5% chance: fart + success sound for fun
-                            window.particles.fart(this.exportSegment);
+                            window.particles.fart(this.exportPhaseBtn);
                             window.particles.successSound();
                         } else {
-                            window.particles.burst(this.exportSegment);
+                            window.particles.burst(this.exportPhaseBtn);
                         }
                     }, 350);
                 }
                 // Wire click handler once
-                if (!this.exportSegment.dataset.wired) {
-                    this.exportSegment.dataset.wired = 'true';
-                    this.exportSegment.addEventListener('click', () => {
+                if (!this.exportPhaseBtn.dataset.wired) {
+                    this.exportPhaseBtn.dataset.wired = 'true';
+                    this.exportPhaseBtn.addEventListener('click', () => {
                         if (window.progressHandler && this.importJobId) {
+                            // Revert to normal breadcrumb style before export starts
+                            this.exportPhaseBtn.classList.remove('export-ready');
                             window.progressHandler.startExport(this.importJobId);
                         }
                     });
                 }
             } else {
-                // Revert breadcrumb: Review active again
+                // Revert breadcrumb
                 if (window.progressHandler) {
                     window.progressHandler.setPhase('review');
                 }
-                // Collapse export segment, restore normal reviewed overlay width
-                this.exportSegment.classList.add('collapsed');
-                this.exportSegment.classList.remove('ready');
-                this.exportSegment.style.flexGrow = '0';
-                // Remove shimmer so it re-triggers next time
+                this.exportPhaseBtn.classList.remove('export-ready');
                 this._shimmerFired = false;
                 if (this.reviewedOverlay) {
                     this.reviewedOverlay.classList.remove('all-reviewed');
@@ -1043,11 +1027,9 @@ class FilterHandler {
             seg.classList.add('collapsed');
             seg.classList.remove('seg-small', 'has-items', 'locked');
         });
-        // Reset export segment
-        if (this.exportSegment) {
-            this.exportSegment.classList.add('collapsed');
-            this.exportSegment.classList.remove('ready');
-            this.exportSegment.style.flexGrow = '0';
+        // Reset export phase button
+        if (this.exportPhaseBtn) {
+            this.exportPhaseBtn.classList.remove('export-ready');
         }
         // Reset reviewed overlay
         if (this.reviewedOverlay) {

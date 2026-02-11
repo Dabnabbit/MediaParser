@@ -739,8 +739,7 @@ body {
 .mode-segment[data-mode="duplicates"] { background: var(--color-mode-duplicates); }
 .mode-segment[data-mode="similar"]    { background: var(--color-mode-similar); }
 .mode-segment[data-mode="unreviewed"] { background: var(--color-mode-unreviewed); }
-/* Export segment */
-.mode-segment[data-mode="export"]  { background: var(--color-mode-export); }
+/* (export segment removed — export trigger is now the breadcrumb .phase-export button) */
 
 /* Discarded/Failed are shown as summary indicators, not bar segments */
 
@@ -962,6 +961,48 @@ body {
     content: '\2713';
 }
 
+/* Export phase — button reset (invisible as button until ready) */
+.phase-export {
+    background: none;
+    border: none;
+    padding: 2px 6px;
+    border-radius: 12px;
+    cursor: default;
+    color: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    transition: color 0.2s ease, font-weight 0.2s ease,
+                background-color 0.3s ease, transform 0.15s ease, box-shadow 0.3s ease;
+}
+
+/* Export ready — transforms into amber pill button */
+.phase-export.export-ready {
+    background: var(--color-mode-export);
+    color: white !important;
+    font-weight: 600;
+    cursor: pointer;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 1px 4px rgba(245, 158, 11, 0.4);
+    animation: exportPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+               exportGlow 2s ease-in-out 0.5s infinite;
+}
+
+@keyframes exportGlow {
+    0%, 100% { box-shadow: 0 1px 4px rgba(245, 158, 11, 0.4); }
+    50%      { box-shadow: 0 1px 8px rgba(245, 158, 11, 0.6), 0 0 16px rgba(245, 158, 11, 0.3); }
+}
+
+.phase-export.export-ready:hover {
+    filter: brightness(1.15);
+    transform: scale(1.05);
+}
+
+/* Hide checkmark pseudo-element when export is in ready-pill state */
+.phase-export.export-ready::before {
+    display: none;
+}
+
 /* Spinner on active phase during upload/processing */
 [data-state="uploading"] .phase.active::before,
 [data-state="processing"]:not([data-status="PAUSED"]):not([data-status="HALTED"]) .phase.active::before {
@@ -1077,7 +1118,7 @@ body {
     gap: var(--spacing-md);
 }
 
-/* (export-inline-btn removed — export is now a workflow bar segment) */
+/* (export-inline-btn removed — export is now the breadcrumb .phase-export button) */
 
 .job-header-center {
     display: flex;
@@ -2573,9 +2614,7 @@ body {
     100% { transform: scale(1); }
 }
 
-.export-segment.ready {
-    animation: exportPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+/* (export-segment.ready removed — export trigger moved to breadcrumb .phase-export.export-ready) */
 
 /* Confetti particles are animated via JS requestAnimationFrame */
 
