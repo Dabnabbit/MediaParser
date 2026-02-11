@@ -188,7 +188,7 @@ window.showModal = function(options) {
 
         // Focus the confirm button (or first input if present)
         requestAnimationFrame(() => {
-            const firstInput = bodyEl.querySelector('input, select, textarea');
+            const firstInput = bodyEl.querySelector('input:not([type="checkbox"]), select, textarea');
             if (firstInput) {
                 firstInput.focus();
             } else {
