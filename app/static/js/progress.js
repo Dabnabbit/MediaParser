@@ -903,6 +903,10 @@ class ProgressHandler {
                 localStorage.setItem('exportCleanupOptions', JSON.stringify(cleanupOpts));
             }
 
+            // Revert export breadcrumb to normal style now that export is confirmed
+            const exportPhaseBtn = document.querySelector('.phase-export');
+            if (exportPhaseBtn) exportPhaseBtn.classList.remove('export-ready');
+
             // Trigger export
             const response = await fetch(`/api/jobs/${importJobId}/export`, {
                 method: 'POST',

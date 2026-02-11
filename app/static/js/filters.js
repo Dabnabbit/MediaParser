@@ -897,7 +897,6 @@ class FilterHandler {
                     this.exportPhaseBtn.addEventListener('click', () => {
                         if (!this.exportPhaseBtn.classList.contains('export-ready')) return;
                         if (window.progressHandler && this.importJobId) {
-                            this.exportPhaseBtn.classList.remove('export-ready');
                             window.progressHandler.startExport(this.importJobId);
                         }
                     });
