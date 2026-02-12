@@ -379,21 +379,25 @@ def get_job_files(job_id):
     mode_totals = {
         'duplicates': base_query.filter(
             File.exact_group_id.isnot(None),
-            File.discarded == False
+            File.discarded == False,
+            File.processing_error.is_(None)
         ).count(),
         'similar': base_query.filter(
             File.similar_group_id.isnot(None),
-            File.discarded == False
+            File.discarded == False,
+            File.processing_error.is_(None)
         ).count(),
         'unreviewed': base_query.filter(
             File.reviewed_at.is_(None),
             File.discarded == False,
+            File.processing_error.is_(None),
             File.exact_group_id.is_(None),
             File.similar_group_id.is_(None)
         ).count(),
         'reviewed': base_query.filter(
             File.reviewed_at.isnot(None),
-            File.discarded == False
+            File.discarded == False,
+            File.processing_error.is_(None)
         ).count(),
         'discards': base_query.filter(File.discarded == True).count(),
         'failed': base_query.filter(File.processing_error.isnot(None)).count(),

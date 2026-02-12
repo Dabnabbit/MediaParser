@@ -558,7 +558,8 @@ class Tile {
      */
     getThumbnailSrc() {
         if (!this.file) return '/static/img/placeholder.svg';
-        return this.file.thumbnail_path ? `/${this.file.thumbnail_path}` : '/static/img/placeholder.svg';
+        if (!this.file.thumbnail_path) return '/static/img/placeholder.svg';
+        return `/${this.file.thumbnail_path}?v=${this.file.file_hash || this.file.id}`;
     }
 
     /**

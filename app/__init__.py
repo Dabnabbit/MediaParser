@@ -104,12 +104,16 @@ def create_app(config_name='development'):
     @app.route('/thumbnails/<path:filename>')
     def serve_thumbnail(filename):
         from flask import send_from_directory
-        return send_from_directory(app.config['THUMBNAILS_FOLDER'], filename)
+        resp = send_from_directory(app.config['THUMBNAILS_FOLDER'], filename)
+        resp.cache_control.no_cache = True
+        return resp
 
     # Serve full images from uploads directory
     @app.route('/uploads/<path:filename>')
     def serve_upload(filename):
         from flask import send_from_directory
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+        resp = send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+        resp.cache_control.no_cache = True
+        return resp
 
     return app
