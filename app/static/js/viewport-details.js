@@ -653,15 +653,16 @@ class ViewportDetailsPanel {
     async discardFile() {
         if (!this.currentFile) return;
 
+        const btn = this.elements.actionsFooter.querySelector('#vp-discard');
         const { confirmed } = await showModal({
             title: 'Discard File',
             body: `Discard "${this.currentFile.original_filename}"?`,
             confirmText: 'Discard',
-            dangerous: true
+            dangerous: true,
+            anchor: btn
         });
         if (!confirmed) return;
 
-        const btn = this.elements.actionsFooter.querySelector('#vp-discard');
         if (btn) btn.disabled = true;
 
         try {
@@ -727,15 +728,15 @@ class ViewportDetailsPanel {
             return;
         }
 
+        const btn = this.elements.actionsFooter.querySelector('#vp-keep-duplicate');
         const { confirmed } = await showModal({
             title: 'Keep Duplicate',
             body: `Keep "${this.currentFile.original_filename}" and discard ${othersToDiscard.length} other file(s)?`,
             confirmText: 'Keep This',
-            dangerous: true
+            dangerous: true,
+            anchor: btn
         });
         if (!confirmed) return;
-
-        const btn = this.elements.actionsFooter.querySelector('#vp-keep-duplicate');
         if (btn) {
             btn.disabled = true;
             btn.textContent = 'Keeping...';
@@ -779,14 +780,14 @@ class ViewportDetailsPanel {
         if (!this.currentFile) return;
 
         const filename = this.currentFile.original_filename;
+        const btn = this.elements.actionsFooter.querySelector('#vp-not-duplicate');
         const { confirmed } = await showModal({
             title: 'Not a Duplicate',
             body: `Remove "${filename}" from the duplicate group?`,
-            confirmText: 'Remove'
+            confirmText: 'Remove',
+            anchor: btn
         });
         if (!confirmed) return;
-
-        const btn = this.elements.actionsFooter.querySelector('#vp-not-duplicate');
         if (btn) {
             btn.disabled = true;
             btn.textContent = 'Removing...';
@@ -863,15 +864,15 @@ class ViewportDetailsPanel {
             return;
         }
 
+        const btn = this.elements.actionsFooter.querySelector('#vp-keep-similar');
         const { confirmed } = await showModal({
             title: 'Keep Similar',
             body: `Keep "${this.currentFile.original_filename}" and discard ${othersToDiscard.length} other file(s)?`,
             confirmText: 'Keep This',
-            dangerous: true
+            dangerous: true,
+            anchor: btn
         });
         if (!confirmed) return;
-
-        const btn = this.elements.actionsFooter.querySelector('#vp-keep-similar');
         if (btn) {
             btn.disabled = true;
             btn.textContent = 'Keeping...';
@@ -915,14 +916,14 @@ class ViewportDetailsPanel {
             return;
         }
 
+        const btn = this.elements.actionsFooter.querySelector('#vp-keep-all-similar');
         const { confirmed } = await showModal({
             title: 'Keep All Similar',
             body: 'Keep all files in this similar group?',
-            confirmText: 'Keep All'
+            confirmText: 'Keep All',
+            anchor: btn
         });
         if (!confirmed) return;
-
-        const btn = this.elements.actionsFooter.querySelector('#vp-keep-all-similar');
         if (btn) {
             btn.disabled = true;
             btn.textContent = 'Keeping All...';
@@ -956,14 +957,14 @@ class ViewportDetailsPanel {
         if (!this.currentFile) return;
 
         const filename = this.currentFile.original_filename;
+        const btn = this.elements.actionsFooter.querySelector('#vp-not-similar');
         const { confirmed } = await showModal({
             title: 'Not Similar',
             body: `Remove "${filename}" from the similar group?`,
-            confirmText: 'Remove'
+            confirmText: 'Remove',
+            anchor: btn
         });
         if (!confirmed) return;
-
-        const btn = this.elements.actionsFooter.querySelector('#vp-not-similar');
         if (btn) {
             btn.disabled = true;
             btn.textContent = 'Removing...';
@@ -1046,16 +1047,19 @@ class ViewportDetailsPanel {
         const viewportController = window.selectionHandler?.viewportController;
         const currentMode = window.filterHandler?.getCurrentMode();
 
-        // Exit the viewport
-        if (viewportController) {
-            viewportController.exit();
-        }
+        // Flag: tell results.js viewportExit handler to skip its own logic
+        this._advancingGroup = true;
 
-        // Wait for exit animation (300ms) + buffer
-        await new Promise(resolve => setTimeout(resolve, 350));
-
-        // Reload summary to get updated counts
-        await window.resultsHandler?.loadSummary();
+        // Fetch updated counts directly — avoid resultsHandler.loadSummary() which
+        // auto-switches mode when count=0, triggering a grid rebuild while viewport is active
+        const jobId = window.resultsHandler?.jobId;
+        try {
+            const summaryResp = await fetch(`/api/jobs/${jobId}/summary`);
+            if (summaryResp.ok) {
+                const summary = await summaryResp.json();
+                window.filterHandler?.updateCounts(summary);
+            }
+        } catch (e) { /* counts stay stale, exit path handles it */ }
 
         // Check if there are remaining groups in the current mode
         const counts = window.filterHandler?.counts;
@@ -1063,32 +1067,77 @@ class ViewportDetailsPanel {
             (currentMode === 'duplicates' && counts?.duplicates > 0) ||
             (currentMode === 'similar' && counts?.similar > 0);
 
-        if (hasMoreInCurrentMode) {
-            // Reload files, then open the next group
-            await window.resultsHandler?.loadFiles();
+        if (hasMoreInCurrentMode && viewportController?.isActive) {
+            // Fetch updated file list without rebuilding the grid
+            const filterParams = window.filterHandler?.getQueryParams() || new URLSearchParams();
+            filterParams.set('offset', 0);
+            filterParams.set('limit', 10000);
+            const response = await fetch(`/api/jobs/${jobId}/files?${filterParams}`);
+            if (response.ok) {
+                const data = await response.json();
+                const files = data.files || [];
 
-            const files = window.resultsHandler?.allFiles || [];
-            let firstGroupFile = null;
+                // Inject file data into TileManager so ensureTile() can create tiles
+                const tileManager = viewportController.tileManager;
+                files.forEach(file => tileManager.allFileData.set(file.id, file));
 
-            if (currentMode === 'duplicates') {
-                firstGroupFile = files.find(f => f.exact_group_id);
-            } else if (currentMode === 'similar') {
-                firstGroupFile = files.find(f => f.similar_group_id);
-            }
+                // Also update resultsHandler for consistency
+                if (window.resultsHandler) {
+                    window.resultsHandler.allFiles = files;
+                    window.resultsHandler.totalFiles = data.total || 0;
+                }
 
-            if (firstGroupFile && window.selectionHandler) {
-                window.selectionHandler.openExamination(firstGroupFile.id);
-                return;
+                // Find next group
+                let nextGroupFiles;
+                if (currentMode === 'duplicates') {
+                    const first = files.find(f => f.exact_group_id);
+                    if (first) {
+                        nextGroupFiles = files.filter(f => f.exact_group_id === first.exact_group_id);
+                    }
+                } else if (currentMode === 'similar') {
+                    const first = files.find(f => f.similar_group_id);
+                    if (first) {
+                        nextGroupFiles = files.filter(f => f.similar_group_id === first.similar_group_id);
+                    }
+                }
+
+                if (nextGroupFiles?.length > 0) {
+                    // Swap navigation set in-place — triggers FLIP animation
+                    viewportController.updateNavigationSet(nextGroupFiles.map(f => f.id));
+
+                    // Update details panel with new current file
+                    const newFile = viewportController.getCurrentFile();
+                    if (newFile) this.loadFile(newFile);
+
+                    this._advancingGroup = false;
+                    return;
+                }
             }
         }
 
-        // No more groups in current mode - reload files and auto-switch
+        // No more groups — exit viewport and auto-switch mode
+        if (!viewportController?.isActive && !viewportController?.isTransitioning) {
+            // Already exited
+        } else {
+            await new Promise(resolve => {
+                const onExit = () => {
+                    window.removeEventListener('viewportExit', onExit);
+                    resolve();
+                };
+                window.addEventListener('viewportExit', onExit);
+                if (viewportController) viewportController.exit();
+            });
+        }
+
+        this._advancingGroup = false;
+
+        // Reload files and auto-switch mode
+        // autoSelectMode fires filterChange → loadFiles when the mode changes.
+        // Also call loadFiles explicitly in case the mode didn't change.
         if (window.filterHandler) {
             window.filterHandler.autoSelectMode();
-            // Mode change triggers loadFiles via filterChange event
-        } else {
-            window.resultsHandler?.loadFiles();
         }
+        await window.resultsHandler?.loadFiles();
     }
 
     // ==========================================

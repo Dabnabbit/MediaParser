@@ -16,6 +16,7 @@
  * @param {string} [options.confirmClass='btn-pill-primary'] - CSS class for confirm button
  * @param {boolean} [options.dangerous=false] - If true, confirm button uses btn-pill-danger
  * @param {Function} [options.onBeforeConfirm] - Async fn called before resolving; return false to prevent close
+ * @param {HTMLElement} [options.anchor] - If provided, position the modal near this element instead of centered
  * @returns {Promise<{confirmed: boolean, data: object}>}
  */
 window.showModal = function(options) {
@@ -27,7 +28,8 @@ window.showModal = function(options) {
             cancelText = 'Cancel',
             confirmClass,
             dangerous = false,
-            onBeforeConfirm
+            onBeforeConfirm,
+            anchor
         } = options;
 
         // Build backdrop
@@ -85,6 +87,26 @@ window.showModal = function(options) {
         panel.appendChild(footer);
         backdrop.appendChild(panel);
         document.body.appendChild(backdrop);
+
+        // Anchor positioning: place panel near the triggering element
+        if (anchor) {
+            backdrop.classList.add('modal-anchored');
+            const rect = anchor.getBoundingClientRect();
+            const gap = 8;
+
+            // Position above the anchor, right-aligned to it
+            panel.style.position = 'fixed';
+            panel.style.right = (window.innerWidth - rect.right) + 'px';
+
+            // Try above; if not enough room, go below
+            void panel.offsetHeight;  // reflow to get panel height
+            const panelHeight = panel.offsetHeight;
+            if (rect.top - gap - panelHeight > 0) {
+                panel.style.bottom = (window.innerHeight - rect.top + gap) + 'px';
+            } else {
+                panel.style.top = (rect.bottom + gap) + 'px';
+            }
+        }
 
         // Force reflow then animate in
         void backdrop.offsetHeight;
