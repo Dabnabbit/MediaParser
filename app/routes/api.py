@@ -117,8 +117,28 @@ def get_current_job():
 def check_worker_health():
     """Check if Huey worker process is running.
 
-    Uses process detection for instant response.
+    In standalone mode, checks embedded consumer thread liveness.
+    Otherwise, uses process detection via pgrep.
     """
+    # Standalone mode: check embedded consumer threads
+    consumer = current_app.config.get('STANDALONE_CONSUMER')
+    if consumer is not None:
+        alive_workers = sum(
+            1 for _, t in consumer.worker_threads if t.is_alive()
+        )
+        scheduler_alive = consumer.scheduler.is_alive()
+        if alive_workers > 0 and scheduler_alive:
+            return jsonify({
+                'worker_alive': True,
+                'mode': 'standalone',
+                'workers': alive_workers,
+            })
+        return jsonify({
+            'worker_alive': False,
+            'error': f'Embedded consumer unhealthy (workers={alive_workers}, scheduler={scheduler_alive})',
+        }), 503
+
+    # External process mode: use pgrep
     import subprocess
 
     try:
