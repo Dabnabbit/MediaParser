@@ -225,4 +225,25 @@ Plans:
 
 ---
 
-*Last updated: 2026-02-10*
+## Future Milestones
+
+### FOSS Photo Management Integrations (post-v1.0)
+
+**Goal:** Import from and export to popular self-hosted photo management platforms, allowing MediaParser to serve as a dedup/organization layer in existing workflows.
+
+**Candidates:**
+- **Immich** — REST API, most popular self-hosted option, likely running on the same Docker host
+- **PhotoPrism** — mature API, large user base
+- **LibrePhotos** — Django-based, has API
+- **Nextcloud Photos** — WebDAV + OCS API
+
+**Possible scope:**
+- **Import:** Pull assets/albums from a connected instance for dedup analysis
+- **Export:** Push reviewed/deduplicated files directly into the target platform
+- **Metadata sync:** Map tags and timestamps bidirectionally
+
+**Priority:** Immich first (largest community overlap with self-hosted Docker users)
+
+---
+
+*Last updated: 2026-02-12*
