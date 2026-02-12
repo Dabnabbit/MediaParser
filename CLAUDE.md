@@ -34,14 +34,33 @@ cd /home/dab/Projects/MediaParser
 
 ## Environment
 - **Platform:** WSL2 (Ubuntu) - migrated from Windows
-- **Target:** Linux-native, will be Dockerized
-- **Python:** 3.11+ with venv at `.venv/`
+- **Python:** 3.12 with venv at `.venv/`
+- **Docker:** Production deployment via Docker (two-service compose: web + worker)
+- **CI/CD:** GitHub Actions auto-builds and pushes to GHCR on every push to `main`
+- **Image:** `ghcr.io/dabnabbit/mediaparser:latest`
+
+### Running in Docker (production)
+```bash
+cp .env.production .env   # Set SECRET_KEY and TIMEZONE
+# Edit docker-compose.yml media mount path
+docker compose pull
+docker compose up -d
+```
+
+### Running locally (development)
+```bash
+.venv/bin/python run.py          # Flask dev server
+.venv/bin/python run_worker.py   # Huey worker
+```
 
 ## Current Development Focus
 - All 7 GSD phases complete (v1 milestone)
+- Docker deployment complete (Dockerfile, docker-compose.yml, GHCR via GitHub Actions)
 - Carousel viewport refactor complete (replaces examination modal)
 - FLIP animations for enter, navigation, and partial exit
+- Anchored modal positioning for viewport action confirmations
 - Ongoing UI polish and sound/particle enhancements
+- Product naming in progress (currently "MediaParser", seeking a better name)
 
 ## Recent Session Work (outside GSD tracking)
 The following was tested and fixed in sessions not tracked by GSD:
@@ -53,6 +72,11 @@ The following was tested and fixed in sessions not tracked by GSD:
 - Carousel viewport system (major architectural refactor)
 - FLIP animation for navigation enter/leave (tiles animate to/from grid positions)
 - Fixed tile.css transition selector (was applying to grid tiles, causing shoot-off bug)
+- Anchored modal positioning (confirmation dialogs appear near the triggering button)
+- In-viewport group advancement (resolving a duplicate/similar group loads next group without exiting viewport)
+- Docker deployment: Dockerfile, docker-compose.yml, docker-entrypoint.sh, .dockerignore, .env.production
+- GitHub Actions CI/CD: auto-builds Docker image and pushes to GHCR on push to main
+- `.gitattributes` fix: forces LF line endings for shell scripts (CRLF breaks Docker entrypoint)
 
 ### Sound Effects (Web Audio API) — `app/static/js/particles.js`
 Synthesized sound effects added to particle system, no audio files needed:

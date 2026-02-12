@@ -65,15 +65,28 @@ Turn chaotic family media from dozens of sources into a clean, organized, timest
 - [x] Post-export finalization (cleanup working data, keep output)
 - [x] Option to keep or delete source files after export
 
+### Shipped (post-v1)
+
+<!-- Shipped after GSD phases, outside phase tracking. -->
+
+**Docker Deployment:**
+- [x] Dockerfile (python:3.12-slim + exiftool + ffmpeg + libmagic, non-root user with configurable UID/GID)
+- [x] docker-compose.yml (two-service: Gunicorn web + Huey worker, shared named volumes)
+- [x] GitHub Actions CI/CD auto-builds and pushes to `ghcr.io/dabnabbit/mediaparser:latest`
+- [x] NAS deployment: `docker compose pull && docker compose up -d`
+- [x] Read-only bind mount for NAS media input (`/media` inside container)
+
+**UI Polish (outside GSD tracking):**
+- [x] Anchored modal positioning (confirmation dialogs appear near triggering button)
+- [x] In-viewport group advancement (resolving a group loads next without exiting viewport)
+
 ### Out of Scope
 
 <!-- Explicit boundaries. Includes reasoning to prevent re-adding. -->
 
-- Docker deployment — Planned for v2. Currently runs locally on WSL2 during development.
-- Full video support — Some video formats work (mp4, mov, avi, mkv) but not all. Defer full support to v2.
+- Full video support — Some video formats work (mp4, mov, avi, mkv) but not all. Defer to v2.
 - Multi-user support — Single user for v1. Multi-user with separate workspaces is v2.
 - Authentication/login — No auth for v1, home network trusted. Add in v2 with multi-user.
-- Direct NAS/QNAP output — Use local/configurable paths for v1. Direct NAS integration is v2.
 - QuMagie integration — Current archive uses QuMagie but no direct integration needed. May evaluate alternatives later.
 - Mobile app — Web-first, responsive design sufficient for phone browsers.
 
@@ -90,7 +103,8 @@ Turn chaotic family media from dozens of sources into a clean, organized, timest
 - `old/PhotoTimeFixer.py` — Original CLI script. Timestamp detection and tag extraction logic refactored into `app/lib/timestamp.py` and `app/lib/metadata.py`.
 
 **Technical environment:**
-- WSL2 (Ubuntu) with Python 3.12, will be Dockerized for production
+- Development: WSL2 (Ubuntu) with Python 3.12
+- Production: Docker on QNAP TS-464 NAS (Container Station), image from GHCR
 - Output destination is QNAP NAS with QuMagie, accessed via configurable path
 - Users are household family members with varying technical comfort
 
@@ -103,7 +117,7 @@ Turn chaotic family media from dozens of sources into a clean, organized, timest
 - **Framework**: Flask 3.x with Jinja2 templates and vanilla JS
 - **Database**: SQLite via SQLAlchemy 2.x (WAL mode)
 - **Task queue**: Huey with SQLite backend (thread-based workers)
-- **Deployment**: Currently WSL2, will run in Docker container (v2)
+- **Deployment**: Docker on QNAP NAS via GHCR; dev on WSL2
 - **Performance**: Multi-threaded processing, batch DB commits, virtual scrolling for large file sets
 - **Compatibility**: Timestamp detection logic preserved from original CLI
 
@@ -119,10 +133,12 @@ Turn chaotic family media from dozens of sources into a clean, organized, timest
 | Huey (not Celery/Redis) | SQLite backend avoids Redis dependency, simpler for single-server | Decided |
 | Preserve existing timestamp logic | Refactored from PhotoTimeFixer.py into app/lib/timestamp.py | Done |
 | Vanilla JS (no framework) | Simpler for household tool, no build step needed | Decided |
+| Docker two-service compose | Web (Gunicorn) + Worker (Huey) sharing image and volumes, deploys as one Container Station app | Done |
+| GHCR via GitHub Actions | Auto-build on push to main, NAS pulls pre-built image instead of building locally | Done |
 | Copy-first architecture | Never modify originals — copy to output, write metadata to copies only | Done |
 | Earliest timestamp selection | When multiple timestamps found, select earliest as authoritative | Done |
 | FLIP animations for viewport | Smooth tile-to-viewport transitions using First-Last-Invert-Play technique | Done |
 | Web Audio synthesized sounds | No audio files — particle effects generate sounds via Web Audio API | Done |
 
 ---
-*Last updated: 2026-02-11 — documentation audit*
+*Last updated: 2026-02-11 — Docker deployment and GHCR CI/CD*
