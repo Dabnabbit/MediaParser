@@ -148,22 +148,11 @@
             });
         });
 
-        // Quick tag add
-        document.getElementById('add-quick-tag')?.addEventListener('click', () => {
-            this.addQuickTag();
-        });
-
-        // Allow Enter key to add tag
+        // Tag button and input are handled by TagsHandler (tags.js)
+        // Only stop propagation so keyboard shortcuts don't fire while typing
         document.getElementById('quick-tag-input')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                this.addQuickTag();
-                e.preventDefault();
-            }
-            // Stop propagation so keyboard shortcuts don't fire
             e.stopPropagation();
         });
-
-        // Prevent tag input from capturing the 'a' key
         document.getElementById('quick-tag-input')?.addEventListener('keyup', (e) => {
             e.stopPropagation();
         });

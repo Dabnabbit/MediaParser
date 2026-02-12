@@ -286,36 +286,6 @@
     };
 
     // ==========================================
-    // Tagging (bug fix: correct endpoint + format)
-    // ==========================================
-
-    proto.addQuickTag = async function() {
-        const input = document.getElementById('quick-tag-input');
-        const tagName = input?.value?.trim();
-
-        if (!tagName || this.selectedIds.size === 0) return;
-
-        try {
-            const response = await fetch('/api/files/bulk/tags', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    file_ids: Array.from(this.selectedIds),
-                    tags: [tagName]
-                })
-            });
-
-            if (response.ok) {
-                input.value = '';
-                this.showToast(`Tag "${tagName}" added`);
-            }
-        } catch (error) {
-            console.error('Failed to add tag:', error);
-            window.showToast('Failed to add tag', 'error');
-        }
-    };
-
-    // ==========================================
     // Bulk Review
     // ==========================================
 
