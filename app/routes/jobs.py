@@ -1189,10 +1189,12 @@ def finalize_job(job_id):
 
     # 2. Delete thumbnails and previews (only if clean_working_files)
     if clean_working_files:
+        thumb_dir = str(current_app.config['THUMBNAILS_FOLDER'])
+
         # Delete known files for this job (thumb + preview variants)
         for file_id in all_file_ids:
             for suffix in ('_thumb.jpg', '_preview.jpg'):
-                path = os.path.join('storage', 'thumbnails', f'{file_id}{suffix}')
+                path = os.path.join(thumb_dir, f'{file_id}{suffix}')
                 try:
                     if os.path.exists(path):
                         os.unlink(path)
@@ -1201,7 +1203,6 @@ def finalize_job(job_id):
                     logger.warning(f"Failed to delete {path}: {e}")
 
         # Sweep any remaining orphans (from previous incomplete sessions)
-        thumb_dir = os.path.join('storage', 'thumbnails')
         if os.path.isdir(thumb_dir):
             for entry in os.listdir(thumb_dir):
                 entry_path = os.path.join(thumb_dir, entry)
@@ -1214,7 +1215,7 @@ def finalize_job(job_id):
 
     # 3. Delete upload directories (only if clean_working_files)
     if clean_working_files:
-        uploads_dir = os.path.join('storage', 'uploads')
+        uploads_dir = str(current_app.config['UPLOAD_FOLDER'])
         if os.path.isdir(uploads_dir):
             for entry in os.listdir(uploads_dir):
                 entry_path = os.path.join(uploads_dir, entry)

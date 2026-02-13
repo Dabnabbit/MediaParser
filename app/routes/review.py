@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 import json
 import logging
 
+from sqlalchemy.exc import IntegrityError
+
 from app import db
 from app.models import File, Job, Tag, UserDecision
 
@@ -308,7 +310,7 @@ def add_tags_to_file(file_id):
                 tag = Tag(name=normalized_name, usage_count=0)
                 db.session.add(tag)
                 db.session.flush()
-            except Exception:
+            except IntegrityError:
                 db.session.rollback()
                 tag = Tag.query.filter_by(name=normalized_name).first()
 
@@ -324,7 +326,7 @@ def add_tags_to_file(file_id):
         logger.info(f"Added tags {tags_added} to file {file_id}")
 
     return jsonify({
-        'file_id': file.id,
+        'id': file.id,
         'tags': [{'id': t.id, 'name': t.name} for t in file.tags]
     }), 200
 
@@ -363,7 +365,7 @@ def remove_tag_from_file(file_id, tag_name):
         logger.info(f"Removed tag '{normalized_name}' from file {file_id}")
 
     return jsonify({
-        'file_id': file.id,
+        'id': file.id,
         'tags': [{'id': t.id, 'name': t.name} for t in file.tags]
     }), 200
 
@@ -402,7 +404,7 @@ def bulk_add_tags():
                 tag = Tag(name=normalized_name, usage_count=0)
                 db.session.add(tag)
                 db.session.flush()
-            except Exception:
+            except IntegrityError:
                 db.session.rollback()
                 tag = Tag.query.filter_by(name=normalized_name).first()
         tags_to_add.append(tag)

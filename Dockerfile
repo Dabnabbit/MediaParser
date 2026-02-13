@@ -17,6 +17,9 @@ RUN groupadd -g ${APP_GID} mediaparser \
 
 WORKDIR /app
 
+# Default to production mode (can be overridden in docker-compose or .env)
+ENV FLASK_ENV=production
+
 # Install Python dependencies (cached layer)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt gunicorn>=22.0.0

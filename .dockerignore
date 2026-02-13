@@ -11,3 +11,8 @@ old/
 .claude/
 *.egg-info
 .pytest_cache
+tests/
+.github/
+.planning/
+exiftool.exe
+*.md

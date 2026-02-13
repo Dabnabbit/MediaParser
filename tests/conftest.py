@@ -56,7 +56,7 @@ def app():
     with tempfile.TemporaryDirectory() as tmpdir:
         test_db = Path(tmpdir) / 'test.db'
 
-        app = create_app('DevelopmentConfig')
+        app = create_app('development')
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{test_db}'
         app.config['TESTING'] = True
 
