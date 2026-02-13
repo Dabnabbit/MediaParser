@@ -29,3 +29,6 @@ __pycache__/
 .venv/
 venv/
 env/
+
+# Windows binaries (not used in Linux/Docker)
+*.exe

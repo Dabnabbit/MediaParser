@@ -1061,7 +1061,14 @@ def trigger_export(job_id):
     db.session.commit()
 
     # Enqueue the export job
-    task_id = enqueue_export_job(export_job.id)
+    try:
+        task_id = enqueue_export_job(export_job.id)
+    except Exception as e:
+        export_job.status = JobStatus.FAILED
+        export_job.completed_at = datetime.now(timezone.utc)
+        db.session.commit()
+        logger.error(f"Failed to enqueue export job {export_job.id}: {e}")
+        return jsonify({'error': f'Failed to enqueue export: {str(e)}'}), 500
 
     logger.info(f"Export job {export_job.id} created and enqueued for import job {job_id} ({file_count} files)")
 
