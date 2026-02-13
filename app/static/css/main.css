@@ -66,8 +66,38 @@
     --pill-font-size-xs: 0.75rem;
 }
 
-/* Dark theme */
+/* Dark theme (VS Code-inspired neutral grays) */
 [data-theme="dark"] {
+    --color-bg: #1e1e1e;
+    --color-bg-alt: #252526;
+    --color-bg-hover: #2a2d2e;
+    --color-border: #3c3c3c;
+    --color-text: #d4d4d4;
+    --color-text-muted: #858585;
+    --color-primary: #007acc;
+
+    /* Aliases (redefined to ensure cascade works) */
+    --bg-primary: #1e1e1e;
+    --bg-secondary: #252526;
+    --bg-hover: #2a2d2e;
+    --border-color: #3c3c3c;
+    --text-primary: #d4d4d4;
+    --text-secondary: #858585;
+    --accent-color: #007acc;
+    --success-color: var(--color-high);
+    --warning-color: var(--color-medium);
+    --error-color: var(--color-low);
+
+    /* Gray scale (inverted for dark theme) */
+    --color-gray-300: #4b5563;
+    --color-gray-400: #6b7280;
+    --color-gray-500: #9ca3af;
+    --color-gray-600: #d1d5db;
+    --color-gray-800: #e5e7eb;
+}
+
+/* Legacy dark theme (blue-tinted indigo) */
+[data-theme="legacy"] {
     --color-bg: #1a1a2e;
     --color-bg-alt: #16162a;
     --color-bg-hover: #252542;
@@ -96,25 +126,96 @@
     --color-gray-800: #e5e7eb;
 }
 
+/* Windows XP (Luna Blue) theme */
+[data-theme="winxp"] {
+    --color-bg: #ffffff;
+    --color-bg-alt: #ece9d8;
+    --color-bg-hover: #d6d2c2;
+    --color-border: #aca899;
+    --color-text: #000000;
+    --color-text-muted: #544e3f;
+    --color-primary: #0054e3;
+
+    /* Aliases */
+    --bg-primary: #ffffff;
+    --bg-secondary: #ece9d8;
+    --bg-hover: #d6d2c2;
+    --border-color: #aca899;
+    --text-primary: #000000;
+    --text-secondary: #544e3f;
+    --accent-color: #0054e3;
+    --success-color: var(--color-high);
+    --warning-color: var(--color-medium);
+    --error-color: var(--color-low);
+
+    /* Sizing overrides — tighter radii for classic look */
+    --border-radius: 0.25rem;
+    --border-radius-sm: 0.125rem;
+
+    /* Gray scale */
+    --color-gray-300: #d1d5db;
+    --color-gray-400: #9ca3af;
+    --color-gray-500: #6b7280;
+    --color-gray-600: #4b5563;
+    --color-gray-800: #1f2937;
+}
+
+/* WinXP component overrides */
+[data-theme="winxp"] .app-header {
+    background: linear-gradient(180deg, #0a246a 0%, #3a6ea5 100%);
+    border-bottom: 2px solid #0054e3;
+}
+
+[data-theme="winxp"] .app-title {
+    color: #ffffff;
+}
+
+[data-theme="winxp"] .app-subtitle {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="winxp"] .settings-gear-btn {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme="winxp"] .settings-gear-btn:hover {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="winxp"] .btn {
+    border: 1px solid #aca899;
+    box-shadow: 1px 1px 0 #ffffff inset, -1px -1px 0 #808080 inset;
+}
+
+[data-theme="winxp"] .btn:active:not(:disabled) {
+    box-shadow: -1px -1px 0 #ffffff inset, 1px 1px 0 #808080 inset;
+}
+
+[data-theme="winxp"] .form-input {
+    border: 2px solid;
+    border-color: #808080 #ffffff #ffffff #808080;
+}
+
 /* System preference detection (when theme is "system" or not set) */
 @media (prefers-color-scheme: dark) {
     [data-theme="system"], :root:not([data-theme]) {
-        --color-bg: #1a1a2e;
-        --color-bg-alt: #16162a;
-        --color-bg-hover: #252542;
-        --color-border: #3a3a5c;
-        --color-text: #e4e4e7;
-        --color-text-muted: #a1a1aa;
-        --color-primary: #60a5fa;
+        --color-bg: #1e1e1e;
+        --color-bg-alt: #252526;
+        --color-bg-hover: #2a2d2e;
+        --color-border: #3c3c3c;
+        --color-text: #d4d4d4;
+        --color-text-muted: #858585;
+        --color-primary: #007acc;
 
         /* Aliases */
-        --bg-primary: #1a1a2e;
-        --bg-secondary: #16162a;
-        --bg-hover: #252542;
-        --border-color: #3a3a5c;
-        --text-primary: #e4e4e7;
-        --text-secondary: #a1a1aa;
-        --accent-color: #60a5fa;
+        --bg-primary: #1e1e1e;
+        --bg-secondary: #252526;
+        --bg-hover: #2a2d2e;
+        --border-color: #3c3c3c;
+        --text-primary: #d4d4d4;
+        --text-secondary: #858585;
+        --accent-color: #007acc;
         --success-color: var(--color-high);
         --warning-color: var(--color-medium);
         --error-color: var(--color-low);

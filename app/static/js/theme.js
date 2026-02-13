@@ -9,7 +9,7 @@
     'use strict';
 
     const STORAGE_KEY = 'theme-preference';
-    const VALID_THEMES = ['light', 'dark', 'system'];
+    const VALID_THEMES = ['light', 'dark', 'legacy', 'winxp', 'system'];
 
     /**
      * Get the stored theme preference or default to 'system'.
