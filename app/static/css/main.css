@@ -861,8 +861,6 @@ body {
 .mode-segment[data-mode="duplicates"] { background: var(--color-mode-duplicates); }
 .mode-segment[data-mode="similar"]    { background: var(--color-mode-similar); }
 .mode-segment[data-mode="unreviewed"] { background: var(--color-mode-unreviewed); }
-/* (export segment removed — export trigger is now the breadcrumb .phase-export button) */
-
 /* Discarded/Failed are shown as summary indicators, not bar segments */
 
 /* Diagonal stripe "processing" effect on unreviewed while dupes/similar remain.
@@ -1240,8 +1238,6 @@ body {
     gap: var(--spacing-md);
 }
 
-/* (export-inline-btn removed — export is now the breadcrumb .phase-export button) */
-
 .job-header-center {
     display: flex;
     align-items: center;
@@ -1368,8 +1364,6 @@ body {
     animation: chipShimmer 0.6s ease-in-out forwards;
     pointer-events: none;
 }
-
-/* (Thumbnail size toggle removed - replaced by tile-size-slider) */
 
 /* ========================================
    Confidence Badges
@@ -1977,16 +1971,6 @@ body {
     to { transform: rotate(360deg); }
 }
 
-.grid-pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-md) 0;
-    margin-top: var(--spacing-md);
-    border-top: 1px solid var(--color-border);
-}
-
 /* ============================================
    ACTION BAR (always visible, mode-aware)
    ============================================ */
@@ -2217,8 +2201,6 @@ body {
     color: var(--color-text-muted);
 }
 
-/* Overflow menu removed — Examine + Tag are now inline in action-bar-right */
-
 /* ============================================
    THUMBNAIL SELECTION STATE (enhanced)
    ============================================ */
@@ -2438,10 +2420,6 @@ body {
     opacity: 1;
 }
 
-/* Hide legacy pagination */
-.grid-pagination {
-    display: none !important;
-}
 
 /* Tile slider now lives inside .action-bar-right */
 
@@ -2720,8 +2698,6 @@ body {
     50%  { transform: scale(0.95); }
     100% { transform: scale(1); }
 }
-
-/* (export-segment.ready removed — export trigger moved to breadcrumb .phase-export.export-ready) */
 
 /* Confetti particles are animated via JS requestAnimationFrame */
 

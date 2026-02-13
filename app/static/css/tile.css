@@ -1,187 +1,13 @@
 /**
- * MediaTile Component Styles
+ * Tile Component Styles
  *
- * Unified styling for media tiles across all contexts:
- * - Results grid
- * - Examination carousel
- * - Preview modes
- *
- * Uses CSS custom properties for dynamic sizing.
+ * Styles for tile sub-elements (image, badges, checkbox, filename)
+ * and viewport position states. Grid/interactive tile styles are in main.css.
  */
 
 /* ============================================
-   BASE TILE STYLES
+   TILE IMAGE
    ============================================ */
-
-.media-tile {
-    --tile-size: 150px;
-    --tile-radius: var(--border-radius-sm, 6px);
-    --tile-border: 2px;
-    --badge-size: 1.4rem;
-    --badge-font: 0.7rem;
-    --badge-padding: 2px 5px;
-    --badge-gap: 4px;
-
-    position: relative;
-    width: var(--tile-size);
-    aspect-ratio: 1;
-    border: var(--tile-border) solid transparent;
-    border-radius: var(--tile-radius);
-    background: var(--bg-secondary, #1a1a1a);
-    overflow: hidden;
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-/* Tile image */
-.media-tile .tile-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.2s ease;
-}
-
-/* ============================================
-   SIZE VARIANTS
-   ============================================ */
-
-/* Compact - 100px, minimal badges */
-.media-tile.tile-compact {
-    --tile-size: 100px;
-    --badge-size: 1.1rem;
-    --badge-font: 0.6rem;
-    --badge-padding: 1px 4px;
-    --badge-gap: 2px;
-}
-
-/* Medium - 150px, standard badges */
-.media-tile.tile-medium {
-    --tile-size: 150px;
-}
-
-/* Large - 200px, full badges */
-.media-tile.tile-large {
-    --tile-size: 200px;
-    --badge-size: 1.6rem;
-    --badge-font: 0.8rem;
-    --badge-padding: 3px 7px;
-    --badge-gap: 6px;
-}
-
-/* Full - fills container, aspect ratio preserved */
-.media-tile.tile-full {
-    --tile-size: auto;
-    --badge-size: 1.8rem;
-    --badge-font: 0.9rem;
-    --badge-padding: 4px 10px;
-    --badge-gap: 8px;
-
-    width: 100%;
-    height: 100%;
-    aspect-ratio: auto;
-}
-
-.media-tile.tile-full .tile-image {
-    object-fit: contain;
-}
-
-/* ============================================
-   MODE VARIANTS
-   ============================================ */
-
-/* Carousel mode - for examination prev/next */
-.media-tile.tile-carousel {
-    --tile-size: auto;
-    width: 100%;
-    height: 100%;
-    aspect-ratio: auto;
-    border: none;
-    background: transparent;
-}
-
-.media-tile.tile-carousel .tile-image {
-    object-fit: contain;
-    max-width: 100%;
-    max-height: 100%;
-}
-
-/* Preview mode - large centered image */
-.media-tile.tile-preview {
-    --tile-size: auto;
-    width: 100%;
-    height: 100%;
-    aspect-ratio: auto;
-    border: none;
-    background: transparent;
-}
-
-.media-tile.tile-preview .tile-image {
-    object-fit: contain;
-    border-radius: var(--border-radius);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
-}
-
-/* ============================================
-   INTERACTIVE STATES
-   ============================================ */
-
-.media-tile:hover {
-    transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.media-tile:hover .tile-image {
-    transform: scale(1.05);
-}
-
-.media-tile.selected {
-    transform: scale(1.03);
-    border-color: var(--color-primary, #3b82f6);
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
-}
-
-.media-tile.selected::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(59, 130, 246, 0.1);
-    pointer-events: none;
-}
-
-/* Duplicate group styling */
-.media-tile.duplicate-group {
-    --duplicate-color: hsl(45, 90%, 50%);
-    --duplicate-color-light: hsla(45, 90%, 50%, 0.4);
-    border-color: var(--duplicate-color);
-}
-
-.media-tile.duplicate-group:hover {
-    box-shadow:
-        0 0 0 3px var(--duplicate-color-light),
-        0 4px 12px var(--duplicate-color-light);
-}
-
-/* Similar group styling */
-.media-tile.similar-group {
-    --similar-color: hsl(210, 75%, 50%);
-    --similar-color-light: hsla(210, 75%, 50%, 0.4);
-    border-color: var(--similar-color);
-}
-
-.media-tile.similar-group:hover {
-    box-shadow:
-        0 0 0 3px var(--similar-color-light),
-        0 4px 12px var(--similar-color-light);
-}
-
-/* Discarded state */
-.media-tile.discarded {
-    opacity: 0.6;
-}
-
-.media-tile.discarded .tile-image {
-    filter: grayscale(50%);
-}
 
 /* ============================================
    BADGES SYSTEM
@@ -378,32 +204,6 @@
 }
 
 /* ============================================
-   CAROUSEL-SPECIFIC ANIMATIONS
-   ============================================ */
-
-/* Side tiles in carousel (prev/next) - slightly dimmed */
-.carousel-tile.tile-prev,
-.carousel-tile.tile-next {
-    opacity: 0.7;
-}
-
-.carousel-tile.tile-prev:hover,
-.carousel-tile.tile-next:hover {
-    opacity: 0.9;
-}
-
-/* Hide badges on side carousel tiles */
-.carousel-tile.tile-prev .tile-badges,
-.carousel-tile.tile-next .tile-badges {
-    display: none;
-}
-
-/* Center tile in carousel - full visibility */
-.carousel-tile.tile-center {
-    opacity: 1;
-}
-
-/* ============================================
    MIPMAP RESOLUTION TRANSITIONS
    ============================================ */
 
@@ -414,11 +214,6 @@
 
 .tile-image-fade {
     opacity: 0.7;
-}
-
-/* High-res indicator (optional debug) */
-.thumbnail[data-resolution="full"] .tile-image {
-    /* Visual indicator that full-res is loaded */
 }
 
 /* ============================================
@@ -501,17 +296,6 @@
    ============================================ */
 
 @media (max-width: 768px) {
-    .media-tile {
-        --badge-size: 1.2rem;
-        --badge-font: 0.65rem;
-        --badge-padding: 2px 4px;
-        --badge-gap: 3px;
-    }
-
-    .media-tile.tile-large {
-        --tile-size: 150px;
-    }
-
     .tile-filename {
         font-size: 0.7rem;
     }

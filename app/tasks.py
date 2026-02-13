@@ -19,14 +19,6 @@ from app.models import Job, File, JobStatus, ConfidenceLevel
 
 logger = logging.getLogger(__name__)
 
-# Debug file for pause/resume tracking
-DEBUG_FILE = '/tmp/job_debug.log'
-
-def debug_log(msg):
-    """Write debug message to dedicated file for easy tracking."""
-    with open(DEBUG_FILE, 'a') as f:
-        f.write(f"{datetime.now().isoformat()} | {msg}\n")
-
 # Processing configuration
 BATCH_COMMIT_SIZE = 10  # Commit every N files for database performance
 ERROR_THRESHOLD = 0.10  # Halt job if >10% failures (user decision from CONTEXT.md)
@@ -172,15 +164,12 @@ def process_import_job(job_id: int) -> dict:
         # Check if this is a resume (job already has started_at)
         is_resume = job.started_at is not None
 
-        debug_log(f"Job {job_id} TASK START: is_resume={is_resume}, current progress_current={job.progress_current}, progress_total={job.progress_total}")
-
         # Update to RUNNING
         job.status = JobStatus.RUNNING
         if not is_resume:
             job.started_at = datetime.now(timezone.utc)
             job.error_count = 0
         db.session.commit()
-        debug_log(f"Job {job_id} status set to RUNNING, committed")
 
         try:
             # Get all files sorted alphabetically (user decision from CONTEXT.md)
@@ -192,21 +181,13 @@ def process_import_job(job_id: int) -> dict:
 
             # Track how many were already processed (for resume)
             already_processed = len(all_files) - len(files)
-            debug_log(f"Job {job_id} FILE CHECK: all_files={len(all_files)}, files_without_hash={len(files)}, already_processed={already_processed}")
             if already_processed > 0:
-                msg = f"Job {job_id} RESUME: {already_processed}/{len(all_files)} have sha256, {len(files)} remaining"
-                logger.info(msg)
-                debug_log(msg)
-                debug_log(f"Job {job_id} SETTING progress_current from {job.progress_current} to {already_processed}")
+                logger.info(f"Job {job_id} RESUME: {already_processed}/{len(all_files)} have sha256, {len(files)} remaining")
                 job.progress_current = already_processed
             else:
-                msg = f"Job {job_id} START: {len(all_files)} files to process"
-                logger.info(msg)
-                debug_log(msg)
-                debug_log(f"Job {job_id} NOT SETTING progress_current (already_processed=0), keeping current value={job.progress_current}")
+                logger.info(f"Job {job_id} START: {len(all_files)} files to process")
 
             db.session.commit()
-            debug_log(f"Job {job_id} AFTER COMMIT: progress_current={job.progress_current}, progress_total={job.progress_total}")
 
             if len(files) == 0:
                 logger.warning(f"Job {job_id} has no files to process")
@@ -338,17 +319,11 @@ def process_import_job(job_id: int) -> dict:
                     # Check for cancellation/pause AFTER processing each result
                     db.session.refresh(job)
                     if job.status in (JobStatus.CANCELLED, JobStatus.PAUSED):
-                        pending_count = len(pending_updates)
-                        debug_log(f"Job {job_id} PAUSE DETECTED: status={job.status.value}, processed_count={processed_count}, pending_updates={pending_count}")
                         if pending_updates:
                             _commit_pending_updates(db, pending_updates)
-                            debug_log(f"Job {job_id} PAUSE: committed {pending_count} pending updates")
                         job.progress_current = processed_count
                         db.session.commit()
-                        debug_log(f"Job {job_id} PAUSE FINAL: progress_current={job.progress_current}, progress_total={job.progress_total}")
-                        msg = f"Job {job_id} {job.status.value} at {processed_count}/{job.progress_total} (committed {pending_count} pending)"
-                        logger.info(msg)
-                        debug_log(msg)
+                        logger.info(f"Job {job_id} {job.status.value} at {processed_count}/{job.progress_total}")
                         return {
                             'job_id': job_id,
                             'status': job.status.value,
@@ -371,7 +346,6 @@ def process_import_job(job_id: int) -> dict:
             job.current_filename = None
             job.progress_current = processed_count  # Ensure final count is saved
             db.session.commit()
-            debug_log(f"Job {job_id} COMPLETED: progress_current={job.progress_current}, progress_total={job.progress_total}")
             logger.info(
                 f"Job {job_id} completed successfully: "
                 f"{processed_count} files processed, {error_count} errors"
@@ -472,15 +446,12 @@ def process_export_job(job_id: int) -> dict:
         # Check if this is a resume (job already has started_at)
         is_resume = job.started_at is not None
 
-        debug_log(f"Export job {job_id} TASK START: is_resume={is_resume}, current progress_current={job.progress_current}, progress_total={job.progress_total}")
-
         # Update to RUNNING
         job.status = JobStatus.RUNNING
         if not is_resume:
             job.started_at = datetime.now(timezone.utc)
             job.error_count = 0
         db.session.commit()
-        debug_log(f"Export job {job_id} status set to RUNNING, committed")
 
         try:
             # Get output directory from settings or config
@@ -517,20 +488,13 @@ def process_export_job(job_id: int) -> dict:
             # Set progress total
             job.progress_total = all_files_count
 
-            debug_log(f"Export job {job_id} FILE CHECK: all_files={all_files_count}, files_without_output={len(files_to_export)}, already_exported={already_exported}")
-
             if already_exported > 0:
-                msg = f"Export job {job_id} RESUME: {already_exported}/{all_files_count} already exported, {len(files_to_export)} remaining"
-                logger.info(msg)
-                debug_log(msg)
+                logger.info(f"Export job {job_id} RESUME: {already_exported}/{all_files_count} already exported, {len(files_to_export)} remaining")
                 job.progress_current = already_exported
             else:
-                msg = f"Export job {job_id} START: {all_files_count} files to export"
-                logger.info(msg)
-                debug_log(msg)
+                logger.info(f"Export job {job_id} START: {all_files_count} files to export")
 
             db.session.commit()
-            debug_log(f"Export job {job_id} AFTER COMMIT: progress_current={job.progress_current}, progress_total={job.progress_total}")
 
             if len(files_to_export) == 0:
                 logger.warning(f"Export job {job_id} has no files to export")
@@ -634,17 +598,11 @@ def process_export_job(job_id: int) -> dict:
                 # Check for cancellation/pause AFTER processing each file
                 db.session.refresh(job)
                 if job.status in (JobStatus.CANCELLED, JobStatus.PAUSED):
-                    pending_count = len(pending_updates)
-                    debug_log(f"Export job {job_id} PAUSE DETECTED: status={job.status.value}, processed_count={processed_count}, pending_updates={pending_count}")
                     if pending_updates:
                         db.session.commit()
-                        debug_log(f"Export job {job_id} PAUSE: committed {pending_count} pending updates")
                     job.progress_current = processed_count
                     db.session.commit()
-                    debug_log(f"Export job {job_id} PAUSE FINAL: progress_current={job.progress_current}, progress_total={job.progress_total}")
-                    msg = f"Export job {job_id} {job.status.value} at {processed_count}/{job.progress_total} (committed {pending_count} pending)"
-                    logger.info(msg)
-                    debug_log(msg)
+                    logger.info(f"Export job {job_id} {job.status.value} at {processed_count}/{job.progress_total}")
                     return {
                         'job_id': job_id,
                         'status': job.status.value,
@@ -661,7 +619,6 @@ def process_export_job(job_id: int) -> dict:
             job.current_filename = None
             job.progress_current = processed_count  # Ensure final count is saved
             db.session.commit()
-            debug_log(f"Export job {job_id} COMPLETED: progress_current={job.progress_current}, progress_total={job.progress_total}")
             logger.info(
                 f"Export job {job_id} completed successfully: "
                 f"{processed_count} files exported, {error_count} errors"

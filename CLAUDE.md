@@ -119,7 +119,3 @@ Success/fail sounds share the same square-wave family for coherence.
 - **Export segment unlocks** — success sound on unlock in `filters.js`
 - **Mode bars morph** — `morphToModes()` animates progress bar into mode segments
 
-### Ideas (not yet implemented)
-- Bulk action completion sounds
-- Progress milestones
-- Duplicate group resolution celebrations

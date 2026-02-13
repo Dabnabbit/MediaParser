@@ -256,36 +256,11 @@ None
 
 ### Technical Debt
 
-**From Existing Codebase:**
-1. ~~Hardcoded timezone offset (-4) in PhotoTimeFixer.py line 244~~ - ✓ RESOLVED in 01-03 (library uses configurable timezone)
-2. Hardcoded Windows paths in PhotoTimeFixer.py lines 13-14 - breaks on Linux/Docker
-3. Filename collision handling increments by 1 second - can fail with burst photos or high-volume imports
-4. No streaming/batching for large file sets - potential memory exhaustion with 50k+ files
-5. ~~Monolithic script structure - cannot be imported as library functions~~ - ✓ RESOLVED in 01-03 (extracted to app/lib/)
-
-**Resolution Plan:** Phase 1 Plan 01-03 resolved items 1 and 5. Item 2 remains (PhotoTimeFixer.py itself still has hardcoded paths, but new library code uses pathlib). Phase 2 addresses item 4. Phase 5/6 addresses item 3 with better collision handling.
-
-### Future Polish (Aesthetics Pass)
-
-**Color Schemes:**
-- Current dark mode has purple tint ("Windows XP vibes") - needs neutral gray update
-- Add OLED-friendly theme (true black `#000000` backgrounds for power saving)
-- Experiment with overall color schemes - consider multiple theme options
-- Light mode untested - needs review and polish
-- Consider: True Dark, Soft Dark, Light, High Contrast options
-
-**When:** Final aesthetics pass before v1 release
+None — legacy `PhotoTimeFixer.py` issues all resolved or superseded by the new `app/lib/` codebase.
 
 ### Research Flags
 
-**Phase 6 (Perceptual Duplicate Detection):** ✓ COMPLETE
-- ✓ Two-tier architecture: DUPLICATES (exact) → SIMILAR (perceptual/sequences)
-- ✓ Multi-algorithm consensus: pHash + dHash + aHash with distance thresholds (0-5 exact, 6-20 similar)
-- ✓ Timestamp-constrained clustering for O(n log n) performance (5-second window)
-- ✓ Hardware-accelerated Hamming distance via int.bit_count()
-- ✓ UI workflow: radio for duplicates, checkbox for similar, sequential enforcement
-
-**Design Document:** `.planning/designs/duplicate-detection-system.md`
+None — all research completed during GSD phases.
 
 ## Completed Requirements (Phase 3)
 
@@ -543,11 +518,6 @@ None
 - **Grid updates**:
   - Files auto-remove from grid when they no longer match current mode
   - Discarded badge (trash icon) on thumbnails
-
-**Remaining Polish Items:**
-1. Restore `--vp-transition-duration` from `2s` to `0.35s` when done testing animations
-2. Full exit (Escape) still snaps — navigation enter/leave FLIP animates, but exit doesn't
-3. Exit timeout hardcoded to 300ms — should read CSS variable like enter does
 
 **Key viewport files (refactored 2026-02-05):**
 - ViewportController (split into 4 modules):

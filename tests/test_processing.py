@@ -139,22 +139,22 @@ class TestConfidenceScoring:
 class TestProcessSingleFile:
     """Tests for the complete processing pipeline."""
 
-    def test_process_returns_dict(self, sample_text_file):
+    def test_process_returns_dict(self, sample_image_file):
         """process_single_file returns dict with required fields."""
         from app.lib.processing import process_single_file
 
-        result = process_single_file(sample_text_file)
+        result = process_single_file(sample_image_file)
 
         assert isinstance(result, dict)
         assert 'status' in result
         assert 'sha256' in result
         assert 'confidence' in result
 
-    def test_process_includes_sha256(self, sample_text_file):
+    def test_process_includes_sha256(self, sample_image_file):
         """Processed file has SHA256 hash."""
         from app.lib.processing import process_single_file
 
-        result = process_single_file(sample_text_file)
+        result = process_single_file(sample_image_file)
 
         assert result['sha256'] is not None
         assert len(result['sha256']) == 64
@@ -168,6 +168,15 @@ class TestProcessSingleFile:
         assert result['status'] == 'error'
         assert result['error'] is not None
 
+    def test_process_rejects_non_media_file(self, sample_text_file):
+        """Non-media files are rejected with error status."""
+        from app.lib.processing import process_single_file
+
+        result = process_single_file(sample_text_file)
+
+        assert result['status'] == 'error'
+        assert 'Not a media file' in result['error']
+
     def test_process_extracts_filename_timestamp(self, timestamped_file):
         """File with timestamp in name extracts it."""
         from app.lib.processing import process_single_file
@@ -179,46 +188,38 @@ class TestProcessSingleFile:
         # Timestamp candidates should include filename source
         assert result['timestamp_candidates'] is not None
 
-    def test_process_status_success_on_valid_file(self, sample_text_file):
-        """Valid file processing returns success status."""
+    def test_process_status_success_on_valid_file(self, sample_image_file):
+        """Valid media file processing returns success status."""
         from app.lib.processing import process_single_file
 
-        result = process_single_file(sample_text_file)
+        result = process_single_file(sample_image_file)
 
         assert result['status'] == 'success'
         assert result['error'] is None
 
-    def test_process_includes_file_path(self, sample_text_file):
+    def test_process_includes_file_path(self, sample_image_file):
         """Result includes absolute file path."""
         from app.lib.processing import process_single_file
 
-        result = process_single_file(sample_text_file)
+        result = process_single_file(sample_image_file)
 
         assert result['file_path'] is not None
         assert Path(result['file_path']).is_absolute()
 
-    def test_process_includes_mime_type(self, sample_text_file):
+    def test_process_includes_mime_type(self, sample_image_file):
         """Result includes detected MIME type."""
         from app.lib.processing import process_single_file
 
-        result = process_single_file(sample_text_file)
+        result = process_single_file(sample_image_file)
 
         assert result['mime_type'] is not None
-        assert '/' in result['mime_type'] or result['mime_type'].startswith('unknown/')
+        assert 'image' in result['mime_type']
 
-    def test_process_perceptual_hash_none_for_text(self, sample_text_file):
-        """Text files have no perceptual hash."""
-        from app.lib.processing import process_single_file
-
-        result = process_single_file(sample_text_file)
-
-        assert result['perceptual_hash'] is None
-
-    def test_process_confidence_level_returned(self, sample_text_file):
+    def test_process_confidence_level_returned(self, sample_image_file):
         """Result includes confidence level."""
         from app.lib.processing import process_single_file
 
-        result = process_single_file(sample_text_file)
+        result = process_single_file(sample_image_file)
 
         assert result['confidence'] in ['high', 'medium', 'low', 'none']
 
@@ -252,15 +253,14 @@ class TestTypeDetection:
 class TestEndToEndProcessing:
     """Integration tests for complete processing workflow."""
 
-    def test_multiple_files_processed_independently(self, temp_dir):
+    def test_multiple_files_processed_independently(self, temp_dir, sample_image_file):
         """Multiple files can be processed independently."""
         from app.lib.processing import process_single_file
 
-        # Create multiple test files
-        file1 = temp_dir / "file1.txt"
-        file2 = temp_dir / "file2.txt"
-        file1.write_text("Content 1")
-        file2.write_text("Content 2")
+        # Create a second JPEG with different content
+        file1 = sample_image_file
+        file2 = temp_dir / "file2.jpg"
+        file2.write_bytes(sample_image_file.read_bytes() + b'\x00')
 
         result1 = process_single_file(file1)
         result2 = process_single_file(file2)
@@ -281,18 +281,15 @@ class TestEndToEndProcessing:
         assert result['timestamp_source'] is not None
         assert result['confidence'] in ['high', 'medium', 'low', 'none']
 
-    def test_hashing_workflow(self, sample_text_file):
+    def test_hashing_workflow(self, sample_image_file):
         """Complete workflow calculates hashes."""
         from app.lib.processing import process_single_file
 
-        result = process_single_file(sample_text_file)
+        result = process_single_file(sample_image_file)
 
         # Should have SHA256 hash
         assert result['sha256'] is not None
         assert len(result['sha256']) == 64
-
-        # Text file won't have perceptual hash
-        assert result['perceptual_hash'] is None
 
 
 # Run tests if executed directly
