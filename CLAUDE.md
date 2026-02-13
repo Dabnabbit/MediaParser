@@ -113,10 +113,13 @@ AudioContext lazy-inited on first user gesture via capture-phase document listen
 All sounds respect `opts.mute` (per-call) and `particles.muted` (global toggle).
 Success/fail sounds share the same square-wave family for coherence.
 
-### Next: Sound & Particle Enhancements
-Planned additions (not yet implemented):
-- **Lock icon shatter** (`filters.js:_updateLockIcons()`) — when a mode segment unlocks, burst particles from the lock icon position + success sound. The lock could become particles that fly apart.
-- **Job complete** — moderate celebration (success sound + small confetti)
-- **Export segment unlocks** — bigger celebration (fireworks + success sound) since this is the real finish line. Same sound family as job complete, just louder.
-- **Mode bars "coming alive"** — when `morphToModes()` transitions from progress bar to mode segments, staggered ripple/sparkle left-to-right as each segment appears.
-- Other candidates: bulk action completion sounds, progress milestones, duplicate group resolution
+### Implemented: Sound & Particle Enhancements
+- **Lock icon shatter** — `particles.shatter()` metallic shard burst on segment unlock, triggered from `filters.js`
+- **Job complete** — fart + fail sound on high error rate (>=10%), morph-to-modes transition
+- **Export segment unlocks** — success sound on unlock in `filters.js`
+- **Mode bars morph** — `morphToModes()` animates progress bar into mode segments
+
+### Ideas (not yet implemented)
+- Bulk action completion sounds
+- Progress milestones
+- Duplicate group resolution celebrations
