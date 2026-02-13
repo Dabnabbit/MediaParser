@@ -138,12 +138,9 @@ def check_worker_health():
             'error': f'Embedded consumer unhealthy (workers={alive_workers}, scheduler={scheduler_alive})',
         }), 503
 
-    # External process mode: use pgrep
+    # Try pgrep first (works for two-process mode on same host)
     import subprocess
-
     try:
-        # Check for worker process - try multiple patterns
-        # run_worker.py is our launcher, huey_consumer is the direct command
         for pattern in ['run_worker', 'huey_consumer', 'huey.consumer']:
             result = subprocess.run(
                 ['pgrep', '-f', pattern],
@@ -151,23 +148,23 @@ def check_worker_health():
                 timeout=1
             )
             if result.returncode == 0:
-                pids = result.stdout.decode().strip().split('\n')
-                # Filter out empty strings
-                pids = [p for p in pids if p]
+                pids = [p for p in result.stdout.decode().strip().split('\n') if p]
                 if pids:
-                    return jsonify({
-                        'worker_alive': True,
-                        'pids': pids
-                    })
+                    return jsonify({'worker_alive': True, 'pids': pids})
+    except Exception:
+        pass
 
-        # No matching process found
-        return jsonify({
-            'worker_alive': False,
-            'error': 'No Huey worker process found'
-        }), 503
+    # Fallback: enqueue a health_check task via Huey (works across Docker containers)
+    try:
+        from app.tasks import health_check
+        task_result = health_check()
+        resp = task_result.get(blocking=True, timeout=3)
+        if resp and resp.get('status') == 'ok':
+            return jsonify({'worker_alive': True, 'mode': 'queue'})
+    except Exception:
+        pass
 
-    except Exception as e:
-        return jsonify({
-            'worker_alive': False,
-            'error': str(e)
-        }), 503
+    return jsonify({
+        'worker_alive': False,
+        'error': 'No Huey worker process found'
+    }), 503
