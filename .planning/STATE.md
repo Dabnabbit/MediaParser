@@ -1,13 +1,13 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-06
+**Last Updated:** 2026-02-13
 
 ## Environment
 
 - **Platform:** WSL2 (Ubuntu on Windows) - migrated from Windows-native development
 - **Working Directory:** `/home/dab/Projects/MediaParser` (NOT `/mnt/d/...`)
 - **Target:** Linux-native, will be Dockerized for deployment
-- **Python:** 3.11+ with venv
+- **Python:** 3.12 with venv
 
 ## Project Reference
 
@@ -20,7 +20,7 @@
 **Phase:** 7 of 7 - Output Generation + Tagging
 **Plan:** 5 of 5 (Integration tests complete)
 **Status:** COMPLETE
-**Last activity:** 2026-02-06 - Completed 07-05-PLAN.md (Integration tests, 80/80 pass)
+**Last activity:** 2026-02-13 - Audit sweep: fixed hardcoded paths, bare excepts, Docker, CSS vars (122/122 pass)
 **Progress:** `[███████████████████████████████████] 100%` (39 plans complete)
 
 **Completed Requirements (Phase 2):**
@@ -534,12 +534,12 @@ None — all research completed during GSD phases.
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
-**Last session:** 2026-02-06
-**Stopped at:** All 7 phases complete. 80/80 tests passing.
+**Last session:** 2026-02-13
+**Stopped at:** Audit sweep complete. 122/122 tests passing.
 **Resume file:** None
-**Last commit:** `3c3dbf6` — test(07-05): add export pipeline and tagging tests
+**Last commit:** `9a9aa39` — fix: audit sweep — hardcoded paths, bare excepts, Docker, CSS vars
 
 ---
 
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-10*
+*Last updated: 2026-02-13*
