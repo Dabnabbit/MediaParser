@@ -5,8 +5,9 @@ Provides endpoints for:
 - Job control actions (POST /api/jobs/:id/control)
 - Job file listings (GET /api/jobs/:id/files)
 - Duplicate group queries (GET /api/jobs/:id/duplicates)
+- Output download (GET /api/download-output)
 """
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request, current_app, send_file
 from datetime import datetime, timezone
 import logging
 
@@ -1295,3 +1296,55 @@ def finalize_job(job_id):
         'stats': stats,
         'output_directory': output_directory
     }), 200
+
+
+@jobs_bp.route('/api/download-output', methods=['GET'])
+def download_output():
+    """
+    Download all files in the output directory as a ZIP.
+
+    Uses ZIP_STORED (no compression) since media files are already compressed.
+    Streams via SpooledTemporaryFile (100MB in-memory threshold).
+
+    Returns:
+        ZIP file attachment, or 404 if no output files exist
+    """
+    import os
+    import zipfile
+    import tempfile
+    from pathlib import Path
+    from app.models import Setting
+
+    # Resolve output directory (same logic as finalize)
+    output_dir_setting = Setting.query.filter_by(key='output_directory').first()
+    output_directory = output_dir_setting.value if output_dir_setting else str(current_app.config['OUTPUT_FOLDER'])
+
+    if not os.path.isdir(output_directory):
+        return jsonify({'error': 'Output directory not found'}), 404
+
+    # Collect all files
+    file_paths = []
+    for root, dirs, files in os.walk(output_directory):
+        for fname in files:
+            file_paths.append(os.path.join(root, fname))
+
+    if not file_paths:
+        return jsonify({'error': 'No files in output directory'}), 404
+
+    # Build ZIP into a spooled temp file (100MB in-memory threshold)
+    tmp = tempfile.SpooledTemporaryFile(max_size=100 * 1024 * 1024)
+    with zipfile.ZipFile(tmp, 'w', zipfile.ZIP_STORED) as zf:
+        for fpath in file_paths:
+            arcname = os.path.relpath(fpath, output_directory)
+            zf.write(fpath, arcname)
+
+    tmp.seek(0)
+
+    zip_name = f"mediaparser-export-{datetime.now().strftime('%Y%m%d')}.zip"
+
+    return send_file(
+        tmp,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=zip_name
+    )

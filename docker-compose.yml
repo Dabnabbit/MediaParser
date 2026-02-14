@@ -8,6 +8,7 @@ services:
       - mediaparser-instance:/app/instance
       - mediaparser-storage:/app/storage
       - /share/YOUR_MEDIA_FOLDER:/media:ro  # Edit this to your NAS media path
+      - /share/YOUR_OUTPUT_FOLDER:/output    # Edit this to your NAS output path
     env_file: .env
     restart: unless-stopped
     healthcheck:
@@ -25,6 +26,7 @@ services:
       - mediaparser-instance:/app/instance
       - mediaparser-storage:/app/storage
       - /share/YOUR_MEDIA_FOLDER:/media:ro  # Edit this to your NAS media path
+      - /share/YOUR_OUTPUT_FOLDER:/output    # Edit this to your NAS output path
     env_file: .env
     restart: unless-stopped
 

@@ -769,6 +769,19 @@ class ProgressHandler {
 
         if (card) {
             card.style.display = 'block';
+
+            // Wire download button
+            const dlBtn = document.getElementById('download-output-btn');
+            if (dlBtn) {
+                dlBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = '/api/download-output';
+                    a.style.display = 'none';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                };
+            }
         }
     }
 

@@ -28,8 +28,8 @@ RUN pip install --no-cache-dir -r requirements.txt gunicorn>=22.0.0
 COPY . .
 
 # Create directories that may be mounted as volumes
-RUN mkdir -p instance storage logs \
-    && chown -R mediaparser:mediaparser /app
+RUN mkdir -p instance storage logs /output \
+    && chown -R mediaparser:mediaparser /app /output
 
 # Entrypoint handles migrations before starting the service
 COPY docker-entrypoint.sh /docker-entrypoint.sh
