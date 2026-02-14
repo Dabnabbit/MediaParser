@@ -34,7 +34,7 @@ class Config:
     # Storage directories (using pathlib.Path)
     UPLOAD_FOLDER = STORAGE_DIR / 'uploads'
     PROCESSING_FOLDER = STORAGE_DIR / 'processing'
-    OUTPUT_FOLDER = Path(os.environ['OUTPUT_DIR']) if os.environ.get('OUTPUT_DIR') else STORAGE_DIR / 'output'
+    OUTPUT_FOLDER = Path(os.environ.get('OUTPUT_DIR')) if os.environ.get('OUTPUT_DIR') else STORAGE_DIR / 'output'
 
     # Timezone configuration (replaces hardcoded -4 offset)
     TIMEZONE = os.environ.get('TIMEZONE', 'America/New_York')

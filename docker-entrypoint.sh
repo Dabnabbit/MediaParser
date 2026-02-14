@@ -37,4 +37,14 @@ except:
     fi
 fi
 
+# Verify OUTPUT_DIR is writable when set (catches misconfigured Docker mounts)
+if [ -n "$OUTPUT_DIR" ]; then
+    if ! touch "$OUTPUT_DIR/.write_test" 2>/dev/null; then
+        echo "WARNING: OUTPUT_DIR=$OUTPUT_DIR is not writable. Exports will fail until this is fixed." >&2
+        echo "  Check docker-compose.yml volume mount and host directory permissions." >&2
+    else
+        rm -f "$OUTPUT_DIR/.write_test"
+    fi
+fi
+
 exec "$@"
