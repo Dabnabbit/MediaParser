@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-13
+**Last Updated:** 2026-02-18
 
 ## Environment
 
@@ -13,15 +13,15 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** All 7 phases complete
+**Current Focus:** Phase 8 — Windows Portable Desktop Build (planned, ready to execute)
 
 ## Current Position
 
-**Phase:** 7 of 7 - Output Generation + Tagging
-**Plan:** 5 of 5 (Integration tests complete)
-**Status:** COMPLETE
-**Last activity:** 2026-02-13 - Audit sweep: fixed hardcoded paths, bare excepts, Docker, CSS vars (122/122 pass)
-**Progress:** `[███████████████████████████████████] 100%` (39 plans complete)
+**Phase:** 8 of 8 - Windows Portable Desktop Build
+**Plan:** 0 of 3 (planned, not yet executed)
+**Status:** PLANNED
+**Last activity:** 2026-02-18 - Phase 8 research + planning complete (3 plans in 2 waves, verified)
+**Progress:** `[█████████████████████████████████░░] 93%` (39/42 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,13 +36,17 @@
 
 ## Performance Metrics
 
-**Velocity:** 39 plans in ~80 minutes (avg 2.1 min/plan) - All 7 phases complete
+**Velocity:** 39 plans in ~80 minutes (avg 2.1 min/plan) - Phases 1-7 complete
 **Plan Success Rate:** 100% (39/39 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
-**Phases Complete:** 7/7 (all phases complete)
+**Phases Complete:** 7/8 (Phase 8 planned, ready to execute)
 **Out-of-band work:** Carousel viewport system refactor (not tracked by GSD plans)
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 8 added: Windows Portable Desktop Build
 
 ### Key Decisions
 
@@ -249,6 +253,18 @@
 - [x] 06-03: Two-Tier Duplicate Detection API (COMPLETE)
 - [x] 06-04: Similar Mode UI Integration (COMPLETE)
 - [x] 06-05: Integration Testing (COMPLETE)
+
+**Phase 7 - Output Generation + Tagging (COMPLETE):**
+- [x] 07-01: Export task + file copy engine (COMPLETE)
+- [x] 07-02: EXIF metadata write-back (COMPLETE)
+- [x] 07-03: Tag auto-generation (COMPLETE)
+- [x] 07-04: Export UI + source cleanup + tag filter integration (COMPLETE)
+- [x] 07-05: Integration testing and regression verification (COMPLETE)
+
+**Phase 8 - Windows Portable Desktop Build (PLANNED):**
+- [ ] 08-01: Add --host flag to run.py, PID health check to api.py, build gitignore entries (Wave 1)
+- [ ] 08-02: Create launcher.py desktop orchestrator and MediaParser.bat entry point (Wave 1)
+- [ ] 08-03: Create scripts/build-windows.py cross-build script for Windows portable ZIP (Wave 2)
 
 ### Known Blockers
 
@@ -534,12 +550,65 @@ None — all research completed during GSD phases.
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
-**Last session:** 2026-02-13
-**Stopped at:** Audit sweep complete. 122/122 tests passing.
-**Resume file:** None
-**Last commit:** `9a9aa39` — fix: audit sweep — hardcoded paths, bare excepts, Docker, CSS vars
+**Last session:** 2026-02-18
+**Stopped at:** Phase 8 planned (3 plans, 2 waves, verified). Ready to execute.
+**Last commit:** `69e4531` — fix: Docker output mount audit hardening
+
+### QNAP Deployment (COMPLETE)
+
+All deployment steps finished:
+1. ✅ Pushed license commit and all subsequent Docker fixes
+2. ✅ Made GitHub repo public
+3. ✅ Verified GHCR image pulls without auth
+4. ✅ Deployed to QNAP via stack (`qnap-stack.yml`)
+5. ✅ Fixed Docker issues found during deployment testing (fresh DB, health check, output mount)
+6. ✅ Added browser ZIP download for export results
+
+**Deployment info:**
+- GHCR image: `ghcr.io/dabnabbit/mediaparser:latest`
+- QNAP media mount: `/share/CACHEDEV2_DATA/Pix:/media:ro`
+- QNAP output mount: `/share/CACHEDEV2_DATA/MediaParser-Output:/output`
+- Stack: two services (web + worker) with shared named volumes for instance/storage
+
+### Export Portability (COMPLETE)
+
+Made export output accessible regardless of deployment method:
+- **`OUTPUT_DIR` env var** (`0bf238b`): Docker can mount a host directory for export output instead of a named volume the user can't easily browse. Used by QNAP stack to write to `/share/CACHEDEV2_DATA/MediaParser-Output`.
+- **Browser ZIP download** (`0bf238b`): `GET /api/download-output` zips the output directory and serves it as a browser download. Download button appears on finalize-complete card. Works for any deployment where the user doesn't have filesystem access.
+- **Entrypoint hardening** (`69e4531`): `docker-entrypoint.sh` warns (not crashes) if `OUTPUT_DIR` isn't writable, so the container stays up for import/review instead of restart-looping.
+
+### Windows Portable Desktop Build (PLANNED — ready to execute)
+
+**Goal:** Download a ZIP, extract, double-click `MediaParser.bat`, app launches in browser. No Python install, no terminal, no dependencies. Full Docker feature parity.
+
+**Status:** 3 plans in 2 waves, research completed, verification passed (2026-02-18)
+**Plans:** `.planning/phases/08-windows-portable-desktop-build/08-{01,02,03}-PLAN.md`
+**Research:** `.planning/phases/08-windows-portable-desktop-build/08-RESEARCH.md`
+
+**Architecture (LOCKED):** Two separate processes (Flask + Huey worker) — NOT standalone mode.
+
+**Wave 1 (parallel):**
+- 08-01: Add `--host` flag to `run.py`, PID-based worker health check to `api.py`, `.gitignore` entries
+- 08-02: Create `launcher.py` (desktop orchestrator) + `MediaParser.bat` (double-click entry)
+
+**Wave 2 (depends on Wave 1):**
+- 08-03: Create `scripts/build-windows.py` — cross-builds Windows portable ZIP from WSL2
+
+**Key decisions (LOCKED):**
+- Bundle: Python 3.12 embeddable + FFmpeg (gyan.dev) + ExifTool (from `exiftool_files/`) + `python-magic-bin`
+- `pip download --platform win_amd64` from WSL2 (no Wine needed — all 23 packages verified)
+- `python312.zip` stdlib must be extracted to `python312/` directory for pickle compatibility
+- `MEDIAPARSER_WORKER_PID` env var for PID-based health check (`os.kill(pid, 0)` works on Windows)
+- Console window stays visible — tray icon deferred to v2
+- Build uses `.build-cache/` for download caching
+
+**Verification checklist:**
+- [ ] `python launcher.py` from WSL2 — two processes, browser opens, Ctrl+C stops both
+- [ ] `python scripts/build-windows.py --version 0.1.0` — ZIP created in `dist/`
+- [ ] Extract ZIP on Windows, double-click `MediaParser.bat` — full app works
+- [ ] Docker, quickstart.sh, dev two-process mode still work unchanged
 
 ---
 
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-13*
+*Last updated: 2026-02-18 — Phase 8 formally planned (research + 3 plans + verification)*

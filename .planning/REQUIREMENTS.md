@@ -56,6 +56,16 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **INFRA-04**: Fix hardcoded timezone issue in existing code
 - [x] **INFRA-05**: Remove hardcoded Windows paths, make configurable
 
+## Post-v1 Requirements (Active)
+
+Requirements added after v1 completion, currently in roadmap.
+
+### Windows Portable Build
+
+- [ ] **WIN-01**: User downloads ZIP, extracts, double-clicks .bat — app launches in browser with no prerequisites
+- [ ] **WIN-02**: Full feature parity with Docker deployment (import, process, review, export)
+- [ ] **WIN-03**: Build script runs on WSL2 to create Windows portable package
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -144,13 +154,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROC-03 | Phase 7 | Complete |
 | PROC-04 | Phase 7 | Complete |
 | PROC-05 | Phase 7 | Complete |
+| WIN-01 | Phase 8 | Planned |
+| WIN-02 | Phase 8 | Planned |
+| WIN-03 | Phase 8 | Planned |
 
 **Coverage:**
-- v1 requirements: 27 total
-- Mapped to phases: 27
-- Complete: 27
+- v1 requirements: 27 total, 27 complete
+- Post-v1 requirements: 3 total, 0 complete (Phase 8 planned)
+- Mapped to phases: 30
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-02*
-*Last updated: 2026-02-11 — documentation audit, all v1 requirements marked complete*
+*Last updated: 2026-02-18 — added WIN-01/02/03 for Phase 8 Windows Portable Build*

@@ -2,7 +2,7 @@
 
 **Project:** MediaParser - Home Media Normalizer
 **Created:** 2026-02-02
-**Depth:** Standard (7 phases, 3-5 plans each)
+**Depth:** Standard (8 phases, 3-5 plans each)
 
 ## Overview
 
@@ -209,6 +209,29 @@ Plans:
 
 ---
 
+### Phase 8: Windows Portable Desktop Build
+
+**Goal:** Download a ZIP, extract, double-click MediaParser.bat, app launches in browser. No Python install, no terminal, no dependencies. Full Docker feature parity.
+
+**Dependencies:** Phase 7 (requires complete app with all features)
+
+**Requirements:** WIN-01, WIN-02, WIN-03
+
+**Status:** Planned (2026-02-18)
+
+Plans:
+- [ ] 08-01-PLAN.md — Add --host flag to run.py, PID health check to api.py, build gitignore entries
+- [ ] 08-02-PLAN.md — Create launcher.py desktop orchestrator and MediaParser.bat entry point
+- [ ] 08-03-PLAN.md — Create scripts/build-windows.py cross-build script for Windows portable ZIP
+
+**Success Criteria:**
+1. `python launcher.py` from WSL2 spawns two processes, browser opens, Ctrl+C stops both
+2. `python scripts/build-windows.py --version 0.1.0` produces ZIP in dist/
+3. Extract ZIP on Windows, double-click MediaParser.bat, full app works
+4. Docker, quickstart.sh, dev two-process mode still work unchanged
+
+---
+
 ## Progress
 
 | Phase | Status | Requirements | Completion |
@@ -220,9 +243,9 @@ Plans:
 | 5 - Duplicate Detection - Exact | ✓ Complete | 4 | 100% |
 | 6 - Duplicate Detection - Perceptual | ✓ Complete | 2 | 100% |
 | 7 - Output Generation + Tagging | ✓ Complete | 8 | 100% |
-| 8 - Windows Portable Desktop Build | In Progress | 3 | 0% |
+| 8 - Windows Portable Desktop Build | Planned | 3 | 0% |
 
-**Overall:** 7/8 phases complete (87%)
+**Overall:** 7/8 phases complete, 1 planned (87%)
 
 ---
 
@@ -244,24 +267,6 @@ Plans:
 - **Metadata sync:** Map tags and timestamps bidirectionally
 
 **Priority:** Immich first (largest community overlap with self-hosted Docker users)
-
-### Phase 8: Windows Portable Desktop Build
-
-**Goal:** Download a ZIP, extract, double-click MediaParser.bat, app launches in browser. No Python install, no terminal, no dependencies. Full Docker feature parity.
-**Depends on:** Phase 7
-**Requirements:** WIN-01, WIN-02, WIN-03
-**Plans:** 3 plans
-
-Plans:
-- [ ] 08-01-PLAN.md — Add --host flag to run.py, PID health check to api.py, build gitignore entries
-- [ ] 08-02-PLAN.md — Create launcher.py desktop orchestrator and MediaParser.bat entry point
-- [ ] 08-03-PLAN.md — Create scripts/build-windows.py cross-build script for Windows portable ZIP
-
-**Success Criteria:**
-1. `python launcher.py` from WSL2 spawns two processes, browser opens, Ctrl+C stops both
-2. `python scripts/build-windows.py --version 0.1.0` produces ZIP in dist/
-3. Extract ZIP on Windows, double-click MediaParser.bat, full app works
-4. Docker, quickstart.sh, dev two-process mode still work unchanged
 
 ---
 
