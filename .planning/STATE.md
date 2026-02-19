@@ -604,7 +604,7 @@ None — all research completed during GSD phases.
 
 **Last session:** 2026-02-19
 **Stopped at:** Env var configurability + launcher CLI flags complete. Full workflow test (upload → process → review → export) on Windows still pending.
-**Last commit:** docs: update planning docs with launcher CLI flags and env var config (2b54d40)
+**Last commit:** chore: remove qnap-stack.yml from repo and gitignore it (e768337)
 **Regression check:** 122/122 tests pass after all changes; Docker unaffected
 **Environment fix (prior session):** `/usr/local/bin/git` was a symlink to Windows `git.exe` — Windows Git Credential Manager was firing on every push (login popup + `/usr/bin/gh: No such file or directory` error). Fix: removed symlink so WSL2 uses native Linux git (`/usr/bin/git`) with `gh` credential helper. Also installed/authenticated `gh` in WSL2.
 
