@@ -1,4 +1,5 @@
 """API routes for progress tracking and general utilities."""
+import os
 from flask import Blueprint, jsonify, current_app
 from datetime import datetime, timezone
 
@@ -137,6 +138,21 @@ def check_worker_health():
             'worker_alive': False,
             'error': f'Embedded consumer unhealthy (workers={alive_workers}, scheduler={scheduler_alive})',
         }), 503
+
+    # PID-based check: launcher.py sets MEDIAPARSER_WORKER_PID env var
+    worker_pid_str = os.environ.get('MEDIAPARSER_WORKER_PID')
+    if worker_pid_str:
+        try:
+            pid = int(worker_pid_str)
+            os.kill(pid, 0)  # Signal 0 = existence check only (works on Windows too)
+            return jsonify({'worker_alive': True, 'mode': 'pid', 'pid': pid})
+        except (OSError, ProcessLookupError):
+            return jsonify({
+                'worker_alive': False,
+                'error': f'Worker PID {pid} not found'
+            }), 503
+        except (ValueError, TypeError):
+            pass  # Invalid PID string, fall through to pgrep
 
     # Try pgrep first (works for two-process mode on same host)
     import subprocess

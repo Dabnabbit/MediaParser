@@ -93,6 +93,8 @@ if __name__ == '__main__':
                         help='Do not auto-open browser (standalone mode only)')
     parser.add_argument('--port', type=int, default=5000,
                         help='Port to listen on (default: 5000)')
+    parser.add_argument('--host', default='0.0.0.0',
+                        help='Host to bind to (default: 0.0.0.0)')
     args = parser.parse_args()
 
     print(f"Starting MediaParser in {config_name} mode...")
@@ -117,14 +119,14 @@ if __name__ == '__main__':
         # would duplicate the consumer threads. Hot-reload is still available
         # via the normal two-process flow (run.py + run_worker.py).
         app.run(
-            host='0.0.0.0',
+            host=args.host,
             port=args.port,
             debug=False,
             use_reloader=False,
         )
     else:
         app.run(
-            host='0.0.0.0',
+            host=args.host,
             port=args.port,
             debug=app.config.get('DEBUG', False),
         )
