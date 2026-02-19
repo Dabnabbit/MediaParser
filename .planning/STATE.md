@@ -220,6 +220,8 @@
 | Keep python312.zip AND extracted python312/ | 2026-02-19 | Zip needed for Python early init (encodings boot); extracted dir needed for modules requiring filesystem access (pickle, etc.) | 08: Embeddable Python |
 | colorama as transitive dependency | 2026-02-19 | click requires colorama on Windows for ANSI color support; missing it causes ImportError at startup | 08: Windows deps |
 | Simplified MediaParser.bat (no error handling) | 2026-02-19 | Error-handling code after Python caused CMD to prompt "Terminate batch job?" on Ctrl+C; making Python the last command avoids the prompt | 08: UX |
+| CLI flags on launcher.py, not .env file loading | 2026-02-19 | Flags are more discoverable (--help), enable alternative .bat profiles (HQ, Fast), no python-dotenv dependency needed | Configurability |
+| Env vars as universal config layer | 2026-02-19 | os.environ.get() with defaults works in all deployment modes: Docker, standalone, two-process, portable, gunicorn | Configurability |
 
 ### Active TODOs
 
@@ -599,8 +601,8 @@ None — all research completed during GSD phases.
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
 **Last session:** 2026-02-19
-**Stopped at:** Env var configurability complete (9 vars across 8 files). Full workflow test (upload → process → review → export) on Windows still pending.
-**Last commit:** docs: update state with WSL2 git symlink fix notes (068b124)
+**Stopped at:** Env var configurability + launcher CLI flags complete. Full workflow test (upload → process → review → export) on Windows still pending.
+**Last commit:** feat: add tuning CLI flags to launcher.py for portable build (6738c62)
 **Regression check:** 122/122 tests pass after all changes; Docker unaffected
 **Environment fix (prior session):** `/usr/local/bin/git` was a symlink to Windows `git.exe` — Windows Git Credential Manager was firing on every push (login popup + `/usr/bin/gh: No such file or directory` error). Fix: removed symlink so WSL2 uses native Linux git (`/usr/bin/git`) with `gh` credential helper. Also installed/authenticated `gh` in WSL2.
 
@@ -641,7 +643,7 @@ Made export output accessible regardless of deployment method:
 
 **What was built:**
 - **08-01:** `--host` flag on `run.py` (default `0.0.0.0`), PID-based health check in `api.py` (reads `MEDIAPARSER_WORKER_PID`, `os.kill(pid, 0)`), build dirs gitignored
-- **08-02:** `launcher.py` (240 lines) — portable/system Python detection, env setup, DB init/migration, two-process spawn, browser open, clean Ctrl+C shutdown. `MediaParser.bat` — Windows double-click entry with drive letter handling
+- **08-02:** `launcher.py` (~280 lines) — portable/system Python detection, env setup, DB init/migration, two-process spawn, browser open, clean Ctrl+C shutdown. CLI tuning flags (--workers, --jpeg-quality, etc.) map to env vars for subprocesses. `MediaParser.bat` — Windows double-click entry with drive letter handling; users can create alternative .bat files with different flag profiles
 - **08-03:** `scripts/build-windows.py` (~460 lines) — 8-step cross-build: Python 3.12 embeddable (stdlib extracted + zip kept, `._pth` + `mediaparser.pth`), FFmpeg (gyan.dev), ExifTool (standalone exe from SourceForge), pip wheels (`python-magic-bin` + `colorama`), app code, `.env`, ZIP. Uses `curl` for downloads (handles SourceForge redirects).
 
 **Post-execution fixes (iterative debugging on Windows hardware):**
@@ -671,4 +673,4 @@ Made export output accessible regardless of deployment method:
 ---
 
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-19 — Env var configurability (9 tunable constants: MAX_UPLOAD_MB, HUEY_WORKERS, ERROR_THRESHOLD, MIN_VALID_YEAR, FFMPEG_TIMEOUT, JPEG_QUALITY, EXACT_THRESHOLD, SIMILAR_THRESHOLD, SQLITE_BUSY_TIMEOUT_MS)*
+*Last updated: 2026-02-19 — Env var configurability (9 tunable constants) + launcher.py CLI flags for portable build tuning profiles*

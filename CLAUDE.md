@@ -55,6 +55,24 @@ Without `--standalone`, behavior is identical to before (debug on, reloader on,
 no embedded consumer). `gunicorn run:app` still works — argparse only runs
 inside `__main__`.
 
+### `launcher.py` flags (portable desktop build)
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--port PORT` | 5000 | Listen port |
+| `--host HOST` | 127.0.0.1 | Bind address |
+| `--workers N` | 2 | Huey worker thread count |
+| `--max-upload-mb N` | 500 | Max upload size per request (MB) |
+| `--error-threshold F` | 0.10 | Halt job if error rate exceeds this |
+| `--min-valid-year N` | 2000 | Ignore timestamps before this year |
+| `--ffmpeg-timeout N` | 30 | Video frame extraction timeout (seconds) |
+| `--jpeg-quality N` | 85 | Thumbnail JPEG quality (1-100) |
+| `--exact-threshold N` | 5 | Hamming distance for exact duplicates |
+| `--similar-threshold N` | 16 | Hamming distance for similar detection |
+| `--sqlite-timeout N` | 5000 | SQLite busy timeout (milliseconds) |
+
+Flags map to env vars passed to Flask/worker subprocesses. Users can create
+alternative `.bat` files with different tuning profiles (e.g. `MediaParser-HQ.bat`).
+
 ### `quickstart.sh`
 One-command setup for testers. Detects package manager (apt/brew/dnf/pacman),
 installs system deps (exiftool, ffmpeg, libmagic), creates venv, installs pip
