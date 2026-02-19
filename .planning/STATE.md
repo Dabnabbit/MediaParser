@@ -594,9 +594,10 @@ None — all research completed during GSD phases.
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
 **Last session:** 2026-02-19
-**Stopped at:** Code audit quick wins complete (8 fixes across 7 files). Full workflow test (upload → process → review → export) on Windows still pending.
-**Last commit:** fix: quick wins from code audit (perf, security, quality) (de72b2a)
+**Stopped at:** Code audit quick wins complete (8 fixes across 7 files). Fixed WSL2 gh auth (was prompting for GitHub login on every push). Full workflow test (upload → process → review → export) on Windows still pending.
+**Last commit:** docs: update planning state with quick wins audit fixes (9016dc2)
 **Regression check:** 122/122 tests pass after quick wins; Docker unaffected
+**Environment fix:** Installed/authenticated `gh` in WSL2 — resolves `/usr/bin/gh: No such file or directory` credential helper error on git push
 
 ### QNAP Deployment (COMPLETE)
 
