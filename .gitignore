@@ -17,6 +17,9 @@ storage/
 # Runtime logs
 logs/
 
+# Deployment-specific stack files
+qnap-stack.yml
+
 # Keep .gitkeep files to preserve directory structure
 !**/.gitkeep
 
