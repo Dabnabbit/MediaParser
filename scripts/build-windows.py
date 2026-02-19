@@ -254,18 +254,16 @@ def install_packages(app_dir: Path) -> None:
     print('  Downloading Windows wheels from PyPI ...')
     subprocess.run(download_cmd, check=True)
 
-    # Install all wheels into the portable site-packages
-    install_cmd = [
-        sys.executable, '-m', 'pip', 'install',
-        '--no-index',
-        '--find-links', str(wheels_dir),
-        '--target', str(site_packages),
-        '--no-deps',
-    ] + all_packages
-
-    print('  Installing wheels into site-packages ...')
-    subprocess.run(install_cmd, check=True)
-    print(f'  Packages installed to {site_packages.relative_to(BASE_DIR)}')
+    # Extract wheels directly into site-packages.
+    # We can't use `pip install --target` because pip on Linux refuses to install
+    # win_amd64 wheels. Wheels are just ZIP files — extract them directly.
+    print('  Extracting wheels into site-packages ...')
+    installed = 0
+    for whl in wheels_dir.glob('*.whl'):
+        with zipfile.ZipFile(whl) as zf:
+            zf.extractall(site_packages)
+        installed += 1
+    print(f'  {installed} packages installed to {site_packages.relative_to(BASE_DIR)}')
 
 
 def copy_app(app_dir: Path) -> None:
