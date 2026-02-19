@@ -11,10 +11,11 @@ instance/config.py
 # Environment variables (but keep .env.example)
 .env
 
-# Storage directories (keep structure, ignore contents)
-storage/uploads/*
-storage/processing/*
-storage/output/*
+# Storage directories (runtime data)
+storage/
+
+# Runtime logs
+logs/
 
 # Keep .gitkeep files to preserve directory structure
 !**/.gitkeep
