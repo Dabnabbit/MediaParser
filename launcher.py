@@ -151,6 +151,27 @@ def main() -> None:
         '--host', default='127.0.0.1',
         help='Host to bind to (default: 127.0.0.1)',
     )
+
+    # Tuning flags — set as env vars for Flask/worker subprocesses
+    parser.add_argument('--workers', type=int, default=None,
+                        help='Huey worker thread count (default: 2)')
+    parser.add_argument('--max-upload-mb', type=int, default=None,
+                        help='Max upload size per request in MB (default: 500)')
+    parser.add_argument('--error-threshold', type=float, default=None,
+                        help='Halt job if error rate exceeds this (default: 0.10)')
+    parser.add_argument('--min-valid-year', type=int, default=None,
+                        help='Ignore timestamps before this year (default: 2000)')
+    parser.add_argument('--ffmpeg-timeout', type=int, default=None,
+                        help='Video frame extraction timeout in seconds (default: 30)')
+    parser.add_argument('--jpeg-quality', type=int, default=None,
+                        help='Thumbnail JPEG quality 1-100 (default: 85)')
+    parser.add_argument('--exact-threshold', type=int, default=None,
+                        help='Hamming distance for exact duplicate detection (default: 5)')
+    parser.add_argument('--similar-threshold', type=int, default=None,
+                        help='Hamming distance for similar detection (default: 16)')
+    parser.add_argument('--sqlite-timeout', type=int, default=None,
+                        help='SQLite busy timeout in milliseconds (default: 5000)')
+
     args = parser.parse_args()
 
     host: str = args.host
@@ -181,6 +202,23 @@ def main() -> None:
     env['PYTHONUNBUFFERED'] = '1'  # Ensure crash output is visible immediately
     if is_portable():
         configure_portable_env(env)
+
+    # Map CLI flags to env vars (only set if explicitly provided)
+    flag_to_env = {
+        'workers': 'HUEY_WORKERS',
+        'max_upload_mb': 'MAX_UPLOAD_MB',
+        'error_threshold': 'ERROR_THRESHOLD',
+        'min_valid_year': 'MIN_VALID_YEAR',
+        'ffmpeg_timeout': 'FFMPEG_TIMEOUT',
+        'jpeg_quality': 'JPEG_QUALITY',
+        'exact_threshold': 'EXACT_THRESHOLD',
+        'similar_threshold': 'SIMILAR_THRESHOLD',
+        'sqlite_timeout': 'SQLITE_BUSY_TIMEOUT_MS',
+    }
+    for attr, env_var in flag_to_env.items():
+        value = getattr(args, attr)
+        if value is not None:
+            env[env_var] = str(value)
 
     # Ensure we run from BASE_DIR so imports resolve correctly.
     os.chdir(BASE_DIR)
