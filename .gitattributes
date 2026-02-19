@@ -3,3 +3,6 @@
 
 # Shell scripts must always use LF (CRLF breaks #!/bin/bash in Docker)
 *.sh text eol=lf
+
+# Windows batch files use CRLF (required by CMD.exe)
+*.bat text eol=crlf
