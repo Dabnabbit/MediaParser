@@ -373,6 +373,8 @@ None — all research completed during GSD phases.
   - app/lib/thumbnail.py: FFMPEG_TIMEOUT (30s), JPEG_QUALITY (85)
   - app/lib/perceptual.py: EXACT_THRESHOLD (5), SIMILAR_THRESHOLD (16)
   - All documented in .env.production (commented out with defaults)
+  - launcher.py exposes all as CLI flags (--workers, --jpeg-quality, etc.) for portable build
+  - Precedence: CLI flag > system env var > hardcoded default
 - Database migration needed: New fields (timestamp_candidates, current_filename, error_count) require Alembic migration in Phase 3
 - UI patterns:
   - Single-pane vertical layout: upload (top) → progress → results (expand below)
@@ -602,7 +604,7 @@ None — all research completed during GSD phases.
 
 **Last session:** 2026-02-19
 **Stopped at:** Env var configurability + launcher CLI flags complete. Full workflow test (upload → process → review → export) on Windows still pending.
-**Last commit:** feat: add tuning CLI flags to launcher.py for portable build (6738c62)
+**Last commit:** docs: update planning docs with launcher CLI flags and env var config (2b54d40)
 **Regression check:** 122/122 tests pass after all changes; Docker unaffected
 **Environment fix (prior session):** `/usr/local/bin/git` was a symlink to Windows `git.exe` — Windows Git Credential Manager was firing on every push (login popup + `/usr/bin/gh: No such file or directory` error). Fix: removed symlink so WSL2 uses native Linux git (`/usr/bin/git`) with `gh` credential helper. Also installed/authenticated `gh` in WSL2.
 
