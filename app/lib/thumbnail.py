@@ -6,6 +6,7 @@ Supports video files via ffmpeg frame extraction.
 from pathlib import Path
 from typing import Optional, Tuple
 import logging
+import os
 import subprocess
 
 from PIL import Image, ImageOps
@@ -13,6 +14,10 @@ from PIL import Image, ImageOps
 logger = logging.getLogger(__name__)
 
 VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv'}
+
+# Configurable via environment variables
+FFMPEG_TIMEOUT = int(os.environ.get('FFMPEG_TIMEOUT', 30))
+JPEG_QUALITY = int(os.environ.get('JPEG_QUALITY', 85))
 
 # Default thumbnail sizes
 SIZES = {
@@ -42,14 +47,14 @@ def extract_video_frame(video_path: Path, output_path: Path, seek_seconds: float
         str(output_path),
     ]
 
-    result = subprocess.run(cmd, capture_output=True, timeout=30)
+    result = subprocess.run(cmd, capture_output=True, timeout=FFMPEG_TIMEOUT)
     if result.returncode == 0 and output_path.exists():
         return True
 
     # If seeking past end of file, retry at 0s
     if seek_seconds > 0:
         cmd[2] = '0'
-        result = subprocess.run(cmd, capture_output=True, timeout=30)
+        result = subprocess.run(cmd, capture_output=True, timeout=FFMPEG_TIMEOUT)
         if result.returncode == 0 and output_path.exists():
             return True
 
@@ -121,7 +126,7 @@ def generate_thumbnail(
             img.thumbnail(dimensions, Image.Resampling.LANCZOS)
 
             # Save with optimization
-            img.save(thumb_path, 'JPEG', quality=85, optimize=True)
+            img.save(thumb_path, 'JPEG', quality=JPEG_QUALITY, optimize=True)
 
         return thumb_path
 

@@ -6,6 +6,7 @@ Usage:
     python run_worker.py
 """
 import logging
+import os
 import sys
 
 # Configure logging before importing huey_config
@@ -21,12 +22,13 @@ from huey.consumer import Consumer
 from huey_config import huey
 
 if __name__ == '__main__':
+    worker_count = int(os.environ.get('HUEY_WORKERS', 2))
     print("Starting Huey worker with optimized settings...", flush=True)
-    print(f"  Workers: 2 threads", flush=True)
+    print(f"  Workers: {worker_count} threads", flush=True)
     print(f"  Polling: 50ms initial, 300ms max", flush=True)
 
     config = ConsumerConfig(
-        workers=2,
+        workers=worker_count,
         worker_type='thread',
         initial_delay=0.05,    # 50ms initial delay
         backoff=1.2,           # Backoff multiplier when idle

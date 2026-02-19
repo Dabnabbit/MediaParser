@@ -13,14 +13,14 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Post-v1 polish — code audit quick wins (perf, security, quality)
+**Current Focus:** Post-v1 polish — env var configurability for all tunable constants
 
 ## Current Position
 
 **Phase:** 8 of 8 - Windows Portable Desktop Build
 **Plan:** 3 of 3 (ALL COMPLETE)
 **Status:** COMPLETE
-**Last activity:** 2026-02-19 - Quick wins from code audit: batched queries, XSS fix, indexes, debounce, upload limit
+**Last activity:** 2026-02-19 - Env var configurability: 9 tunable constants exposed via os.environ.get() with safe defaults
 **Progress:** `[██████████] 100%` (42/42 plans complete)
 
 **Completed Requirements (Phase 2):**
@@ -365,7 +365,12 @@ None — all research completed during GSD phases.
 - Confidence: Weighted scoring (EXIF:DateTimeOriginal=10, filename=2-3, filesystem=1), 1-second agreement tolerance
 - Job control: New statuses enable pause/resume, graceful cancel, error threshold halting
 - Type detection: python-magic checks magic bytes vs extension, logs warnings for mismatches
-- Configuration options: WORKER_THREADS, MIN_VALID_YEAR, BATCH_COMMIT_SIZE, ERROR_THRESHOLD in config.py
+- Configuration options (all env-configurable with safe defaults):
+  - config.py: MAX_UPLOAD_MB (500), ERROR_THRESHOLD (0.10), MIN_VALID_YEAR (2000), SQLITE_BUSY_TIMEOUT_MS (5000)
+  - huey_config.py/run.py/run_worker.py: HUEY_WORKERS (2)
+  - app/lib/thumbnail.py: FFMPEG_TIMEOUT (30s), JPEG_QUALITY (85)
+  - app/lib/perceptual.py: EXACT_THRESHOLD (5), SIMILAR_THRESHOLD (16)
+  - All documented in .env.production (commented out with defaults)
 - Database migration needed: New fields (timestamp_candidates, current_filename, error_count) require Alembic migration in Phase 3
 - UI patterns:
   - Single-pane vertical layout: upload (top) → progress → results (expand below)
@@ -594,10 +599,10 @@ None — all research completed during GSD phases.
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
 **Last session:** 2026-02-19
-**Stopped at:** Code audit quick wins complete (8 fixes across 7 files). Fixed WSL2 gh auth (was prompting for GitHub login on every push). Full workflow test (upload → process → review → export) on Windows still pending.
-**Last commit:** docs: update state with gh auth fix and session notes (8e73e25)
-**Regression check:** 122/122 tests pass after quick wins; Docker unaffected
-**Environment fix:** `/usr/local/bin/git` was a symlink to Windows `git.exe` — Windows Git Credential Manager was firing on every push (login popup + `/usr/bin/gh: No such file or directory` error). Fix: removed symlink so WSL2 uses native Linux git (`/usr/bin/git`) with `gh` credential helper. Also installed/authenticated `gh` in WSL2.
+**Stopped at:** Env var configurability complete (9 vars across 8 files). Full workflow test (upload → process → review → export) on Windows still pending.
+**Last commit:** docs: update state with WSL2 git symlink fix notes (068b124)
+**Regression check:** 122/122 tests pass after all changes; Docker unaffected
+**Environment fix (prior session):** `/usr/local/bin/git` was a symlink to Windows `git.exe` — Windows Git Credential Manager was firing on every push (login popup + `/usr/bin/gh: No such file or directory` error). Fix: removed symlink so WSL2 uses native Linux git (`/usr/bin/git`) with `gh` credential helper. Also installed/authenticated `gh` in WSL2.
 
 ### QNAP Deployment (COMPLETE)
 
@@ -666,4 +671,4 @@ Made export output accessible regardless of deployment method:
 ---
 
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-19 — Code audit quick wins (8 fixes: batched queries, XSS, indexes, debounce, upload limit, logging, constants, progress consistency)*
+*Last updated: 2026-02-19 — Env var configurability (9 tunable constants: MAX_UPLOAD_MB, HUEY_WORKERS, ERROR_THRESHOLD, MIN_VALID_YEAR, FFMPEG_TIMEOUT, JPEG_QUALITY, EXACT_THRESHOLD, SIMILAR_THRESHOLD, SQLITE_BUSY_TIMEOUT_MS)*

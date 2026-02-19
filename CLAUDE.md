@@ -73,8 +73,24 @@ packages, launches `--standalone`. Passes flags through (e.g. `./quickstart.sh -
 - **CI/CD:** GitHub Actions auto-builds and pushes to GHCR on every push to `main`
 - **Image:** `ghcr.io/dabnabbit/mediaparser:latest`
 
+## Environment Variables
+
+All tunable constants are configurable via env vars with safe defaults. See `.env.production` for full list.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MAX_UPLOAD_MB` | 500 | Max upload size per request (MB) |
+| `HUEY_WORKERS` | 2 | Huey worker thread count |
+| `ERROR_THRESHOLD` | 0.10 | Halt job if error rate exceeds this (0.0-1.0) |
+| `MIN_VALID_YEAR` | 2000 | Ignore timestamps before this year |
+| `FFMPEG_TIMEOUT` | 30 | Video frame extraction timeout (seconds) |
+| `JPEG_QUALITY` | 85 | Thumbnail JPEG quality (1-100) |
+| `EXACT_THRESHOLD` | 5 | Hamming distance for exact duplicate detection |
+| `SIMILAR_THRESHOLD` | 16 | Hamming distance for similar detection |
+| `SQLITE_BUSY_TIMEOUT_MS` | 5000 | SQLite busy timeout (milliseconds) |
+
 ## Current Development Focus
-- All 7 GSD phases complete (v1 milestone)
+- All 8 GSD phases complete (v1 milestone)
 - Docker deployment complete (Dockerfile, docker-compose.yml, GHCR via GitHub Actions)
 - Carousel viewport refactor complete (replaces examination modal)
 - FLIP animations for enter, navigation, and partial exit

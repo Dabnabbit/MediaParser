@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Processing configuration
 BATCH_COMMIT_SIZE = 10  # Commit every N files for database performance
-ERROR_THRESHOLD = 0.10  # Halt job if >10% failures (user decision from CONTEXT.md)
+ERROR_THRESHOLD = float(os.environ.get('ERROR_THRESHOLD', 0.10))  # Halt job if >N% failures
 MIN_SAMPLE_SIZE = 10    # Need minimum files before checking threshold
 
 

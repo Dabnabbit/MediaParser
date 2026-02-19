@@ -43,8 +43,9 @@ def start_embedded_consumer():
     from huey.consumer import Consumer, ConsumerStopped
     from huey_config import huey
 
+    worker_count = int(os.environ.get('HUEY_WORKERS', 2))
     consumer = Consumer(huey,
-        workers=2,
+        workers=worker_count,
         worker_type='thread',
         initial_delay=0.05,
         backoff=1.2,

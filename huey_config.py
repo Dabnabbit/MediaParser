@@ -8,6 +8,7 @@ Run consumer with:
     huey_consumer huey_config.huey -w 2 -k thread
 """
 import logging
+import os
 from pathlib import Path
 from huey import SqliteHuey
 
@@ -40,7 +41,7 @@ from app import tasks  # noqa: F401, E402
 # Consumer configuration
 # These are used when running: huey_consumer huey_config.huey
 CONSUMER_CONFIG = {
-    'workers': 2,           # Number of worker threads
+    'workers': int(os.environ.get('HUEY_WORKERS', 2)),  # Number of worker threads
     'worker_type': 'thread',  # Use threads (simpler than processes for SQLite)
     'initial_delay': 0.1,   # Initial poll delay
     'backoff': 1.15,        # Backoff multiplier when queue is empty

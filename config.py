@@ -26,7 +26,7 @@ class Config:
     SQLALCHEMY_ENGINE_OPTIONS = {
         'connect_args': {
             'check_same_thread': False,
-            'timeout': 5.0
+            'timeout': int(os.environ.get('SQLITE_BUSY_TIMEOUT_MS', 5000)) / 1000
         }
     }
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -39,14 +39,14 @@ class Config:
     # Timezone configuration (replaces hardcoded -4 offset)
     TIMEZONE = os.environ.get('TIMEZONE', 'America/New_York')
 
-    # Upload size limit (500 MB per request)
-    MAX_CONTENT_LENGTH = 500 * 1024 * 1024
+    # Upload size limit per request (default 500 MB, configurable via MAX_UPLOAD_MB env var)
+    MAX_CONTENT_LENGTH = int(os.environ.get('MAX_UPLOAD_MB', 500)) * 1024 * 1024
 
     # Phase 2: Processing Configuration
     WORKER_THREADS = None  # None = auto-detect CPU count
-    MIN_VALID_YEAR = 2000  # Sanity floor for timestamps
+    MIN_VALID_YEAR = int(os.environ.get('MIN_VALID_YEAR', 2000))  # Sanity floor for timestamps
     BATCH_COMMIT_SIZE = 10  # Files per database commit
-    ERROR_THRESHOLD = 0.10  # Halt job if error rate exceeds this
+    ERROR_THRESHOLD = float(os.environ.get('ERROR_THRESHOLD', 0.10))  # Halt job if error rate exceeds this
 
     # Debug mode (enables debug UI features)
     DEBUG_MODE = False

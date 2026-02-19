@@ -7,6 +7,7 @@ since each comparison is just integer XOR + bit_count.
 """
 from datetime import timezone
 from typing import List
+import os
 import uuid
 import logging
 
@@ -15,9 +16,9 @@ logger = logging.getLogger(__name__)
 # Sentinel value for incomparable hashes (None/empty/invalid inputs)
 INCOMPARABLE_DISTANCE = 999
 
-# Detection thresholds
-EXACT_THRESHOLD = 5         # Hamming distance 0-5 = exact duplicate
-SIMILAR_THRESHOLD = 16      # Hamming distance 6-16 = similar
+# Detection thresholds (configurable via env vars)
+EXACT_THRESHOLD = int(os.environ.get('EXACT_THRESHOLD', 5))       # Hamming distance 0-N = exact duplicate
+SIMILAR_THRESHOLD = int(os.environ.get('SIMILAR_THRESHOLD', 16))  # Hamming distance N+1-M = similar
 BURST_THRESHOLD = 2         # Seconds gap for burst detection
 PANORAMA_THRESHOLD = 30     # Seconds gap for panorama detection
 
