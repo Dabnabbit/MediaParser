@@ -229,6 +229,7 @@ def install_packages(app_dir: Path) -> None:
     transitive = [
         'blinker',
         'click',
+        'colorama',  # click requires colorama on Windows for ANSI support
         'itsdangerous',
         'jinja2',
         'markupsafe',
