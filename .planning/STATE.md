@@ -595,9 +595,9 @@ None — all research completed during GSD phases.
 
 **Last session:** 2026-02-19
 **Stopped at:** Code audit quick wins complete (8 fixes across 7 files). Fixed WSL2 gh auth (was prompting for GitHub login on every push). Full workflow test (upload → process → review → export) on Windows still pending.
-**Last commit:** docs: update planning state with quick wins audit fixes (9016dc2)
+**Last commit:** docs: update state with gh auth fix and session notes (8e73e25)
 **Regression check:** 122/122 tests pass after quick wins; Docker unaffected
-**Environment fix:** Installed/authenticated `gh` in WSL2 — resolves `/usr/bin/gh: No such file or directory` credential helper error on git push
+**Environment fix:** `/usr/local/bin/git` was a symlink to Windows `git.exe` — Windows Git Credential Manager was firing on every push (login popup + `/usr/bin/gh: No such file or directory` error). Fix: removed symlink so WSL2 uses native Linux git (`/usr/bin/git`) with `gh` credential helper. Also installed/authenticated `gh` in WSL2.
 
 ### QNAP Deployment (COMPLETE)
 
