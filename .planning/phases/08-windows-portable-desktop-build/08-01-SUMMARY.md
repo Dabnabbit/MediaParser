@@ -97,6 +97,16 @@ None - no external service configuration required.
 - Plan 02 can set `MEDIAPARSER_WORKER_PID` env var in Flask's environment for PID-based health check
 - Plan 03 (build script) can generate artifacts to `build/` and `dist/` without git tracking concerns
 
+## Self-Check: PASSED
+
+- run.py: FOUND
+- app/routes/api.py: FOUND
+- .gitignore: FOUND
+- 08-01-SUMMARY.md: FOUND
+- Commit 65fd5f1 (feat: --host + PID health check): FOUND
+- Commit cf8f744 (chore: gitignore entries): FOUND
+- All 122 tests passing
+
 ---
 *Phase: 08-windows-portable-desktop-build*
 *Completed: 2026-02-19*

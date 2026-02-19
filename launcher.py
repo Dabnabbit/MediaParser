@@ -55,7 +55,7 @@ def configure_portable_env(env: dict) -> None:
         env: os.environ copy to mutate in-place.
     """
     tools_dir = BASE_DIR / 'tools'
-    env['EXIFTOOL_PATH'] = str(tools_dir / 'exiftool' / 'exiftool.bat')
+    env['EXIFTOOL_PATH'] = str(tools_dir / 'exiftool' / 'exiftool.exe')
     # Prepend ffmpeg directory so ffmpeg.exe is found without full path.
     env['PATH'] = str(tools_dir / 'ffmpeg') + os.pathsep + env.get('PATH', '')
     env['FLASK_ENV'] = 'production'

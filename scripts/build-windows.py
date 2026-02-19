@@ -5,7 +5,7 @@ Cross-build script for MediaParser Windows portable package.
 Runs on WSL2/Linux and produces a Windows portable ZIP that contains:
 - Python 3.12 embeddable runtime (stdlib extracted, ._pth configured)
 - FFmpeg (gyan.dev essentials build)
-- ExifTool (from exiftool_files/)
+- ExifTool (standalone Windows executable from exiftool.org)
 - All pip packages as Windows wheels (python-magic-bin instead of python-magic)
 - Application code, alembic migrations, config files
 
@@ -20,7 +20,6 @@ import secrets
 import shutil
 import subprocess
 import sys
-import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -31,6 +30,8 @@ from pathlib import Path
 PYTHON_VERSION = '3.12.10'
 PYTHON_URL = f'https://www.python.org/ftp/python/{PYTHON_VERSION}/python-{PYTHON_VERSION}-embed-amd64.zip'
 FFMPEG_URL = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
+EXIFTOOL_VERSION = '13.50'
+EXIFTOOL_URL = f'https://sourceforge.net/projects/exiftool/files/exiftool-{EXIFTOOL_VERSION}_64.zip/download'
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # Project root
 CACHE_DIR = BASE_DIR / '.build-cache'
@@ -43,14 +44,21 @@ DIST_DIR = BASE_DIR / 'dist'
 # ---------------------------------------------------------------------------
 
 def download_with_cache(url: str, cache_path: Path) -> None:
-    """Download a URL to cache_path, or use cached copy if it already exists."""
+    """Download a URL to cache_path, or use cached copy if it already exists.
+
+    Uses curl for downloads to handle complex redirect chains (e.g. SourceForge
+    mirror redirects that Python's urllib cannot follow).
+    """
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     name = cache_path.name
     if cache_path.exists():
         print(f'  [cache] {name}')
         return
     print(f'  Downloading {name} ...')
-    urllib.request.urlretrieve(url, cache_path)
+    subprocess.run(
+        ['curl', '-fSL', '--retry', '3', '-o', str(cache_path), url],
+        check=True,
+    )
     print(f'  Downloaded {name} ({cache_path.stat().st_size / 1024 / 1024:.1f} MB)')
 
 
@@ -157,54 +165,67 @@ def download_ffmpeg(app_dir: Path) -> None:
 
 def setup_exiftool(app_dir: Path) -> None:
     """
-    Copy ExifTool files from exiftool_files/ to tools/exiftool/.
+    Download standalone ExifTool Windows executable from exiftool.org.
 
-    Skips: windows_exiftool.txt (renamed to exiftool.pl), readme_windows.txt,
-    Licenses_Strawberry_Perl.zip (large file, not needed at runtime).
-    Copies windows_exiftool.txt as exiftool.pl (perl.exe looks for this name).
+    The standalone package contains exiftool(-k).exe (native launcher) and
+    an exiftool_files/ directory with embedded Perl + ExifTool scripts.
+    The native launcher handles stdin/stdout pipe inheritance correctly,
+    which is required by pyexiftool's stay-open protocol.
+
+    A .bat wrapper does NOT work because CMD.exe in the middle breaks
+    pyexiftool's piped subprocess communication.
     """
-    src_dir = BASE_DIR / 'exiftool_files'
-    if not src_dir.exists():
-        raise FileNotFoundError(
-            f'exiftool_files/ not found at {src_dir}\n'
-            'Ensure the exiftool_files/ directory exists with perl.exe, perl532.dll, '
-            'windows_exiftool.txt, lib/, and DLLs.'
-        )
-
     dst_dir = app_dir / 'tools' / 'exiftool'
     dst_dir.mkdir(parents=True, exist_ok=True)
 
-    # Files/dirs to skip (handled separately or not needed at runtime)
-    skip_names = {'windows_exiftool.txt', 'readme_windows.txt', 'Licenses_Strawberry_Perl.zip'}
+    cache_path = CACHE_DIR / f'exiftool-{EXIFTOOL_VERSION}_64.zip'
+    download_with_cache(EXIFTOOL_URL, cache_path)
 
-    for item in src_dir.iterdir():
-        if item.name in skip_names:
-            continue
-        dst = dst_dir / item.name
-        if item.is_dir():
-            shutil.copytree(item, dst, dirs_exist_ok=True)
-        else:
-            shutil.copy2(item, dst)
+    print('  Extracting ExifTool ...')
+    temp_dir = BUILD_DIR / '_exiftool_tmp'
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+    temp_dir.mkdir(parents=True)
 
-    # Copy windows_exiftool.txt as exiftool.pl (CRITICAL)
-    windows_exiftool = src_dir / 'windows_exiftool.txt'
-    if not windows_exiftool.exists():
-        raise FileNotFoundError(
-            f'windows_exiftool.txt not found in {src_dir}\n'
-            'This file is required — perl.exe looks for exiftool.pl at runtime.'
-        )
-    shutil.copy2(windows_exiftool, dst_dir / 'exiftool.pl')
+    try:
+        with zipfile.ZipFile(cache_path) as zf:
+            zf.extractall(temp_dir)
 
-    # Create exiftool.bat wrapper so pyexiftool can invoke it as an executable.
-    # pyexiftool expects a single executable path; perl.exe needs exiftool.pl as arg.
-    exiftool_bat = dst_dir / 'exiftool.bat'
-    exiftool_bat.write_text(
-        '@echo off\r\n'
-        '"%~dp0perl.exe" "%~dp0exiftool.pl" %*\r\n',
-        encoding='utf-8',
-    )
+        # Find the launcher exe: exiftool(-k).exe
+        matches = list(temp_dir.rglob('exiftool(-k).exe'))
+        if not matches:
+            # Try alternate naming patterns
+            matches = [p for p in temp_dir.rglob('*.exe')
+                       if 'exiftool' in p.name.lower()]
+        if not matches:
+            raise FileNotFoundError(
+                'exiftool executable not found inside downloaded ZIP.\n'
+                f'Contents: {[p.name for p in temp_dir.iterdir()]}'
+            )
 
-    print(f'  ExifTool copied to tools/exiftool/ ({len(list(dst_dir.rglob("*")))} files/dirs)')
+        # Copy launcher as exiftool.exe
+        shutil.copy2(matches[0], dst_dir / 'exiftool.exe')
+
+        # Copy exiftool_files/ directory (Perl runtime + ExifTool scripts)
+        exiftool_files_src = None
+        for candidate in temp_dir.rglob('exiftool_files'):
+            if candidate.is_dir():
+                exiftool_files_src = candidate
+                break
+
+        if exiftool_files_src is None:
+            raise FileNotFoundError(
+                'exiftool_files/ directory not found inside downloaded ZIP.\n'
+                f'Contents: {[p.name for p in temp_dir.iterdir()]}'
+            )
+
+        shutil.copytree(exiftool_files_src, dst_dir / 'exiftool_files',
+                        dirs_exist_ok=True)
+
+        file_count = len(list(dst_dir.rglob('*')))
+        print(f'  ExifTool {EXIFTOOL_VERSION} set up at tools/exiftool/ ({file_count} files/dirs)')
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 def install_packages(app_dir: Path) -> None:

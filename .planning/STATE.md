@@ -1,6 +1,6 @@
 # Project State: MediaParser
 
-**Last Updated:** 2026-02-18
+**Last Updated:** 2026-02-19
 
 ## Environment
 
@@ -13,14 +13,14 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 8 — Windows Portable Desktop Build (COMPLETE, pending human verification)
+**Current Focus:** Phase 8 — Windows Portable Desktop Build (iterative debugging on Windows hardware)
 
 ## Current Position
 
 **Phase:** 8 of 8 - Windows Portable Desktop Build
 **Plan:** 3 of 3 (ALL COMPLETE)
 **Status:** COMPLETE
-**Last activity:** 2026-02-19 - 08-03 complete: scripts/build-windows.py cross-build script
+**Last activity:** 2026-02-19 - Fix ExifTool: standalone exe from SourceForge replaces broken .bat wrapper
 **Progress:** `[██████████] 100%` (42/42 plans complete)
 
 **Completed Requirements (Phase 2):**
@@ -212,6 +212,14 @@
 | python312.zip stdlib must be extracted to python312/ directory | 2026-02-19 | Leaving as ZIP causes ImportError for pickle and many stdlib modules at runtime on Windows | 08-03: Embeddable Python |
 | python-magic-bin replaces python-magic in Windows portable build | 2026-02-19 | Bundles magic.dll — no separate libmagic.so dependency needed on Windows | 08-03: Package substitution |
 | windows_exiftool.txt -> exiftool.pl rename is CRITICAL | 2026-02-19 | perl.exe looks for exiftool.pl as its script entry point; wrong name = ExifTool broken | 08-03: ExifTool setup |
+| Standalone exiftool.exe replaces .bat wrapper | 2026-02-19 | pyexiftool uses piped stdin/stdout (-stay_open protocol); CMD.exe in a .bat wrapper breaks pipe inheritance; native launcher exe handles pipes correctly | 08: ExifTool fix |
+| Download ExifTool from SourceForge in build script | 2026-02-19 | Official standalone package (exiftool(-k).exe + exiftool_files/) from exiftool.org; replaces local exiftool_files/ copy approach | 08: ExifTool fix |
+| CREATE_NEW_PROCESS_GROUP for Windows subprocesses | 2026-02-19 | ExifTool/ffmpeg spawning generates console control events that kill Flask/worker; new process group isolates children; launcher handles shutdown via TerminateProcess | 08: Process isolation |
+| PYTHONUNBUFFERED=1 for subprocess env | 2026-02-19 | Ensures crash output is visible immediately in the console window; critical for debugging on Windows | 08: Debugging |
+| curl for build downloads instead of urllib | 2026-02-19 | SourceForge uses JavaScript-based redirects that Python urllib cannot follow; curl handles the 302 chain correctly | 08: Build reliability |
+| Keep python312.zip AND extracted python312/ | 2026-02-19 | Zip needed for Python early init (encodings boot); extracted dir needed for modules requiring filesystem access (pickle, etc.) | 08: Embeddable Python |
+| colorama as transitive dependency | 2026-02-19 | click requires colorama on Windows for ANSI color support; missing it causes ImportError at startup | 08: Windows deps |
+| Simplified MediaParser.bat (no error handling) | 2026-02-19 | Error-handling code after Python caused CMD to prompt "Terminate batch job?" on Ctrl+C; making Python the last command avoids the prompt | 08: UX |
 
 ### Active TODOs
 
@@ -557,9 +565,9 @@ None — all research completed during GSD phases.
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
-**Last session:** 2026-02-18
-**Stopped at:** Phase 8 execution complete — all 3 plans done, awaiting human verification on Windows
-**Last commit:** `ff76f30` — docs(08-03): complete build-windows.py cross-build script plan
+**Last session:** 2026-02-19
+**Stopped at:** ExifTool standalone exe fix applied — awaiting Windows test of upload/process workflow
+**Last commit:** fix: ExifTool standalone exe from SourceForge (replaces broken .bat wrapper)
 
 ### QNAP Deployment (COMPLETE)
 
@@ -599,23 +607,33 @@ Made export output accessible regardless of deployment method:
 **What was built:**
 - **08-01:** `--host` flag on `run.py` (default `0.0.0.0`), PID-based health check in `api.py` (reads `MEDIAPARSER_WORKER_PID`, `os.kill(pid, 0)`), build dirs gitignored
 - **08-02:** `launcher.py` (240 lines) — portable/system Python detection, env setup, DB init/migration, two-process spawn, browser open, clean Ctrl+C shutdown. `MediaParser.bat` — Windows double-click entry with drive letter handling
-- **08-03:** `scripts/build-windows.py` (422 lines) — 8-step cross-build: Python 3.12 embeddable (stdlib extracted, `._pth` + `mediaparser.pth`), FFmpeg, ExifTool (`windows_exiftool.txt` → `exiftool.pl`), pip wheels (`python-magic-bin` substitution), app code, `.env`, ZIP
+- **08-03:** `scripts/build-windows.py` (~460 lines) — 8-step cross-build: Python 3.12 embeddable (stdlib extracted + zip kept, `._pth` + `mediaparser.pth`), FFmpeg (gyan.dev), ExifTool (standalone exe from SourceForge), pip wheels (`python-magic-bin` + `colorama`), app code, `.env`, ZIP. Uses `curl` for downloads (handles SourceForge redirects).
+
+**Post-execution fixes (iterative debugging on Windows hardware):**
+- `pip install --target` on Linux rejects win_amd64 wheels → extract .whl files directly (they're ZIPs)
+- `python312.zip` must be kept alongside extracted `python312/` dir → both needed (boot vs filesystem access)
+- `colorama` added as transitive dep → click requires it on Windows
+- `mediaparser.pth` fixed from `../../..` (3 levels, wrong) to `../../../..` (4 levels, correct)
+- ExifTool `.bat` wrapper replaced with standalone native exe → pyexiftool's piped stdin/stdout protocol breaks through CMD.exe
+- `CREATE_NEW_PROCESS_GROUP` added for Windows subprocesses → prevents ExifTool/ffmpeg console events from killing Flask/worker
+- `PYTHONUNBUFFERED=1` added to subprocess env → crash output visible immediately
+- `MediaParser.bat` simplified to avoid "Terminate batch job?" prompt on Ctrl+C
 
 **Key decisions (LOCKED):**
-- Bundle: Python 3.12 embeddable + FFmpeg (gyan.dev) + ExifTool (from `exiftool_files/`) + `python-magic-bin`
-- `pip download --platform win_amd64` from WSL2 (no Wine needed — all 23 packages verified)
-- `python312.zip` stdlib must be extracted to `python312/` directory for pickle compatibility
+- Bundle: Python 3.12 embeddable + FFmpeg (gyan.dev) + ExifTool (standalone from SourceForge) + `python-magic-bin`
+- `pip download --platform win_amd64` from WSL2 (no Wine needed — all 24 packages verified)
+- `python312.zip` stdlib kept for boot + extracted to `python312/` for modules needing filesystem access
 - `MEDIAPARSER_WORKER_PID` env var for PID-based health check (`os.kill(pid, 0)` works on Windows)
 - Console window stays visible — tray icon deferred to v2
-- Build uses `.build-cache/` for download caching
+- Build uses `.build-cache/` for download caching; `curl` for downloads (SourceForge compat)
 
 **Human verification checklist:**
-- [ ] `python launcher.py` from WSL2 — two processes, browser opens, Ctrl+C stops both
-- [ ] `python scripts/build-windows.py --version 0.1.0` — ZIP created in `dist/`
-- [ ] Extract ZIP on Windows, double-click `MediaParser.bat` — full app works
+- [x] `python scripts/build-windows.py --version 0.1.0` — ZIP created in `dist/` (multiple successful builds)
+- [x] Extract ZIP on Windows, double-click `MediaParser.bat` — app boots, browser opens, Ctrl+C shuts down
+- [ ] Full upload/process/export workflow on Windows (ExifTool fix needs testing)
 - [ ] Docker, quickstart.sh, dev two-process mode still work unchanged
 
 ---
 
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-18 — Phase 8 fully executed (3/3 plans, 15/15 must-haves verified, human testing pending)*
+*Last updated: 2026-02-19 — ExifTool standalone exe fix; iterative Windows debugging (boot, process isolation, ExifTool pipes)*
