@@ -217,12 +217,12 @@ Plans:
 
 **Requirements:** WIN-01, WIN-02, WIN-03
 
-**Status:** Planned (2026-02-18)
+**Status:** Complete (2026-02-18)
 
 Plans:
-- [ ] 08-01-PLAN.md — Add --host flag to run.py, PID health check to api.py, build gitignore entries
-- [ ] 08-02-PLAN.md — Create launcher.py desktop orchestrator and MediaParser.bat entry point
-- [ ] 08-03-PLAN.md — Create scripts/build-windows.py cross-build script for Windows portable ZIP
+- [x] 08-01-PLAN.md — Add --host flag to run.py, PID health check to api.py, build gitignore entries
+- [x] 08-02-PLAN.md — Create launcher.py desktop orchestrator and MediaParser.bat entry point
+- [x] 08-03-PLAN.md — Create scripts/build-windows.py cross-build script for Windows portable ZIP
 
 **Success Criteria:**
 1. `python launcher.py` from WSL2 spawns two processes, browser opens, Ctrl+C stops both
@@ -242,9 +242,10 @@ Plans:
 | 4 - Review Queues - Timestamps | ✓ Complete | 5 | 100% |
 | 5 - Duplicate Detection - Exact | ✓ Complete | 4 | 100% |
 | 6 - Duplicate Detection - Perceptual | ✓ Complete | 2 | 100% |
-| 7 - Output Generation + Tagging | ✓ Complete | 8 | 3/3 | Complete   | 2026-02-19 | Planned | 3 | 0% |
+| 7 - Output Generation + Tagging | ✓ Complete | 8 | 100% |
+| 8 - Windows Portable Desktop Build | ✓ Complete | 3 | 100% |
 
-**Overall:** 7/8 phases complete, 1 planned (87%)
+**Overall:** 8/8 phases complete (100%)
 
 ---
 

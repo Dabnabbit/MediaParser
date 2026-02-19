@@ -13,7 +13,7 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 8 — Windows Portable Desktop Build (planned, ready to execute)
+**Current Focus:** Phase 8 — Windows Portable Desktop Build (COMPLETE, pending human verification)
 
 ## Current Position
 
@@ -21,7 +21,7 @@
 **Plan:** 3 of 3 (ALL COMPLETE)
 **Status:** COMPLETE
 **Last activity:** 2026-02-19 - 08-03 complete: scripts/build-windows.py cross-build script
-**Progress:** [██████████] 95%
+**Progress:** `[██████████] 100%` (42/42 plans complete)
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -36,10 +36,10 @@
 
 ## Performance Metrics
 
-**Velocity:** 39 plans in ~80 minutes (avg 2.1 min/plan) - Phases 1-7 complete
-**Plan Success Rate:** 100% (39/39 completed successfully)
+**Velocity:** 42 plans complete — Phases 1-7 in ~80 min, Phase 8 in ~10 min
+**Plan Success Rate:** 100% (42/42 completed successfully)
 **Blocker Rate:** 0% (0 blockers encountered)
-**Phases Complete:** 7/8 (Phase 8 planned, ready to execute)
+**Phases Complete:** 8/8 (all phases complete)
 **Out-of-band work:** Carousel viewport system refactor (not tracked by GSD plans)
 
 ## Accumulated Context
@@ -557,9 +557,9 @@ None — all research completed during GSD phases.
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
-**Last session:** 2026-02-19T03:27:01.984Z
-**Stopped at:** Completed 08-03-PLAN.md (build-windows.py cross-build script)
-**Last commit:** `69e4531` — fix: Docker output mount audit hardening
+**Last session:** 2026-02-18
+**Stopped at:** Phase 8 execution complete — all 3 plans done, awaiting human verification on Windows
+**Last commit:** `ff76f30` — docs(08-03): complete build-windows.py cross-build script plan
 
 ### QNAP Deployment (COMPLETE)
 
@@ -584,22 +584,22 @@ Made export output accessible regardless of deployment method:
 - **Browser ZIP download** (`0bf238b`): `GET /api/download-output` zips the output directory and serves it as a browser download. Download button appears on finalize-complete card. Works for any deployment where the user doesn't have filesystem access.
 - **Entrypoint hardening** (`69e4531`): `docker-entrypoint.sh` warns (not crashes) if `OUTPUT_DIR` isn't writable, so the container stays up for import/review instead of restart-looping.
 
-### Windows Portable Desktop Build (PLANNED — ready to execute)
+### Windows Portable Desktop Build (COMPLETE — awaiting human verification)
 
 **Goal:** Download a ZIP, extract, double-click `MediaParser.bat`, app launches in browser. No Python install, no terminal, no dependencies. Full Docker feature parity.
 
-**Status:** 3 plans in 2 waves, research completed, verification passed (2026-02-18)
+**Status:** All 3 plans executed (2026-02-18). 15/15 automated must-haves verified. Awaiting human testing.
 **Plans:** `.planning/phases/08-windows-portable-desktop-build/08-{01,02,03}-PLAN.md`
+**Summaries:** `.planning/phases/08-windows-portable-desktop-build/08-{01,02,03}-SUMMARY.md`
+**Verification:** `.planning/phases/08-windows-portable-desktop-build/08-VERIFICATION.md`
 **Research:** `.planning/phases/08-windows-portable-desktop-build/08-RESEARCH.md`
 
 **Architecture (LOCKED):** Two separate processes (Flask + Huey worker) — NOT standalone mode.
 
-**Wave 1 (parallel):**
-- 08-01: Add `--host` flag to `run.py`, PID-based worker health check to `api.py`, `.gitignore` entries
-- 08-02: Create `launcher.py` (desktop orchestrator) + `MediaParser.bat` (double-click entry)
-
-**Wave 2 (depends on Wave 1):**
-- 08-03: Create `scripts/build-windows.py` — cross-builds Windows portable ZIP from WSL2
+**What was built:**
+- **08-01:** `--host` flag on `run.py` (default `0.0.0.0`), PID-based health check in `api.py` (reads `MEDIAPARSER_WORKER_PID`, `os.kill(pid, 0)`), build dirs gitignored
+- **08-02:** `launcher.py` (240 lines) — portable/system Python detection, env setup, DB init/migration, two-process spawn, browser open, clean Ctrl+C shutdown. `MediaParser.bat` — Windows double-click entry with drive letter handling
+- **08-03:** `scripts/build-windows.py` (422 lines) — 8-step cross-build: Python 3.12 embeddable (stdlib extracted, `._pth` + `mediaparser.pth`), FFmpeg, ExifTool (`windows_exiftool.txt` → `exiftool.pl`), pip wheels (`python-magic-bin` substitution), app code, `.env`, ZIP
 
 **Key decisions (LOCKED):**
 - Bundle: Python 3.12 embeddable + FFmpeg (gyan.dev) + ExifTool (from `exiftool_files/`) + `python-magic-bin`
@@ -609,7 +609,7 @@ Made export output accessible regardless of deployment method:
 - Console window stays visible — tray icon deferred to v2
 - Build uses `.build-cache/` for download caching
 
-**Verification checklist:**
+**Human verification checklist:**
 - [ ] `python launcher.py` from WSL2 — two processes, browser opens, Ctrl+C stops both
 - [ ] `python scripts/build-windows.py --version 0.1.0` — ZIP created in `dist/`
 - [ ] Extract ZIP on Windows, double-click `MediaParser.bat` — full app works
@@ -618,4 +618,4 @@ Made export output accessible regardless of deployment method:
 ---
 
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-18 — Phase 8 formally planned (research + 3 plans + verification)*
+*Last updated: 2026-02-18 — Phase 8 fully executed (3/3 plans, 15/15 must-haves verified, human testing pending)*
