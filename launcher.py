@@ -24,6 +24,12 @@ from pathlib import Path
 # Base directory is always the directory containing this launcher script.
 BASE_DIR = Path(__file__).parent.resolve()
 
+# Ensure app root is on sys.path so `from app import create_app` works.
+# Portable Python's ._pth restricts sys.path to its own directories;
+# the app root (where launcher.py lives) isn't included by default.
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
 # Portable Python executable: present only in the Windows portable build.
 PORTABLE_PYTHON = BASE_DIR / 'tools' / 'python' / 'python.exe'
 

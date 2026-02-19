@@ -112,10 +112,11 @@ def setup_python(app_dir: Path) -> None:
     site_packages.mkdir(parents=True, exist_ok=True)
 
     # Create mediaparser.pth — adds app root to sys.path.
-    # From Lib/site-packages/ going up 3 levels lands at MediaParser/ root,
+    # From Lib/site-packages/ going up 4 levels lands at MediaParser/ root:
+    #   site-packages -> Lib -> python -> tools -> MediaParser/
     # so `from app import create_app` resolves correctly.
     mediaparser_pth = site_packages / 'mediaparser.pth'
-    mediaparser_pth.write_text('../../..\n', encoding='utf-8')
+    mediaparser_pth.write_text('../../../..\n', encoding='utf-8')
 
     print(f'  Python {PYTHON_VERSION} configured at tools/python/')
 
