@@ -64,7 +64,7 @@ Requirements added after v1 completion, currently in roadmap.
 
 - [x] **WIN-01**: User downloads ZIP, extracts, double-clicks .bat — app launches in browser with no prerequisites
 - [x] **WIN-02**: Full feature parity with Docker deployment (import, process, review, export)
-- [ ] **WIN-03**: Build script runs on WSL2 to create Windows portable package
+- [x] **WIN-03**: Build script runs on WSL2 to create Windows portable package
 
 ## v2 Requirements
 

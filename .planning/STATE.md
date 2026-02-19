@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 8 of 8 - Windows Portable Desktop Build
-**Plan:** 1 of 3 (08-01 complete)
-**Status:** IN PROGRESS
-**Last activity:** 2026-02-19 - 08-01 complete: --host flag + PID health check + gitignore entries
-**Progress:** [█████████░] 93%
+**Plan:** 3 of 3 (ALL COMPLETE)
+**Status:** COMPLETE
+**Last activity:** 2026-02-19 - 08-03 complete: scripts/build-windows.py cross-build script
+**Progress:** [██████████] 95%
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -209,6 +209,9 @@
 | os.kill(pid, 0) for PID health check | 2026-02-19 | Cross-platform process existence check — works on Windows Python 3 without Win32 API | 08-01: Health check |
 | 4-tier health check: standalone -> PID -> pgrep -> Huey | 2026-02-19 | PID tier inserted as second check for launcher.py desktop mode | 08-01: Health check order |
 | Phase 08-windows-portable-desktop-build P02 | 2 | 2 tasks | 3 files |
+| python312.zip stdlib must be extracted to python312/ directory | 2026-02-19 | Leaving as ZIP causes ImportError for pickle and many stdlib modules at runtime on Windows | 08-03: Embeddable Python |
+| python-magic-bin replaces python-magic in Windows portable build | 2026-02-19 | Bundles magic.dll — no separate libmagic.so dependency needed on Windows | 08-03: Package substitution |
+| windows_exiftool.txt -> exiftool.pl rename is CRITICAL | 2026-02-19 | perl.exe looks for exiftool.pl as its script entry point; wrong name = ExifTool broken | 08-03: ExifTool setup |
 
 ### Active TODOs
 
@@ -265,10 +268,10 @@
 - [x] 07-04: Export UI + source cleanup + tag filter integration (COMPLETE)
 - [x] 07-05: Integration testing and regression verification (COMPLETE)
 
-**Phase 8 - Windows Portable Desktop Build (PLANNED):**
+**Phase 8 - Windows Portable Desktop Build (COMPLETE):**
 - [x] 08-01: Add --host flag to run.py, PID health check to api.py, build gitignore entries (Wave 1) (COMPLETE)
-- [ ] 08-02: Create launcher.py desktop orchestrator and MediaParser.bat entry point (Wave 1)
-- [ ] 08-03: Create scripts/build-windows.py cross-build script for Windows portable ZIP (Wave 2)
+- [x] 08-02: Create launcher.py desktop orchestrator and MediaParser.bat entry point (Wave 1) (COMPLETE)
+- [x] 08-03: Create scripts/build-windows.py cross-build script for Windows portable ZIP (Wave 2) (COMPLETE)
 
 ### Known Blockers
 
@@ -554,8 +557,8 @@ None — all research completed during GSD phases.
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
-**Last session:** 2026-02-19T03:22:25.288Z
-**Stopped at:** Completed 08-02-PLAN.md (launcher.py + MediaParser.bat)
+**Last session:** 2026-02-19T03:27:01.984Z
+**Stopped at:** Completed 08-03-PLAN.md (build-windows.py cross-build script)
 **Last commit:** `69e4531` — fix: Docker output mount audit hardening
 
 ### QNAP Deployment (COMPLETE)
