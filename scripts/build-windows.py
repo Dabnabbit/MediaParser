@@ -195,6 +195,15 @@ def setup_exiftool(app_dir: Path) -> None:
         )
     shutil.copy2(windows_exiftool, dst_dir / 'exiftool.pl')
 
+    # Create exiftool.bat wrapper so pyexiftool can invoke it as an executable.
+    # pyexiftool expects a single executable path; perl.exe needs exiftool.pl as arg.
+    exiftool_bat = dst_dir / 'exiftool.bat'
+    exiftool_bat.write_text(
+        '@echo off\r\n'
+        '"%~dp0perl.exe" "%~dp0exiftool.pl" %*\r\n',
+        encoding='utf-8',
+    )
+
     print(f'  ExifTool copied to tools/exiftool/ ({len(list(dst_dir.rglob("*")))} files/dirs)')
 
 
