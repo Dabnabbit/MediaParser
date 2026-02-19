@@ -39,6 +39,9 @@ class Config:
     # Timezone configuration (replaces hardcoded -4 offset)
     TIMEZONE = os.environ.get('TIMEZONE', 'America/New_York')
 
+    # Upload size limit (500 MB per request)
+    MAX_CONTENT_LENGTH = 500 * 1024 * 1024
+
     # Phase 2: Processing Configuration
     WORKER_THREADS = None  # None = auto-detect CPU count
     MIN_VALID_YEAR = 2000  # Sanity floor for timestamps

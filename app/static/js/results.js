@@ -77,9 +77,11 @@ class ResultsHandler {
     }
 
     initEventListeners() {
-        // Listen for filter changes from FilterHandler
+        // Listen for filter changes from FilterHandler (debounced to coalesce rapid changes)
+        this._filterDebounceTimer = null;
         window.addEventListener('filterChange', () => {
-            this.loadFiles();
+            clearTimeout(this._filterDebounceTimer);
+            this._filterDebounceTimer = setTimeout(() => this.loadFiles(), 150);
         });
 
         // Reload grid when viewport exits (reflects any changes made during examination)

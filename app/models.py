@@ -149,6 +149,9 @@ class File(db.Model):
     # Indexes
     __table_args__ = (
         Index('ix_files_detected_timestamp', 'detected_timestamp'),
+        Index('ix_files_discarded', 'discarded'),
+        Index('ix_files_processing_error', 'processing_error'),
+        Index('ix_files_final_timestamp', 'final_timestamp'),
     )
 
     def __repr__(self):

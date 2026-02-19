@@ -1,10 +1,14 @@
 """API routes for progress tracking and general utilities."""
+import logging
 import os
 from flask import Blueprint, jsonify, current_app
 from datetime import datetime, timezone
+from sqlalchemy import case, func
 
 from app import db
 from app.models import Job, JobStatus, File, ConfidenceLevel
+
+logger = logging.getLogger(__name__)
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -58,14 +62,17 @@ def get_progress(job_id):
 
     # Include summary data when job completes
     if job.status in [JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.HALTED, JobStatus.CANCELLED]:
-        # Get file counts by confidence
-        confidence_counts = {}
-        for level in ConfidenceLevel:
-            count = File.query.join(File.jobs).filter(
-                Job.id == job_id,
-                File.confidence == level
-            ).count()
-            confidence_counts[level.value] = count
+        # Get file counts by confidence — single query instead of 4 separate COUNTs
+        confidence_row = db.session.query(
+            *[
+                func.sum(case((File.confidence == level, 1), else_=0)).label(level.value)
+                for level in ConfidenceLevel
+            ]
+        ).join(File.jobs).filter(Job.id == job_id).one()
+        confidence_counts = {
+            level.value: int(getattr(confidence_row, level.value) or 0)
+            for level in ConfidenceLevel
+        }
 
         # Get duplicate count
         duplicate_count = db.session.execute(
@@ -167,8 +174,8 @@ def check_worker_health():
                 pids = [p for p in result.stdout.decode().strip().split('\n') if p]
                 if pids:
                     return jsonify({'worker_alive': True, 'pids': pids})
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug('pgrep worker detection failed: %s', exc)
 
     # Fallback: enqueue a health_check task via Huey (works across Docker containers)
     try:
@@ -177,8 +184,8 @@ def check_worker_health():
         resp = task_result.get(blocking=True, timeout=3)
         if resp and resp.get('status') == 'ok':
             return jsonify({'worker_alive': True, 'mode': 'queue'})
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug('Huey health_check task failed: %s', exc)
 
     return jsonify({
         'worker_alive': False,

@@ -141,21 +141,28 @@ class TagsHandler {
             return;
         }
 
-        dropdown.innerHTML = matches.map(tag => `
-            <div class="autocomplete-item" data-tag="${tag.name}">
-                ${tag.name}
-                <span class="tag-count">(${tag.usage_count})</span>
-            </div>
-        `).join('');
+        dropdown.innerHTML = '';
+        matches.forEach(tag => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.dataset.tag = tag.name;
 
-        // Add click handlers
-        dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+            const nameNode = document.createTextNode(tag.name + ' ');
+            const countSpan = document.createElement('span');
+            countSpan.className = 'tag-count';
+            countSpan.textContent = `(${tag.usage_count})`;
+
+            item.appendChild(nameNode);
+            item.appendChild(countSpan);
+
             item.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 input.value = item.dataset.tag;
                 dropdown.classList.remove('show');
                 input._acActiveIndex = -1;
             });
+
+            dropdown.appendChild(item);
         });
 
         dropdown.classList.add('show');
@@ -237,32 +244,40 @@ class TagsHandler {
     renderExaminationTags() {
         if (!this.examinationContainer) return;
 
-        // Inline layout: pills + input on one line, wrapping naturally
-        const pillsHtml = this.currentTags.map(tag => `
-            <span class="tag-pill" data-tag="${tag.name || tag}">
-                ${tag.name || tag}
-                <button class="tag-remove" title="Remove tag">&times;</button>
-            </span>
-        `).join('');
+        // Build DOM safely (no innerHTML with user data)
+        this.examinationContainer.innerHTML = '';
 
-        const emptyHtml = this.currentTags.length === 0
-            ? '<span class="tags-empty">No tags</span>'
-            : '';
+        if (this.currentTags.length === 0) {
+            const empty = document.createElement('span');
+            empty.className = 'tags-empty';
+            empty.textContent = 'No tags';
+            this.examinationContainer.appendChild(empty);
+        }
 
-        this.examinationContainer.innerHTML = `
-            ${emptyHtml}
-            <div class="tags-list">${pillsHtml}</div>
-            ${this.renderTagInput()}
-        `;
+        const tagsList = document.createElement('div');
+        tagsList.className = 'tags-list';
+        this.currentTags.forEach(tag => {
+            const tagName = tag.name || tag;
+            const pill = document.createElement('span');
+            pill.className = 'tag-pill';
+            pill.dataset.tag = tagName;
+            pill.appendChild(document.createTextNode(tagName + ' '));
 
-        // Attach remove handlers
-        this.examinationContainer.querySelectorAll('.tag-remove').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const pill = e.target.closest('.tag-pill');
-                const tagName = pill.dataset.tag;
-                this.removeTag(tagName);
-            });
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'tag-remove';
+            removeBtn.title = 'Remove tag';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.addEventListener('click', () => this.removeTag(tagName));
+
+            pill.appendChild(removeBtn);
+            tagsList.appendChild(pill);
         });
+        this.examinationContainer.appendChild(tagsList);
+
+        // Add tag input via innerHTML (static template, no user data)
+        const inputWrapper = document.createElement('div');
+        inputWrapper.innerHTML = this.renderTagInput();
+        this.examinationContainer.appendChild(inputWrapper);
 
         // Setup autocomplete for examination input
         const examInput = this.examinationContainer.querySelector('.tag-input');

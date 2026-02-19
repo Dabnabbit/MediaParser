@@ -12,6 +12,9 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Sentinel value for incomparable hashes (None/empty/invalid inputs)
+INCOMPARABLE_DISTANCE = 999
+
 # Detection thresholds
 EXACT_THRESHOLD = 5         # Hamming distance 0-5 = exact duplicate
 SIMILAR_THRESHOLD = 16      # Hamming distance 6-16 = similar
@@ -42,7 +45,7 @@ def hamming_distance(hash1: str, hash2: str) -> int:
     """
     # Handle None/empty inputs
     if not hash1 or not hash2:
-        return 999
+        return INCOMPARABLE_DISTANCE
 
     try:
         # Convert hex strings to integers and XOR
@@ -54,7 +57,7 @@ def hamming_distance(hash1: str, hash2: str) -> int:
         return xor_result.bit_count()
     except (ValueError, AttributeError) as e:
         logger.warning(f"Invalid hash format: {hash1}, {hash2}: {e}")
-        return 999
+        return INCOMPARABLE_DISTANCE
 
 
 def detect_sequence_type(file_a, file_b) -> str:

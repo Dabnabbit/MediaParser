@@ -40,7 +40,7 @@ def get_job_status(job_id):
     # Calculate progress percentage
     progress_percent = 0
     if job.progress_total > 0:
-        progress_percent = int((job.progress_current / job.progress_total) * 100)
+        progress_percent = round(job.progress_current / job.progress_total * 100, 1)
 
     # Format response
     response = {
