@@ -13,14 +13,14 @@
 
 **Core Value:** Turn chaotic family media from dozens of sources into a clean, organized, timestamped archive — without losing anything important.
 
-**Current Focus:** Phase 8 — Windows Portable Desktop Build (iterative debugging on Windows hardware)
+**Current Focus:** Post-v1 polish — code audit quick wins (perf, security, quality)
 
 ## Current Position
 
 **Phase:** 8 of 8 - Windows Portable Desktop Build
 **Plan:** 3 of 3 (ALL COMPLETE)
 **Status:** COMPLETE
-**Last activity:** 2026-02-19 - Fix ExifTool: standalone exe from SourceForge replaces broken .bat wrapper
+**Last activity:** 2026-02-19 - Quick wins from code audit: batched queries, XSS fix, indexes, debounce, upload limit
 **Progress:** `[██████████] 100%` (42/42 plans complete)
 
 **Completed Requirements (Phase 2):**
@@ -293,22 +293,22 @@ Code audit completed 2026-02-19 (security, code quality, performance). Findings 
 - Weak default SECRET_KEY in config.py (falls back to hardcoded string if env var missing)
 - No CSRF protection on POST endpoints (acceptable for local single-user app)
 - `/api/import-path` accepts any absolute path (no whitelist — by design for local use)
-- innerHTML usage in tags.js, tile.js without sanitization (XSS risk if tag names contain HTML)
-- No `MAX_CONTENT_LENGTH` on uploads (disk fill risk)
+- ~~innerHTML usage in tags.js without sanitization~~ → FIXED (de72b2a): DOM methods + textContent
+- ~~No `MAX_CONTENT_LENGTH` on uploads~~ → FIXED (de72b2a): 500MB limit in config.py
 - No CSP/security headers
 - No auth (by design — single-user desktop/Docker app)
 
 **Performance (quick wins):**
-- N+1 query in progress endpoint: 4 separate COUNT queries per poll → batch into single query (api.py:62-68)
-- Missing indexes on `File.discarded`, `File.processing_error`, `File.final_timestamp`
+- ~~N+1 query in progress endpoint: 4 separate COUNT queries~~ → FIXED (de72b2a): batched into single query with func.sum(case())
+- ~~Missing indexes on `File.discarded`, `File.processing_error`, `File.final_timestamp`~~ → FIXED (de72b2a): alembic migration 8ad2b0baef0f
 - N+1 tags loading: `File.tags` not eager-loaded → 100 extra queries for 100 files (review.py:114)
 - Duplicate recommendation recomputed on every API request → cache in model
-- No debounce on frontend `filterChange` event → redundant API calls
+- ~~No debounce on frontend `filterChange` event~~ → FIXED (de72b2a): 150ms debounce in results.js
 
 **Code Quality:**
-- Bare `except: pass` in worker health check (api.py:170-181) — swallows diagnostics
-- Inconsistent progress calculation: `round(..., 1)` in api.py vs `int(...)` in jobs.py
-- Magic number 999 for incomparable hash distance (perceptual.py:44)
+- ~~Bare `except: pass` in worker health check~~ → FIXED (de72b2a): logger.debug() added
+- ~~Inconsistent progress calculation~~ → FIXED (de72b2a): both use round(..., 1) now
+- ~~Magic number 999 for incomparable hash distance~~ → FIXED (de72b2a): INCOMPARABLE_DISTANCE constant
 - Silent JSON parse failures in review.py (no logging on malformed timestamp_candidates)
 - Hardcoded timestamp tolerance (30s) duplicated in confidence.py and perceptual.py
 
@@ -594,9 +594,9 @@ None — all research completed during GSD phases.
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
 **Last session:** 2026-02-19
-**Stopped at:** ExifTool fix confirmed working on Windows (processing succeeded). Full workflow test (upload → process → review → export) scheduled for next session.
-**Last commit:** chore: remove legacy old/ scripts
-**Regression check:** 122/122 tests pass; Docker unaffected (no references to changed files; ExifTool via apt-get)
+**Stopped at:** Code audit quick wins complete (8 fixes across 7 files). Full workflow test (upload → process → review → export) on Windows still pending.
+**Last commit:** fix: quick wins from code audit (perf, security, quality) (de72b2a)
+**Regression check:** 122/122 tests pass after quick wins; Docker unaffected
 
 ### QNAP Deployment (COMPLETE)
 
@@ -665,4 +665,4 @@ Made export output accessible regardless of deployment method:
 ---
 
 *State initialized: 2026-02-02*
-*Last updated: 2026-02-19 — ExifTool standalone exe fix; iterative Windows debugging (boot, process isolation, ExifTool pipes)*
+*Last updated: 2026-02-19 — Code audit quick wins (8 fixes: batched queries, XSS, indexes, debounce, upload limit, logging, constants, progress consistency)*
