@@ -32,3 +32,8 @@ env/
 
 # Windows binaries (not used in Linux/Docker)
 *.exe
+
+# Build artifacts (Windows portable build)
+build/
+dist/
+.build-cache/
