@@ -80,25 +80,29 @@ def setup_python(app_dir: Path) -> None:
     with zipfile.ZipFile(cache_path) as zf:
         zf.extractall(python_dir)
 
-    # Extract python312.zip stdlib to python312/ directory.
-    # CRITICAL: Embeddable Python ships stdlib as a ZIP inside the ZIP.
-    # Leaving it as python312.zip causes ImportError for pickle and many stdlib
-    # modules. Must extract to a real directory.
+    # Extract python312.zip stdlib to python312/ directory AND keep the zip.
+    # The zip is needed for Python's early init (encodings import at boot).
+    # The extracted directory is needed for modules like pickle that require
+    # filesystem access (can't run from inside a zip).
+    # Both are listed in ._pth so Python finds modules in either location.
     stdlib_zip = python_dir / 'python312.zip'
     if stdlib_zip.exists():
-        print('  Extracting python312.zip stdlib ...')
+        print('  Extracting python312.zip stdlib (keeping zip for boot) ...')
         stdlib_dir = python_dir / 'python312'
         stdlib_dir.mkdir(exist_ok=True)
         with zipfile.ZipFile(stdlib_zip) as zf:
             zf.extractall(stdlib_dir)
-        stdlib_zip.unlink()
+        # Do NOT delete python312.zip — Python needs it for early init
 
     # Write modified python312._pth
     # This file controls sys.path for the embeddable distribution.
-    # Must list: extracted stdlib dir, the embeddable root (.), site-packages,
-    # and enable site import.
+    # python312.zip: early boot (encodings, codecs)
+    # python312: extracted stdlib for modules needing filesystem access
+    # .: embeddable root
+    # Lib\site-packages: pip packages
     pth_file = python_dir / 'python312._pth'
     pth_file.write_text(
+        'python312.zip\n'
         'python312\n'
         '.\n'
         r'Lib\site-packages'
