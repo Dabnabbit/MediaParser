@@ -18,10 +18,10 @@
 ## Current Position
 
 **Phase:** 8 of 8 - Windows Portable Desktop Build
-**Plan:** 0 of 3 (planned, not yet executed)
-**Status:** PLANNED
-**Last activity:** 2026-02-18 - Phase 8 research + planning complete (3 plans in 2 waves, verified)
-**Progress:** `[█████████████████████████████████░░] 93%` (39/42 plans complete)
+**Plan:** 1 of 3 (08-01 complete)
+**Status:** IN PROGRESS
+**Last activity:** 2026-02-19 - 08-01 complete: --host flag + PID health check + gitignore entries
+**Progress:** [█████████░] 91%
 
 **Completed Requirements (Phase 2):**
 - ✓ TIME-01: Confidence score for timestamp detection (COMPLETE - integrated in worker)
@@ -205,6 +205,9 @@
 | unknown/ subfolder for no-timestamp files | 2026-02-06 | Separate folder for files needing manual timestamp assignment | 07-01: Export edge cases |
 | Export as separate job type | 2026-02-06 | New Job record preserves import history, enables retry without re-import | 07-01: Job architecture |
 | File.output_path tracks export status | 2026-02-06 | Database field enables pause/resume for export jobs | 07-01: Resume support |
+| Default --host remains 0.0.0.0 | 2026-02-19 | Docker and dev server behavior unchanged; launcher passes --host 127.0.0.1 explicitly | 08-01: --host flag |
+| os.kill(pid, 0) for PID health check | 2026-02-19 | Cross-platform process existence check — works on Windows Python 3 without Win32 API | 08-01: Health check |
+| 4-tier health check: standalone -> PID -> pgrep -> Huey | 2026-02-19 | PID tier inserted as second check for launcher.py desktop mode | 08-01: Health check order |
 
 ### Active TODOs
 
@@ -262,7 +265,7 @@
 - [x] 07-05: Integration testing and regression verification (COMPLETE)
 
 **Phase 8 - Windows Portable Desktop Build (PLANNED):**
-- [ ] 08-01: Add --host flag to run.py, PID health check to api.py, build gitignore entries (Wave 1)
+- [x] 08-01: Add --host flag to run.py, PID health check to api.py, build gitignore entries (Wave 1) (COMPLETE)
 - [ ] 08-02: Create launcher.py desktop orchestrator and MediaParser.bat entry point (Wave 1)
 - [ ] 08-03: Create scripts/build-windows.py cross-build script for Windows portable ZIP (Wave 2)
 
@@ -550,8 +553,8 @@ None — all research completed during GSD phases.
 - `app/static/css/viewport.css` - viewport styling, z-index layers, transitions
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
-**Last session:** 2026-02-18
-**Stopped at:** Phase 8 planned (3 plans, 2 waves, verified). Ready to execute.
+**Last session:** 2026-02-19T03:21:36.242Z
+**Stopped at:** Completed 08-01-PLAN.md
 **Last commit:** `69e4531` — fix: Docker output mount audit hardening
 
 ### QNAP Deployment (COMPLETE)
