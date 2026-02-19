@@ -287,7 +287,35 @@ None
 
 ### Technical Debt
 
-None — legacy `old/` directory cleaned up (PhotoTimeFixer.py, minimal_test.py removed).
+Code audit completed 2026-02-19 (security, code quality, performance). Findings below ranked by priority.
+
+**Security (contextual — app is single-user, localhost-bound):**
+- Weak default SECRET_KEY in config.py (falls back to hardcoded string if env var missing)
+- No CSRF protection on POST endpoints (acceptable for local single-user app)
+- `/api/import-path` accepts any absolute path (no whitelist — by design for local use)
+- innerHTML usage in tags.js, tile.js without sanitization (XSS risk if tag names contain HTML)
+- No `MAX_CONTENT_LENGTH` on uploads (disk fill risk)
+- No CSP/security headers
+- No auth (by design — single-user desktop/Docker app)
+
+**Performance (quick wins):**
+- N+1 query in progress endpoint: 4 separate COUNT queries per poll → batch into single query (api.py:62-68)
+- Missing indexes on `File.discarded`, `File.processing_error`, `File.final_timestamp`
+- N+1 tags loading: `File.tags` not eager-loaded → 100 extra queries for 100 files (review.py:114)
+- Duplicate recommendation recomputed on every API request → cache in model
+- No debounce on frontend `filterChange` event → redundant API calls
+
+**Code Quality:**
+- Bare `except: pass` in worker health check (api.py:170-181) — swallows diagnostics
+- Inconsistent progress calculation: `round(..., 1)` in api.py vs `int(...)` in jobs.py
+- Magic number 999 for incomparable hash distance (perceptual.py:44)
+- Silent JSON parse failures in review.py (no logging on malformed timestamp_candidates)
+- Hardcoded timestamp tolerance (30s) duplicated in confidence.py and perceptual.py
+
+**Acceptable for v1 (document, don't fix):**
+- O(n²) perceptual duplicate detection — acceptable at household scale (<10K files)
+- ExifTool subprocess-per-file overhead — pyexiftool context manager pattern is correct
+- Video frame extraction blocks thread pool worker — mitigated by thread parallelism
 
 ### Research Flags
 
