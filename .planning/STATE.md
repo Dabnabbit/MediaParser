@@ -287,7 +287,7 @@ None
 
 ### Technical Debt
 
-None — legacy `PhotoTimeFixer.py` issues all resolved or superseded by the new `app/lib/` codebase.
+None — legacy `old/` directory cleaned up (PhotoTimeFixer.py, minimal_test.py removed).
 
 ### Research Flags
 
@@ -566,8 +566,9 @@ None — all research completed during GSD phases.
 - `.planning/carousel-viewport-plan.md` - architecture overview (references old file names)
 
 **Last session:** 2026-02-19
-**Stopped at:** ExifTool standalone exe fix applied — awaiting Windows test of upload/process workflow
-**Last commit:** fix: ExifTool standalone exe from SourceForge (replaces broken .bat wrapper)
+**Stopped at:** ExifTool fix confirmed working on Windows (processing succeeded). Full workflow test (upload → process → review → export) scheduled for next session.
+**Last commit:** chore: remove legacy old/ scripts
+**Regression check:** 122/122 tests pass; Docker unaffected (no references to changed files; ExifTool via apt-get)
 
 ### QNAP Deployment (COMPLETE)
 
@@ -596,7 +597,7 @@ Made export output accessible regardless of deployment method:
 
 **Goal:** Download a ZIP, extract, double-click `MediaParser.bat`, app launches in browser. No Python install, no terminal, no dependencies. Full Docker feature parity.
 
-**Status:** All 3 plans executed (2026-02-18). 15/15 automated must-haves verified. Awaiting human testing.
+**Status:** All 3 plans executed (2026-02-18). 15/15 automated must-haves verified. Windows boot + processing confirmed working (2026-02-19). Full workflow test pending.
 **Plans:** `.planning/phases/08-windows-portable-desktop-build/08-{01,02,03}-PLAN.md`
 **Summaries:** `.planning/phases/08-windows-portable-desktop-build/08-{01,02,03}-SUMMARY.md`
 **Verification:** `.planning/phases/08-windows-portable-desktop-build/08-VERIFICATION.md`
