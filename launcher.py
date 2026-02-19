@@ -178,6 +178,7 @@ def main() -> None:
 
     # Build subprocess environment.
     env = os.environ.copy()
+    env['PYTHONUNBUFFERED'] = '1'  # Ensure crash output is visible immediately
     if is_portable():
         configure_portable_env(env)
 
@@ -187,12 +188,19 @@ def main() -> None:
     # Initialize database in-process before spawning services.
     run_db_init()
 
+    # On Windows, use CREATE_NEW_PROCESS_GROUP so that console Ctrl+C events
+    # don't propagate to child processes. The launcher handles shutdown explicitly.
+    popen_flags = 0
+    if sys.platform == 'win32':
+        popen_flags = subprocess.CREATE_NEW_PROCESS_GROUP
+
     # --- Spawn worker process ---
     print('Starting worker...')
     worker_proc = subprocess.Popen(
         [python_exe, str(BASE_DIR / 'run_worker.py')],
         env=env,
         cwd=str(BASE_DIR),
+        creationflags=popen_flags,
     )
     logging.info('Worker process started (PID %d)', worker_proc.pid)
 
@@ -205,6 +213,7 @@ def main() -> None:
         [python_exe, str(BASE_DIR / 'run.py'), '--host', host, '--port', str(port)],
         env=env,
         cwd=str(BASE_DIR),
+        creationflags=popen_flags,
     )
     logging.info('Flask process started (PID %d)', flask_proc.pid)
 
@@ -226,8 +235,16 @@ def main() -> None:
     try:
         flask_proc.wait()
     except KeyboardInterrupt:
-        pass
+        logging.info('Ctrl+C received, shutting down...')
     finally:
+        # Log exit codes for debugging
+        flask_rc = flask_proc.poll()
+        worker_rc = worker_proc.poll()
+        if flask_rc is not None and flask_rc != 0:
+            logging.warning('Flask exited with code %s', flask_rc)
+        if worker_rc is not None and worker_rc != 0:
+            logging.warning('Worker exited with code %s', worker_rc)
+
         # Terminate both processes gracefully, then force-kill if needed.
         for proc in [flask_proc, worker_proc]:
             if proc.poll() is None:

@@ -129,4 +129,5 @@ if __name__ == '__main__':
             host=args.host,
             port=args.port,
             debug=app.config.get('DEBUG', False),
+            threaded=True,
         )
